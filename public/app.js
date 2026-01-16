@@ -427,6 +427,19 @@ async function loadEntries() {
 
 function renderEntries() {
     let entries = window._allEntries || [];
+    updateShowAllEntriesBtn();
+    // Disable 'Show All Entries' button if all entries are already shown
+    function updateShowAllEntriesBtn() {
+        const viewListBtn = document.getElementById('view-list-btn');
+        const dateFilter = document.getElementById('date-filter');
+        const searchInput = document.getElementById('search-input');
+        const isFiltered = (dateFilter && dateFilter.value) || (searchInput && searchInput.value.trim()) || window._showFavoritesOnly;
+        if (viewListBtn) {
+            viewListBtn.disabled = !isFiltered;
+            viewListBtn.classList.toggle('opacity-50', !isFiltered);
+            viewListBtn.classList.toggle('cursor-not-allowed', !isFiltered);
+        }
+    }
     const searchInput = document.getElementById('search-input');
     const dateFilter = document.getElementById('date-filter');
     const keyword = (searchInput && searchInput.value.trim().toLowerCase()) || '';
@@ -584,10 +597,16 @@ function renderEntries() {
         viewListBtn.onclick = () => {
             window._currentView = 'list';
             calendarModal.classList.add('hidden');
-            // Clear date filter to show all entries
+            // Clear date filter and search to show all entries
             const dateFilter = document.getElementById('date-filter');
+            const searchInput = document.getElementById('search-input');
             if (dateFilter) dateFilter.value = '';
+            if (searchInput) searchInput.value = '';
+            window._showFavoritesOnly = false;
+            const favoritesToggle = document.getElementById('favorites-toggle');
+            if (favoritesToggle) favoritesToggle.textContent = '★ Show Favorites Only';
             renderEntries();
+            updateShowAllEntriesBtn();
         };
         viewCalendarBtn.onclick = () => {
             window._currentView = 'calendar';
