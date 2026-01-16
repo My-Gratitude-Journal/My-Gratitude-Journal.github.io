@@ -593,10 +593,24 @@ function renderEntries() {
             if (!dateMap[key]) dateMap[key] = [];
             dateMap[key].push(e);
         });
-        // Get current month
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth();
+        // Find min/max entry months
+        let minMonth = null, maxMonth = null;
+        if (entries.length) {
+            const dates = entries.map(e => new Date(e.created));
+            dates.sort((a, b) => a - b);
+            minMonth = new Date(dates[0].getFullYear(), dates[0].getMonth(), 1);
+            maxMonth = new Date(dates[dates.length - 1].getFullYear(), dates[dates.length - 1].getMonth(), 1);
+        }
+        // Track current calendar month in window._calendarMonth
+        if (!window._calendarMonth) {
+            window._calendarMonth = new Date();
+            window._calendarMonth.setDate(1);
+        }
+        // Clamp to min/max
+        if (minMonth && window._calendarMonth < minMonth) window._calendarMonth = new Date(minMonth);
+        if (maxMonth && window._calendarMonth > maxMonth) window._calendarMonth = new Date(maxMonth);
+        const year = window._calendarMonth.getFullYear();
+        const month = window._calendarMonth.getMonth();
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
         const daysInMonth = lastDay.getDate();
@@ -609,7 +623,7 @@ function renderEntries() {
         });
         // Pad first week
         for (let i = 0; i < firstDay.getDay(); i++) {
-            html += `<div></div>`;
+            html += `<button disabled class="rounded-lg px-2 py-2 w-full h-12 bg-gray-100 dark:bg-gray-800 opacity-40 cursor-not-allowed"></button>`;
         }
         // Days
         for (let d = 1; d <= daysInMonth; d++) {
@@ -617,12 +631,23 @@ function renderEntries() {
             dateObj.setHours(0, 0, 0, 0);
             const key = dateObj.toISOString().slice(0, 10);
             const hasEntry = !!dateMap[key];
-            html += `<button class="rounded-lg px-2 py-2 text-sm font-semibold w-full h-12 flex flex-col items-center justify-center ${hasEntry ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500'}" data-date="${key}">${d}${hasEntry ? `<span class='block text-xs mt-1'>${dateMap[key].length} entry${dateMap[key].length > 1 ? 'ies' : 'y'}</span>` : ''}</button>`;
+            let btnClass = hasEntry
+                ? 'bg-primary text-white hover:bg-blue-600 dark:hover:bg-blue-400'
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-500 opacity-60 cursor-not-allowed';
+            let disabled = hasEntry ? '' : 'disabled';
+            html += `<button class="rounded-lg px-2 py-2 text-sm font-semibold w-full h-12 flex flex-col items-center justify-center ${btnClass}" data-date="${key}" ${disabled}>${d}${hasEntry ? `<span class='block text-xs mt-1'>${dateMap[key].length} entry${dateMap[key].length > 1 ? 'ies' : 'y'}</span>` : ''}</button>`;
         }
         html += `</div>`;
         calendarView.innerHTML = html;
+        // Update month label and prev/next buttons
+        const label = document.getElementById('calendar-month-label');
+        if (label) label.textContent = window._calendarMonth.toLocaleString('default', { month: 'long', year: 'numeric' });
+        const prevBtn = document.getElementById('calendar-prev-month');
+        const nextBtn = document.getElementById('calendar-next-month');
+        if (prevBtn) prevBtn.disabled = minMonth && (window._calendarMonth.getFullYear() === minMonth.getFullYear() && window._calendarMonth.getMonth() === minMonth.getMonth());
+        if (nextBtn) nextBtn.disabled = maxMonth && (window._calendarMonth.getFullYear() === maxMonth.getFullYear() && window._calendarMonth.getMonth() === maxMonth.getMonth());
         // Add click listeners to calendar days
-        Array.from(calendarView.querySelectorAll('button[data-date]')).forEach(btn => {
+        Array.from(calendarView.querySelectorAll('button[data-date]:not([disabled])')).forEach(btn => {
             btn.onclick = () => {
                 document.getElementById('date-filter').value = btn.getAttribute('data-date');
                 calendarModal.classList.add('hidden');
@@ -630,6 +655,19 @@ function renderEntries() {
                 renderEntries();
             };
         });
+        // Add prev/next handlers
+        if (prevBtn) prevBtn.onclick = () => {
+            if (minMonth && (window._calendarMonth > minMonth)) {
+                window._calendarMonth.setMonth(window._calendarMonth.getMonth() - 1);
+                renderCalendarView();
+            }
+        };
+        if (nextBtn) nextBtn.onclick = () => {
+            if (maxMonth && (window._calendarMonth < maxMonth)) {
+                window._calendarMonth.setMonth(window._calendarMonth.getMonth() + 1);
+                renderCalendarView();
+            }
+        };
     }
 }
 
