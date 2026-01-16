@@ -39,10 +39,9 @@
     </script>
 </head>
 
-<body class="min-h-screen transition-colors" style="background-color: var(--theme-bg, #f3f4f6);">
+<body class="min-h-screen bg-gray-100 dark:bg-darkbg transition-colors">
     <div id="app"
-        class="max-w-2xl mx-auto mt-10 rounded-3xl shadow-2xl p-4 sm:p-8 w-full min-h-[90vh] flex flex-col gap-8 border border-gray-200 dark:border-gray-800"
-        style="background-color: var(--theme-card, rgba(255,255,255,0.9));">
+        class="max-w-2xl mx-auto mt-10 bg-white/90 dark:bg-darkcard/90 rounded-3xl shadow-2xl p-4 sm:p-8 w-full min-h-[90vh] flex flex-col gap-8 border border-gray-200 dark:border-gray-800">
         <!-- Header with Hamburger Menu -->
         <div class="flex items-center justify-between mb-8 gap-4">
             <h1
@@ -151,9 +150,7 @@
             <div id="progress-info" class="mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between">
                 <div class="flex flex-col gap-1">
                     <span class="font-semibold text-gray-700 dark:text-gray-200">Current Streak: <span id="streak-count"
-                            class="text-primary">0</span> days
-                        <span id="streak-badge" class="streak-badge" style="display:none;"></span>
-                    </span>
+                            class="text-primary">0</span> days</span>
                     <span class="text-gray-600 dark:text-gray-400">Longest Streak: <span id="longest-streak"
                             class="font-semibold">0</span> days</span>
                     <span class="text-gray-600 dark:text-gray-400">Total Entries: <span id="total-entries"
