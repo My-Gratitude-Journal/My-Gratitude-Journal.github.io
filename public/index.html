@@ -45,9 +45,12 @@
         <!-- Header with Hamburger Menu -->
         <div class="flex items-center justify-between mb-6 gap-4">
             <h1 class="text-2xl sm:text-3xl font-bold text-primary dark:text-blue-300">Gratitude Journal</h1>
-            <button id="hamburger-toggle" class="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition focus:outline-none focus:ring-2 focus:ring-primary">
-                <svg id="hamburger-icon" class="w-6 h-6 text-gray-800 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            <button id="hamburger-toggle"
+                class="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition focus:outline-none focus:ring-2 focus:ring-primary">
+                <svg id="hamburger-icon" class="w-6 h-6 text-gray-800 dark:text-white" fill="none" stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16">
+                    </path>
                 </svg>
             </button>
         </div>
@@ -59,17 +62,26 @@
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl font-bold text-gray-800 dark:text-white">Menu</h2>
                     <button id="hamburger-close" class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-800">
-                        <svg class="w-6 h-6 text-gray-800 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        <svg class="w-6 h-6 text-gray-800 dark:text-white" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
                 </div>
                 <nav class="space-y-2 flex-1">
-                    <button id="logout-btn" style="display:none;" class="w-full text-left px-4 py-3 rounded-lg text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-gray-800 transition font-medium">Logout</button>
-                    <button id="delete-account-btn" style="display:none;" class="w-full text-left px-4 py-3 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-gray-800 transition font-medium">Delete Account</button>
+                    <button id="logout-btn" style="display:none;"
+                        class="w-full text-left px-4 py-3 rounded-lg text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-gray-800 transition font-medium">Logout</button>
+                    <button id="delete-account-btn" style="display:none;"
+                        class="w-full text-left px-4 py-3 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-gray-800 transition font-medium">Delete
+                        Account</button>
                     <div class="border-t border-gray-200 dark:border-gray-700 my-2"></div>
-                    <button id="menu-export-csv" class="w-full text-left px-4 py-3 rounded-lg text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-gray-800 transition font-medium">📊 Export CSV</button>
-                    <button id="menu-export-pdf" class="w-full text-left px-4 py-3 rounded-lg text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-gray-800 transition font-medium">📄 Export PDF</button>
+                    <button id="menu-export-csv"
+                        class="w-full text-left px-4 py-3 rounded-lg text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-gray-800 transition font-medium">📊
+                        Export CSV</button>
+                    <button id="menu-export-pdf"
+                        class="w-full text-left px-4 py-3 rounded-lg text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-gray-800 transition font-medium">📄
+                        Export PDF</button>
                 </nav>
             </div>
         </div>
@@ -171,43 +183,43 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script>
-    // Hamburger menu logic
-    document.addEventListener('DOMContentLoaded', function() {
-        const hamburgerToggle = document.getElementById('hamburger-toggle');
-        const hamburgerClose = document.getElementById('hamburger-close');
-        const sideMenu = document.getElementById('side-menu');
-        const menuOverlay = document.getElementById('menu-overlay');
-        
-        function closeMenu() {
-            sideMenu.classList.add('hidden');
-        }
-        
-        function openMenu() {
-            sideMenu.classList.remove('hidden');
-        }
-        
-        hamburgerToggle.addEventListener('click', openMenu);
-        hamburgerClose.addEventListener('click', closeMenu);
-        menuOverlay.addEventListener('click', closeMenu);
-        
-        // Export buttons in menu
-        const menuExportCSV = document.getElementById('menu-export-csv');
-        const menuExportPDF = document.getElementById('menu-export-pdf');
-        const exportCSVBtn = document.getElementById('export-csv-btn');
-        const exportPDFBtn = document.getElementById('export-pdf-btn');
-        if (menuExportCSV && exportCSVBtn) {
-            menuExportCSV.onclick = () => {
-                exportCSVBtn.click();
-                closeMenu();
-            };
-        }
-        if (menuExportPDF && exportPDFBtn) {
-            menuExportPDF.onclick = () => {
-                exportPDFBtn.click();
-                closeMenu();
-            };
-        }
-    });
+        // Hamburger menu logic
+        document.addEventListener('DOMContentLoaded', function () {
+            const hamburgerToggle = document.getElementById('hamburger-toggle');
+            const hamburgerClose = document.getElementById('hamburger-close');
+            const sideMenu = document.getElementById('side-menu');
+            const menuOverlay = document.getElementById('menu-overlay');
+
+            function closeMenu() {
+                sideMenu.classList.add('hidden');
+            }
+
+            function openMenu() {
+                sideMenu.classList.remove('hidden');
+            }
+
+            hamburgerToggle.addEventListener('click', openMenu);
+            hamburgerClose.addEventListener('click', closeMenu);
+            menuOverlay.addEventListener('click', closeMenu);
+
+            // Export buttons in menu
+            const menuExportCSV = document.getElementById('menu-export-csv');
+            const menuExportPDF = document.getElementById('menu-export-pdf');
+            const exportCSVBtn = document.getElementById('export-csv-btn');
+            const exportPDFBtn = document.getElementById('export-pdf-btn');
+            if (menuExportCSV && exportCSVBtn) {
+                menuExportCSV.onclick = () => {
+                    exportCSVBtn.click();
+                    closeMenu();
+                };
+            }
+            if (menuExportPDF && exportPDFBtn) {
+                menuExportPDF.onclick = () => {
+                    exportPDFBtn.click();
+                    closeMenu();
+                };
+            }
+        });
     </script>
     <script src="app.js"></script>
 </body>
