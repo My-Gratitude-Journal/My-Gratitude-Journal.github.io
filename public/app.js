@@ -480,7 +480,24 @@ function renderEntries() {
         starBtn.innerHTML = e.starred ? '★' : '☆';
         starBtn.title = e.starred ? 'Unstar' : 'Star';
         starBtn.className = `px-2 py-1 rounded text-lg font-bold ${e.starred ? 'text-yellow-400' : 'text-gray-400'} hover:text-yellow-500`;
-        starBtn.onclick = () => toggleStarEntry(e.id, !e.starred);
+        starBtn.onclick = () => optimisticToggleStar(e.id, !e.starred);
+        // Optimistic UI for starring an entry
+        function optimisticToggleStar(entryId, newStarValue) {
+            // Update local cache
+            if (!window._allEntries) return;
+            const entry = window._allEntries.find(e => e.id === entryId);
+            if (!entry) return;
+            const prevStar = entry.starred;
+            entry.starred = newStarValue;
+            renderEntries();
+            // Update Firestore in background
+            toggleStarEntry(entryId, newStarValue).catch(() => {
+                // Revert on error
+                entry.starred = prevStar;
+                renderEntries();
+                alert('Failed to update favorite. Please try again.');
+            });
+        }
 
         // Buttons container
         const btns = document.createElement('div');
@@ -512,7 +529,7 @@ function renderEntries() {
             .collection('gratitude')
             .doc(entryId)
             .update({ starred: star });
-        loadEntries();
+        // No need to reload entries here; optimistic UI handles it
     }
     // Progress info (streaks, total)
     function updateProgressInfo() {
