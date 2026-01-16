@@ -1,4 +1,77 @@
-body {
+#region Auth Forms .form-card {
+    background: #f9fafb;
+    border-radius: 8px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+    padding: 24px 20px 16px 20px;
+    margin-bottom: 18px;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.form-card h2 {
+    margin-top: 0;
+    margin-bottom: 18px;
+    font-size: 1.3em;
+    color: #2d3748;
+    text-align: center;
+}
+
+.form-card label {
+    display: block;
+    margin-bottom: 4px;
+    color: #4a5568;
+    font-size: 0.98em;
+    font-weight: 500;
+}
+
+.form-card input[type="email"],
+.form-card input[type="password"] {
+    margin-bottom: 16px;
+    margin-top: 2px;
+    padding: 10px;
+    border: 1px solid #cbd5e0;
+    border-radius: 4px;
+    font-size: 1em;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+    margin-top: 8px;
+}
+
+.form-actions .link-btn {
+    background: none;
+    color: #4299e1;
+    border: none;
+    padding: 0 6px;
+    font-size: 1em;
+    cursor: pointer;
+    text-decoration: underline;
+    box-shadow: none;
+}
+
+.form-actions .link-btn:hover {
+    color: #2b6cb0;
+    background: none;
+}
+
+@media (max-width: 600px) {
+    #app {
+        padding: 10px;
+    }
+
+    .form-card {
+        padding: 14px 6px 10px 6px;
+    }
+}
+
+#endregion body {
     font-family: Arial, sans-serif;
     background: #f7fafc;
     margin: 0;

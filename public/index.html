@@ -5,41 +5,110 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gratitude Journal</title>
-    <link rel="stylesheet" href="style.css">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4299e1',
+                        darkbg: '#1a202c',
+                        darkcard: '#2d3748',
+                    }
+                }
+            }
+        }
+    </script>
+    <script>
+        // Enable dark mode based on user OS preference
+        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+        // Listen for changes in preference
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+            if (e.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+    </script>
 </head>
 
-<body>
-    <div id="app">
-        <h1>Gratitude Journal</h1>
+<body class="min-h-screen bg-gray-100 dark:bg-darkbg transition-colors">
+    <div id="app" class="max-w-lg mx-auto mt-10 bg-white dark:bg-darkcard rounded-xl shadow-lg p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-primary dark:text-blue-300">Gratitude Journal</h1>
+            <button id="logout-btn" style="display:none;"
+                class="ml-2 px-3 py-1 rounded bg-primary text-white dark:bg-blue-700 dark:text-white hover:bg-blue-600 dark:hover:bg-blue-800 transition">Logout</button>
+        </div>
         <div id="auth-section">
-            <div id="login-form">
-                <input type="email" id="email" placeholder="Email">
-                <input type="password" id="password" placeholder="Password">
-                <button id="login-btn">Login</button>
-                <button id="show-register-btn" type="button">Register</button>
-                <button id="show-reset-btn" type="button">Forgot Password?</button>
+            <div id="login-form" class="space-y-4">
+                <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200">Login</h2>
+                <label for="email" class="block text-gray-600 dark:text-gray-300">Email</label>
+                <input type="email" id="email" placeholder="Email" autocomplete="username"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white" />
+                <label for="password" class="block text-gray-600 dark:text-gray-300">Password</label>
+                <input type="password" id="password" placeholder="Password" autocomplete="current-password"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white" />
+                <div class="flex flex-wrap gap-2 mt-2">
+                    <button id="login-btn"
+                        class="flex-1 bg-primary hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded transition">Login</button>
+                    <button id="show-register-btn" type="button"
+                        class="flex-1 underline text-primary dark:text-blue-300 bg-transparent">Register</button>
+                    <button id="show-reset-btn" type="button"
+                        class="flex-1 underline text-primary dark:text-blue-300 bg-transparent">Forgot
+                        Password?</button>
+                </div>
             </div>
-            <div id="register-form" style="display:none;">
-                <input type="email" id="reg-email" placeholder="Email">
-                <input type="password" id="reg-password" placeholder="Password">
-                <input type="password" id="reg-confirm-password" placeholder="Confirm Password">
-                <button id="register-btn">Register</button>
-                <button id="show-login-btn" type="button">Back to Login</button>
+            <div id="register-form" class="space-y-4" style="display:none;">
+                <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200">Register</h2>
+                <label for="reg-email" class="block text-gray-600 dark:text-gray-300">Email</label>
+                <input type="email" id="reg-email" placeholder="Email" autocomplete="username"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white" />
+                <label for="reg-password" class="block text-gray-600 dark:text-gray-300">Password</label>
+                <input type="password" id="reg-password" placeholder="Password" autocomplete="new-password"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white" />
+                <label for="reg-confirm-password" class="block text-gray-600 dark:text-gray-300">Confirm
+                    Password</label>
+                <input type="password" id="reg-confirm-password" placeholder="Confirm Password"
+                    autocomplete="new-password"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white" />
+                <div class="flex flex-wrap gap-2 mt-2">
+                    <button id="register-btn"
+                        class="flex-1 bg-primary hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded transition">Register</button>
+                    <button id="show-login-btn" type="button"
+                        class="flex-1 underline text-primary dark:text-blue-300 bg-transparent">Back to Login</button>
+                </div>
             </div>
-            <div id="reset-form" style="display:none;">
-                <input type="email" id="reset-email" placeholder="Email">
-                <button id="reset-btn">Send Password Reset Email</button>
-                <button id="show-login-btn2" type="button">Back to Login</button>
+            <div id="reset-form" class="space-y-4" style="display:none;">
+                <h2 class="text-xl font-semibold text-gray-700 dark:text-gray-200">Reset Password</h2>
+                <label for="reset-email" class="block text-gray-600 dark:text-gray-300">Email</label>
+                <input type="email" id="reset-email" placeholder="Email" autocomplete="username"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white" />
+                <div class="flex flex-wrap gap-2 mt-2">
+                    <button id="reset-btn"
+                        class="flex-1 bg-primary hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded transition">Send
+                        Password Reset Email</button>
+                    <button id="show-login-btn2" type="button"
+                        class="flex-1 underline text-primary dark:text-blue-300 bg-transparent">Back to Login</button>
+                </div>
             </div>
-            <button id="logout-btn" style="display:none;">Logout</button>
         </div>
         <div id="journal-section" style="display:none;">
-            <form id="gratitude-form">
-                <textarea id="gratitude-input" placeholder="What are you grateful for today?" required></textarea>
-                <button type="submit">Save Entry</button>
+            <form id="gratitude-form" class="mb-4">
+                <textarea id="gratitude-input" placeholder="What are you grateful for today?" required
+                    class="w-full min-h-[80px] px-3 py-2 border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white mb-2"></textarea>
+                <button type="submit"
+                    class="w-full bg-primary hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded transition">Save
+                    Entry</button>
             </form>
-            <h2>Your Entries</h2>
-            <ul id="entries-list"></ul>
+            <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-2">Your Entries</h2>
+            <ul id="entries-list" class="space-y-2"></ul>
         </div>
     </div>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
