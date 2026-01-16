@@ -235,6 +235,7 @@ async function loadEntries() {
         const data = doc.data();
         const li = document.createElement('li');
         li.textContent = decrypt(data.entry, userKey);
+        li.className = "bg-gray-100 dark:bg-darkcard text-gray-800 dark:text-gray-100 rounded px-4 py-3 shadow-sm";
         entriesList.appendChild(li);
     });
 }
