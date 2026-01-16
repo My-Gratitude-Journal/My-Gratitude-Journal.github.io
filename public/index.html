@@ -117,16 +117,16 @@
                     Entry</button>
             </form>
             <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-2">Your Entries</h2>
-            <div class="flex flex-col sm:flex-row gap-2 mb-3">
+            <div class="flex flex-wrap gap-2 mb-3 items-center justify-start w-full">
                 <input id="search-input" type="text" placeholder="Search entries..."
-                    class="flex-1 px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+                    class="flex-1 min-w-[140px] px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
                 <input id="date-filter" type="date"
-                    class="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+                    class="min-w-[120px] px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
                 <button id="export-csv-btn" type="button"
-                    class="px-3 py-2 rounded bg-green-500 text-white hover:bg-green-600 text-sm font-semibold">Export
+                    class="px-3 py-2 rounded bg-green-500 text-white hover:bg-green-600 text-sm font-semibold min-w-[110px]">Export
                     CSV</button>
                 <button id="export-pdf-btn" type="button"
-                    class="px-3 py-2 rounded bg-purple-600 text-white hover:bg-purple-700 text-sm font-semibold">Export
+                    class="px-3 py-2 rounded bg-purple-600 text-white hover:bg-purple-700 text-sm font-semibold min-w-[110px]">Export
                     PDF</button>
             </div>
             <ul id="entries-list" class="space-y-2"></ul>
