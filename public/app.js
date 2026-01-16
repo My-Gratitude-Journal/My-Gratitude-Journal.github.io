@@ -56,6 +56,13 @@ const gratitudeInput = document.getElementById('gratitude-input');
 const entriesList = document.getElementById('entries-list');
 const deleteAccountBtn = document.getElementById('delete-account-btn');
 
+// Add manual refresh button for entries
+const refreshBtn = document.createElement('button');
+refreshBtn.textContent = 'Refresh Entries';
+refreshBtn.className = 'px-3 py-1 rounded bg-blue-400 text-white hover:bg-blue-500 text-xs font-semibold mb-2';
+refreshBtn.onclick = () => loadEntries(true);
+document.getElementById('journal-section').insertBefore(refreshBtn, entriesList);
+
 // Add error and loading UI
 let errorMsg = document.getElementById('error-msg');
 if (!errorMsg) {
@@ -263,7 +270,18 @@ gratitudeForm.onsubmit = async (e) => {
             starred: false
         });
     gratitudeInput.value = '';
-    loadEntries();
+    // Update cache and UI without re-reading from Firestore
+    window._allEntries = [
+        {
+            id: Math.random().toString(36).substr(2, 9), // temp id
+            text: entry,
+            created: new Date(),
+            starred: false
+        },
+        ...(window._allEntries || [])
+    ].slice(0, 20);
+    updateProgressInfo();
+    renderEntries();
 };
 
 // Progress info (streaks, total)
@@ -364,12 +382,21 @@ function renderCalendarView() {
 }
 
 async function loadEntries() {
+    // Use cache unless forced refresh
+    if (window._allEntries && !arguments[0]) {
+        updateProgressInfo();
+        renderEntries();
+        if (window._currentView === 'calendar') {
+            renderCalendarView();
+        }
+        return;
+    }
     const snap = await db.collection('users')
         .doc(auth.currentUser.uid)
         .collection('gratitude')
         .orderBy('created', 'desc')
+        .limit(20)
         .get();
-    // Store all entries in memory for filtering
     window._allEntries = [];
     snap.forEach(doc => {
         const data = doc.data();
@@ -820,7 +847,10 @@ async function deleteEntry(entryId) {
         .collection('gratitude')
         .doc(entryId)
         .delete();
-    loadEntries();
+    // Remove from cache and update UI
+    window._allEntries = (window._allEntries || []).filter(e => e.id !== entryId);
+    updateProgressInfo();
+    renderEntries();
 }
 
 // Edit entry modal logic
@@ -850,7 +880,12 @@ saveEditBtn.onclick = async () => {
         .collection('gratitude')
         .doc(editingEntryId)
         .update({ entry: encrypted });
+    // Update cache and UI
+    window._allEntries = (window._allEntries || []).map(e =>
+        e.id === editingEntryId ? { ...e, text: newText } : e
+    );
     editModal.classList.add('hidden');
     editingEntryId = null;
-    loadEntries();
+    updateProgressInfo();
+    renderEntries();
 };
