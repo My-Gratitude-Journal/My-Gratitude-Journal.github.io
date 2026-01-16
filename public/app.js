@@ -48,11 +48,13 @@ const loginForm = document.getElementById('login-form');
 const registerForm = document.getElementById('register-form');
 const resetForm = document.getElementById('reset-form');
 const logoutBtn = document.getElementById('logout-btn');
+
 const authSection = document.getElementById('auth-section');
 const journalSection = document.getElementById('journal-section');
 const gratitudeForm = document.getElementById('gratitude-form');
 const gratitudeInput = document.getElementById('gratitude-input');
 const entriesList = document.getElementById('entries-list');
+const deleteAccountBtn = document.getElementById('delete-account-btn');
 
 // Add error and loading UI
 let errorMsg = document.getElementById('error-msg');
@@ -203,12 +205,39 @@ auth.onAuthStateChanged(user => {
         journalSection.style.display = 'block';
         loadEntries();
         logoutBtn.style.display = 'inline-block';
+        deleteAccountBtn.style.display = 'inline-block';
     } else {
         authSection.style.display = 'block';
         journalSection.style.display = 'none';
         entriesList.innerHTML = '';
         logoutBtn.style.display = 'none';
+        deleteAccountBtn.style.display = 'none';
     }
+
+    // Delete Account logic
+    deleteAccountBtn.onclick = async () => {
+        if (!confirm('Are you sure you want to delete your account and all your data? This cannot be undone.')) return;
+        try {
+            const user = auth.currentUser;
+            // Delete all gratitude entries (subcollection)
+            const entriesSnap = await db.collection('users').doc(user.uid).collection('gratitude').get();
+            const batch = db.batch();
+            entriesSnap.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+            // Delete user document
+            await db.collection('users').doc(user.uid).delete();
+            // Delete Auth user
+            await user.delete();
+            alert('Account and all data deleted.');
+        } catch (e) {
+            if (e.code === 'auth/requires-recent-login') {
+                alert('Please log in again before deleting your account.');
+            } else {
+                alert('Error deleting account: ' + e.message);
+            }
+            console.error('Delete account error:', e);
+        }
+    };
 });
 
 gratitudeForm.onsubmit = async (e) => {
@@ -216,18 +245,21 @@ gratitudeForm.onsubmit = async (e) => {
     const entry = gratitudeInput.value.trim();
     if (!entry) return;
     const encrypted = encrypt(entry, userKey);
-    await db.collection('gratitude').add({
-        uid: auth.currentUser.uid,
-        entry: encrypted,
-        created: new Date()
-    });
+    await db.collection('users')
+        .doc(auth.currentUser.uid)
+        .collection('gratitude')
+        .add({
+            entry: encrypted,
+            created: new Date()
+        });
     gratitudeInput.value = '';
     loadEntries();
 };
 
 async function loadEntries() {
-    const snap = await db.collection('gratitude')
-        .where('uid', '==', auth.currentUser.uid)
+    const snap = await db.collection('users')
+        .doc(auth.currentUser.uid)
+        .collection('gratitude')
         .orderBy('created', 'desc')
         .get();
     entriesList.innerHTML = '';

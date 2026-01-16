@@ -43,8 +43,12 @@
     <div id="app" class="max-w-lg mx-auto mt-10 bg-white dark:bg-darkcard rounded-xl shadow-lg p-6">
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-3xl font-bold text-primary dark:text-blue-300">Gratitude Journal</h1>
-            <button id="logout-btn" style="display:none;"
-                class="ml-2 px-3 py-1 rounded bg-primary text-white dark:bg-blue-700 dark:text-white hover:bg-blue-600 dark:hover:bg-blue-800 transition">Logout</button>
+            <div class="flex gap-2">
+                <button id="logout-btn" style="display:none;"
+                    class="px-3 py-1 rounded bg-primary text-white dark:bg-blue-700 dark:text-white hover:bg-blue-600 dark:hover:bg-blue-800 transition">Logout</button>
+                <button id="delete-account-btn" style="display:none;"
+                    class="px-3 py-1 rounded bg-red-500 text-white hover:bg-red-700 transition">Delete Account</button>
+            </div>
         </div>
         <div id="auth-section">
             <div id="login-form" class="space-y-4">
