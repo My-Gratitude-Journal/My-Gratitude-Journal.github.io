@@ -114,8 +114,8 @@ button:hover {
 
     h1 {
         font-size: 1.25rem;
-/* Responsive and button group fixes */
-/* Remove old export-btns and flex group rules, now handled by Tailwind in HTML */
+        /* Responsive and button group fixes */
+        /* Remove old export-btns and flex group rules, now handled by Tailwind in HTML */
 
     }
 
@@ -137,28 +137,35 @@ button:hover {
 ::-webkit-scrollbar-thumb {
     background: #cbd5e0;
     border-radius: 8px;
-@media (max-width: 900px) {
-    #app {
-        max-width: 99vw;
-        padding: 10px 1vw 8px 1vw;
+
+    @media (max-width: 900px) {
+        #app {
+            max-width: 99vw;
+            padding: 10px 1vw 8px 1vw;
+        }
+
+        h1 {
+            font-size: 1.25rem;
+        }
+
+        button {
+            font-size: 0.97rem;
+            padding: 8px 8px;
+        }
+
+        #entries-list li {
+            padding: 8px 4px 6px 4px;
+        }
+
+        .export-btns button,
+        .flex.flex-col.sm\:flex-row.gap-2.mb-3 button {
+            min-width: 90px;
+        }
+
+        .flex.flex-col.sm\:flex-row.gap-2.mb-3 input {
+            min-width: 120px;
+        }
     }
-    h1 {
-        font-size: 1.25rem;
-    }
-    button {
-        font-size: 0.97rem;
-        padding: 8px 8px;
-    }
-    #entries-list li {
-        padding: 8px 4px 6px 4px;
-    }
-    .export-btns button, .flex.flex-col.sm\:flex-row.gap-2.mb-3 button {
-        min-width: 90px;
-    }
-    .flex.flex-col.sm\:flex-row.gap-2.mb-3 input {
-        min-width: 120px;
-    }
-}
 }
 
 @keyframes fadeIn {
