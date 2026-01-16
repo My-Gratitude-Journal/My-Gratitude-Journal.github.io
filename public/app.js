@@ -91,7 +91,7 @@ const favoritesToggle = document.getElementById('favorites-toggle');
 if (favoritesToggle) {
     favoritesToggle.onclick = () => {
         window._showFavoritesOnly = !window._showFavoritesOnly;
-        favoritesToggle.textContent = window._showFavoritesOnly ? '★ Show All' : '★ Show Favorites Only';
+        favoritesToggle.textContent = window._showFavoritesOnly ? '★ Show All Entries' : '★ Show Favorites Only';
         renderEntries();
     };
 }
