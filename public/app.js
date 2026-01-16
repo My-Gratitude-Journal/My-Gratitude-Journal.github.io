@@ -301,10 +301,13 @@ function updateProgressInfo() {
     const streakCountEl = document.getElementById('streak-count');
     const longestStreakEl = document.getElementById('longest-streak');
     const totalEntriesEl = document.getElementById('total-entries');
+    const badgeEl = document.getElementById('streak-badge');
     if (!entries.length) {
         streakCountEl.textContent = '0';
         longestStreakEl.textContent = '0';
         totalEntriesEl.textContent = '0';
+        if (badgeEl) badgeEl.style.display = 'none';
+        document.body.classList.remove('theme-bronze', 'theme-silver', 'theme-gold', 'theme-diamond');
         return;
     }
     // Sort by date ascending
@@ -333,9 +336,43 @@ function updateProgressInfo() {
         prevDate = d;
         if (+d === +today) streakActive = true;
     }
-    streakCountEl.textContent = streakActive ? currentStreak : 0;
+    const streakVal = streakActive ? currentStreak : 0;
+    streakCountEl.textContent = streakVal;
     longestStreakEl.textContent = longest;
     totalEntriesEl.textContent = entries.length;
+
+    // Theme and badge logic
+    let theme = '';
+    let badge = '';
+    let badgeClass = '';
+    if (streakVal >= 30) {
+        theme = 'theme-diamond';
+        badge = '💎 Diamond Streak!';
+        badgeClass = 'diamond';
+    } else if (streakVal >= 14) {
+        theme = 'theme-gold';
+        badge = '🥇 Gold Streak!';
+        badgeClass = 'gold';
+    } else if (streakVal >= 7) {
+        theme = 'theme-silver';
+        badge = '🥈 Silver Streak!';
+        badgeClass = 'silver';
+    } else if (streakVal >= 3) {
+        theme = 'theme-bronze';
+        badge = '🥉 Bronze Streak!';
+        badgeClass = 'bronze';
+    }
+    document.body.classList.remove('theme-bronze', 'theme-silver', 'theme-gold', 'theme-diamond');
+    if (theme) {
+        document.body.classList.add(theme);
+        if (badgeEl) {
+            badgeEl.textContent = badge;
+            badgeEl.className = 'streak-badge ' + badgeClass;
+            badgeEl.style.display = '';
+        }
+    } else {
+        if (badgeEl) badgeEl.style.display = 'none';
+    }
 }
 
 // Calendar view logic
