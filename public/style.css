@@ -32,6 +32,33 @@ body.theme-diamond {
     color: #222;
 }
 
+body.theme-bronze .streak-badge,
+body.theme-silver .streak-badge,
+body.theme-gold .streak-badge,
+body.theme-diamond .streak-badge {
+    color: #222;
+}
+
+.streak-badge.bronze {
+    background: linear-gradient(90deg, #cd7f32 60%, #fff 100%);
+    color: #fff;
+}
+
+.streak-badge.silver {
+    background: linear-gradient(90deg, #bfc1c2 60%, #fff 100%);
+    color: #222;
+}
+
+.streak-badge.gold {
+    background: linear-gradient(90deg, #ffd700 60%, #fff 100%);
+    color: #b8860b;
+}
+
+.streak-badge.diamond {
+    background: linear-gradient(90deg, #b9f2ff 60%, #fff 100%);
+    color: #007c91;
+}
+
 @media (prefers-color-scheme: dark) {
 
     body.theme-bronze,
