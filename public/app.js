@@ -262,12 +262,140 @@ async function loadEntries() {
         .collection('gratitude')
         .orderBy('created', 'desc')
         .get();
-    entriesList.innerHTML = '';
+    // Store all entries in memory for filtering
+    window._allEntries = [];
     snap.forEach(doc => {
         const data = doc.data();
+        window._allEntries.push({
+            id: doc.id,
+            text: decrypt(data.entry, userKey),
+            created: data.created && data.created.toDate ? data.created.toDate() : (data.created instanceof Date ? data.created : new Date(data.created)),
+        });
+    });
+    renderEntries();
+}
+
+function renderEntries() {
+    const entriesList = document.getElementById('entries-list');
+    const searchInput = document.getElementById('search-input');
+    const dateFilter = document.getElementById('date-filter');
+    let entries = window._allEntries || [];
+    const keyword = (searchInput && searchInput.value.trim().toLowerCase()) || '';
+    const dateVal = dateFilter && dateFilter.value;
+    if (keyword) {
+        entries = entries.filter(e => e.text.toLowerCase().includes(keyword));
+    }
+    if (dateVal) {
+        entries = entries.filter(e => {
+            if (!e.created) return false;
+            const entryDate = e.created instanceof Date ? e.created : new Date(e.created);
+            // Compare only date part
+            const yyyy = entryDate.getFullYear();
+            const mm = String(entryDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(entryDate.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}` === dateVal;
+        });
+    }
+    entriesList.innerHTML = '';
+    entries.forEach(e => {
         const li = document.createElement('li');
-        li.textContent = decrypt(data.entry, userKey);
-        li.className = "bg-gray-100 dark:bg-darkcard text-gray-800 dark:text-gray-100 rounded px-4 py-3 shadow-sm";
+        li.className = "bg-gray-100 dark:bg-darkcard text-gray-800 dark:text-gray-100 rounded px-4 py-3 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2";
+        const entryText = document.createElement('span');
+        entryText.textContent = e.text;
+        entryText.className = "flex-1";
+        // Buttons container
+        const btns = document.createElement('div');
+        btns.className = "flex gap-2 mt-2 sm:mt-0";
+        // Edit button
+        const editBtn = document.createElement('button');
+        editBtn.textContent = 'Edit';
+        editBtn.className = "px-3 py-1 rounded bg-yellow-400 text-gray-900 hover:bg-yellow-500 text-xs font-semibold";
+        editBtn.onclick = () => openEditModal(e.id, e.text);
+        // Delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.className = "px-3 py-1 rounded bg-red-500 text-white hover:bg-red-700 text-xs font-semibold";
+        deleteBtn.onclick = () => deleteEntry(e.id);
+        btns.appendChild(editBtn);
+        btns.appendChild(deleteBtn);
+        li.appendChild(entryText);
+        li.appendChild(btns);
         entriesList.appendChild(li);
     });
 }
+
+// Attach search and date filter listeners
+window.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('search-input');
+    const dateFilter = document.getElementById('date-filter');
+    if (searchInput) searchInput.addEventListener('input', renderEntries);
+    if (dateFilter) dateFilter.addEventListener('input', renderEntries);
+});
+
+// Also re-render after edit/delete
+async function deleteEntry(entryId) {
+    if (!confirm('Delete this entry?')) return;
+    await db.collection('users')
+        .doc(auth.currentUser.uid)
+        .collection('gratitude')
+        .doc(entryId)
+        .delete();
+    await loadEntries();
+}
+
+saveEditBtn.onclick = async () => {
+    const newText = editEntryInput.value.trim();
+    if (!newText || !editingEntryId) return;
+    const encrypted = encrypt(newText, userKey);
+    await db.collection('users')
+        .doc(auth.currentUser.uid)
+        .collection('gratitude')
+        .doc(editingEntryId)
+        .update({ entry: encrypted });
+    editModal.classList.add('hidden');
+    editingEntryId = null;
+    await loadEntries();
+};
+
+// Delete entry
+async function deleteEntry(entryId) {
+    if (!confirm('Delete this entry?')) return;
+    await db.collection('users')
+        .doc(auth.currentUser.uid)
+        .collection('gratitude')
+        .doc(entryId)
+        .delete();
+    loadEntries();
+}
+
+// Edit entry modal logic
+let editingEntryId = null;
+const editModal = document.getElementById('edit-modal');
+const editEntryInput = document.getElementById('edit-entry-input');
+const saveEditBtn = document.getElementById('save-edit-btn');
+const cancelEditBtn = document.getElementById('cancel-edit-btn');
+
+function openEditModal(entryId, entryText) {
+    editingEntryId = entryId;
+    editEntryInput.value = entryText;
+    editModal.classList.remove('hidden');
+}
+
+cancelEditBtn.onclick = () => {
+    editModal.classList.add('hidden');
+    editingEntryId = null;
+};
+
+saveEditBtn.onclick = async () => {
+    const newText = editEntryInput.value.trim();
+    if (!newText || !editingEntryId) return;
+    const encrypted = encrypt(newText, userKey);
+    await db.collection('users')
+        .doc(auth.currentUser.uid)
+        .collection('gratitude')
+        .doc(editingEntryId)
+        .update({ entry: encrypted });
+    editModal.classList.add('hidden');
+    editingEntryId = null;
+    loadEntries();
+};

@@ -117,7 +117,29 @@
                     Entry</button>
             </form>
             <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-2">Your Entries</h2>
+            <div class="flex flex-col sm:flex-row gap-2 mb-3">
+                <input id="search-input" type="text" placeholder="Search entries..."
+                    class="flex-1 px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+                <input id="date-filter" type="date"
+                    class="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+            </div>
             <ul id="entries-list" class="space-y-2"></ul>
+            <!-- Edit Entry Modal -->
+            <div id="edit-modal"
+                class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 hidden">
+                <div class="bg-white dark:bg-darkcard rounded-lg p-6 shadow-lg w-full max-w-md">
+                    <h3 class="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100">Edit Entry</h3>
+                    <textarea id="edit-entry-input"
+                        class="w-full p-2 rounded border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 mb-4"
+                        rows="4"></textarea>
+                    <div class="flex justify-end space-x-2">
+                        <button id="cancel-edit-btn"
+                            class="px-4 py-2 rounded bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-400 dark:hover:bg-gray-600">Cancel</button>
+                        <button id="save-edit-btn"
+                            class="px-4 py-2 rounded bg-primary text-white hover:bg-blue-600">Save</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
