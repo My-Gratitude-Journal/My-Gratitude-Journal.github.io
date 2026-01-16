@@ -23,10 +23,30 @@ function decrypt(data, key) {
     }
 }
 
+
+// Login form
 const emailInput = document.getElementById('email');
 const passwordInput = document.getElementById('password');
-
 const loginBtn = document.getElementById('login-btn');
+const showRegisterBtn = document.getElementById('show-register-btn');
+const showResetBtn = document.getElementById('show-reset-btn');
+
+// Register form
+const regEmailInput = document.getElementById('reg-email');
+const regPasswordInput = document.getElementById('reg-password');
+const regConfirmPasswordInput = document.getElementById('reg-confirm-password');
+const registerBtn = document.getElementById('register-btn');
+const showLoginBtn = document.getElementById('show-login-btn');
+
+// Reset form
+const resetEmailInput = document.getElementById('reset-email');
+const resetBtn = document.getElementById('reset-btn');
+const showLoginBtn2 = document.getElementById('show-login-btn2');
+
+// Sections
+const loginForm = document.getElementById('login-form');
+const registerForm = document.getElementById('register-form');
+const resetForm = document.getElementById('reset-form');
 const logoutBtn = document.getElementById('logout-btn');
 const authSection = document.getElementById('auth-section');
 const journalSection = document.getElementById('journal-section');
@@ -57,6 +77,34 @@ if (!loadingMsg) {
 let userKey = '';
 
 
+
+// Show/hide forms
+showRegisterBtn.onclick = () => {
+    loginForm.style.display = 'none';
+    registerForm.style.display = 'block';
+    resetForm.style.display = 'none';
+    errorMsg.textContent = '';
+};
+showLoginBtn.onclick = () => {
+    loginForm.style.display = 'block';
+    registerForm.style.display = 'none';
+    resetForm.style.display = 'none';
+    errorMsg.textContent = '';
+};
+showLoginBtn2.onclick = () => {
+    loginForm.style.display = 'block';
+    registerForm.style.display = 'none';
+    resetForm.style.display = 'none';
+    errorMsg.textContent = '';
+};
+showResetBtn.onclick = () => {
+    loginForm.style.display = 'none';
+    registerForm.style.display = 'none';
+    resetForm.style.display = 'block';
+    errorMsg.textContent = '';
+};
+
+// Login logic
 loginBtn.onclick = async () => {
     errorMsg.textContent = '';
     loadingMsg.style.display = 'block';
@@ -71,22 +119,78 @@ loginBtn.onclick = async () => {
         return;
     }
     try {
-        await auth.signInWithEmailAndPassword(email, password);
-    } catch (e) {
-        if (e.code === 'auth/user-not-found') {
-            try {
-                await auth.createUserWithEmailAndPassword(email, password);
-            } catch (signupErr) {
-                errorMsg.textContent = signupErr.message;
-                console.error('Signup error:', signupErr);
-            }
-        } else {
-            errorMsg.textContent = e.message;
-            console.error('Login error:', e);
+        const cred = await auth.signInWithEmailAndPassword(email, password);
+        if (!cred.user.emailVerified) {
+            errorMsg.textContent = 'Please verify your email before logging in.';
+            await auth.signOut();
         }
+    } catch (e) {
+        errorMsg.textContent = e.message;
+        console.error('Login error:', e);
     }
     loadingMsg.style.display = 'none';
     loginBtn.disabled = false;
+};
+
+// Registration logic
+registerBtn.onclick = async () => {
+    errorMsg.textContent = '';
+    loadingMsg.style.display = 'block';
+    registerBtn.disabled = true;
+    const email = regEmailInput.value;
+    const password = regPasswordInput.value;
+    const confirmPassword = regConfirmPasswordInput.value;
+    if (!email || !password || !confirmPassword) {
+        errorMsg.textContent = 'Please fill in all fields.';
+        loadingMsg.style.display = 'none';
+        registerBtn.disabled = false;
+        return;
+    }
+    if (password !== confirmPassword) {
+        errorMsg.textContent = 'Passwords do not match.';
+        loadingMsg.style.display = 'none';
+        registerBtn.disabled = false;
+        return;
+    }
+    try {
+        const cred = await auth.createUserWithEmailAndPassword(email, password);
+        await cred.user.sendEmailVerification();
+        errorMsg.style.color = 'green';
+        errorMsg.textContent = 'Registration successful! Please check your email to verify your account.';
+        // Optionally, sign out immediately after registration
+        await auth.signOut();
+    } catch (e) {
+        errorMsg.style.color = 'red';
+        errorMsg.textContent = e.message;
+        console.error('Registration error:', e);
+    }
+    loadingMsg.style.display = 'none';
+    registerBtn.disabled = false;
+};
+
+// Password reset logic
+resetBtn.onclick = async () => {
+    errorMsg.textContent = '';
+    loadingMsg.style.display = 'block';
+    resetBtn.disabled = true;
+    const email = resetEmailInput.value;
+    if (!email) {
+        errorMsg.textContent = 'Please enter your email.';
+        loadingMsg.style.display = 'none';
+        resetBtn.disabled = false;
+        return;
+    }
+    try {
+        await auth.sendPasswordResetEmail(email);
+        errorMsg.style.color = 'green';
+        errorMsg.textContent = 'Password reset email sent! Please check your inbox.';
+    } catch (e) {
+        errorMsg.style.color = 'red';
+        errorMsg.textContent = e.message;
+        console.error('Password reset error:', e);
+    }
+    loadingMsg.style.display = 'none';
+    resetBtn.disabled = false;
 };
 
 logoutBtn.onclick = () => {

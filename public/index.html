@@ -12,9 +12,25 @@
     <div id="app">
         <h1>Gratitude Journal</h1>
         <div id="auth-section">
-            <input type="email" id="email" placeholder="Email">
-            <input type="password" id="password" placeholder="Password">
-            <button id="login-btn">Login / Register</button>
+            <div id="login-form">
+                <input type="email" id="email" placeholder="Email">
+                <input type="password" id="password" placeholder="Password">
+                <button id="login-btn">Login</button>
+                <button id="show-register-btn" type="button">Register</button>
+                <button id="show-reset-btn" type="button">Forgot Password?</button>
+            </div>
+            <div id="register-form" style="display:none;">
+                <input type="email" id="reg-email" placeholder="Email">
+                <input type="password" id="reg-password" placeholder="Password">
+                <input type="password" id="reg-confirm-password" placeholder="Confirm Password">
+                <button id="register-btn">Register</button>
+                <button id="show-login-btn" type="button">Back to Login</button>
+            </div>
+            <div id="reset-form" style="display:none;">
+                <input type="email" id="reset-email" placeholder="Email">
+                <button id="reset-btn">Send Password Reset Email</button>
+                <button id="show-login-btn2" type="button">Back to Login</button>
+            </div>
             <button id="logout-btn" style="display:none;">Logout</button>
         </div>
         <div id="journal-section" style="display:none;">
