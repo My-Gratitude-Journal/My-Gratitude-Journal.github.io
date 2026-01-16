@@ -250,11 +250,109 @@ gratitudeForm.onsubmit = async (e) => {
         .collection('gratitude')
         .add({
             entry: encrypted,
-            created: new Date()
+            created: new Date(),
+            starred: false
         });
     gratitudeInput.value = '';
     loadEntries();
 };
+
+// Progress info (streaks, total)
+function updateProgressInfo() {
+    const entries = window._allEntries || [];
+    const streakCountEl = document.getElementById('streak-count');
+    const longestStreakEl = document.getElementById('longest-streak');
+    const totalEntriesEl = document.getElementById('total-entries');
+    if (!entries.length) {
+        streakCountEl.textContent = '0';
+        longestStreakEl.textContent = '0';
+        totalEntriesEl.textContent = '0';
+        return;
+    }
+    // Sort by date ascending
+    const sorted = [...entries].sort((a, b) => a.created - b.created);
+    let streak = 1, longest = 1;
+    let currentStreak = 1;
+    let prevDate = null;
+    let today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let streakActive = false;
+    for (let i = 0; i < sorted.length; i++) {
+        const d = new Date(sorted[i].created);
+        d.setHours(0, 0, 0, 0);
+        if (i === 0) {
+            prevDate = d;
+            if (+d === +today) streakActive = true;
+            continue;
+        }
+        const diff = (d - prevDate) / (1000 * 60 * 60 * 24);
+        if (diff === 1) {
+            currentStreak++;
+            longest = Math.max(longest, currentStreak);
+        } else if (diff > 1) {
+            currentStreak = 1;
+        }
+        prevDate = d;
+        if (+d === +today) streakActive = true;
+    }
+    streakCountEl.textContent = streakActive ? currentStreak : 0;
+    longestStreakEl.textContent = longest;
+    totalEntriesEl.textContent = entries.length;
+}
+
+// Calendar view logic
+window._currentView = 'list';
+function renderCalendarView() {
+    const calendarView = document.getElementById('calendar-view');
+    const entries = window._allEntries || [];
+    if (!calendarView) return;
+    // Build a map of dates with entries
+    const dateMap = {};
+    entries.forEach(e => {
+        const d = new Date(e.created);
+        d.setHours(0, 0, 0, 0);
+        const key = d.toISOString().slice(0, 10);
+        if (!dateMap[key]) dateMap[key] = [];
+        dateMap[key].push(e);
+    });
+    // Get current month
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    // Build calendar grid
+    let html = `<div class="grid grid-cols-7 gap-2">`;
+    // Weekday headers
+    const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    weekdays.forEach(wd => {
+        html += `<div class="text-xs font-bold text-gray-500 dark:text-gray-400 text-center">${wd}</div>`;
+    });
+    // Pad first week
+    for (let i = 0; i < firstDay.getDay(); i++) {
+        html += `<div></div>`;
+    }
+    // Days
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dateObj = new Date(year, month, d);
+        dateObj.setHours(0, 0, 0, 0);
+        const key = dateObj.toISOString().slice(0, 10);
+        const hasEntry = !!dateMap[key];
+        html += `<button class="rounded-lg px-2 py-2 text-sm font-semibold w-full h-12 flex flex-col items-center justify-center ${hasEntry ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500'}" data-date="${key}">${d}${hasEntry ? `<span class='block text-xs mt-1'>${dateMap[key].length} entry${dateMap[key].length > 1 ? 'ies' : 'y'}</span>` : ''}</button>`;
+    }
+    html += `</div>`;
+    calendarView.innerHTML = html;
+    // Add click listeners to calendar days
+    Array.from(calendarView.querySelectorAll('button[data-date]')).forEach(btn => {
+        btn.onclick = () => {
+            document.getElementById('date-filter').value = btn.getAttribute('data-date');
+            document.getElementById('calendar-modal').classList.add('hidden');
+            window._currentView = 'list';
+            renderEntries();
+        };
+    });
+}
 
 async function loadEntries() {
     const snap = await db.collection('users')
@@ -270,9 +368,14 @@ async function loadEntries() {
             id: doc.id,
             text: decrypt(data.entry, userKey),
             created: data.created && data.created.toDate ? data.created.toDate() : (data.created instanceof Date ? data.created : new Date(data.created)),
+            starred: !!data.starred
         });
     });
+    updateProgressInfo();
     renderEntries();
+    if (window._currentView === 'calendar') {
+        renderCalendarView();
+    }
 }
 
 function renderEntries() {
@@ -319,14 +422,21 @@ function renderEntries() {
         entryText.className = "flex-1 whitespace-pre-line";
         let displayText = e.text;
         try {
-            // Decode %0A and other URL-encoded characters
             displayText = decodeURIComponent(displayText);
         } catch { }
         entryText.innerText = displayText;
 
+        // Star button
+        const starBtn = document.createElement('button');
+        starBtn.innerHTML = e.starred ? '★' : '☆';
+        starBtn.title = e.starred ? 'Unstar' : 'Star';
+        starBtn.className = `px-2 py-1 rounded text-lg font-bold ${e.starred ? 'text-yellow-400' : 'text-gray-400'} hover:text-yellow-500`;
+        starBtn.onclick = () => toggleStarEntry(e.id, !e.starred);
+
         // Buttons container
         const btns = document.createElement('div');
         btns.className = "flex gap-2 mt-2 sm:mt-0";
+        btns.appendChild(starBtn);
         // Edit button
         const editBtn = document.createElement('button');
         editBtn.textContent = 'Edit';
@@ -346,6 +456,132 @@ function renderEntries() {
         li.appendChild(btns);
         entriesList.appendChild(li);
     });
+    // Star/unstar entry
+    async function toggleStarEntry(entryId, star) {
+        await db.collection('users')
+            .doc(auth.currentUser.uid)
+            .collection('gratitude')
+            .doc(entryId)
+            .update({ starred: star });
+        loadEntries();
+    }
+    // Progress info (streaks, total)
+    function updateProgressInfo() {
+        const entries = window._allEntries || [];
+        const streakCountEl = document.getElementById('streak-count');
+        const longestStreakEl = document.getElementById('longest-streak');
+        const totalEntriesEl = document.getElementById('total-entries');
+        if (!entries.length) {
+            streakCountEl.textContent = '0';
+            longestStreakEl.textContent = '0';
+            totalEntriesEl.textContent = '0';
+            return;
+        }
+        // Sort by date ascending
+        const sorted = [...entries].sort((a, b) => a.created - b.created);
+        let streak = 1, longest = 1;
+        let currentStreak = 1;
+        let prevDate = null;
+        let today = new Date();
+        today.setHours(0, 0, 0, 0);
+        let streakActive = false;
+        for (let i = 0; i < sorted.length; i++) {
+            const d = new Date(sorted[i].created);
+            d.setHours(0, 0, 0, 0);
+            if (i === 0) {
+                prevDate = d;
+                if (+d === +today) streakActive = true;
+                continue;
+            }
+            const diff = (d - prevDate) / (1000 * 60 * 60 * 24);
+            if (diff === 1) {
+                currentStreak++;
+                longest = Math.max(longest, currentStreak);
+            } else if (diff > 1) {
+                currentStreak = 1;
+            }
+            prevDate = d;
+            if (+d === +today) streakActive = true;
+        }
+        streakCountEl.textContent = streakActive ? currentStreak : 0;
+        longestStreakEl.textContent = longest;
+        totalEntriesEl.textContent = entries.length;
+    }
+    // Calendar view logic
+    window._currentView = 'list';
+    const viewListBtn = document.getElementById('view-list-btn');
+    const viewCalendarBtn = document.getElementById('view-calendar-btn');
+    const calendarModal = document.getElementById('calendar-modal');
+    const closeCalendarBtn = document.getElementById('close-calendar-btn');
+
+    if (viewListBtn && viewCalendarBtn && calendarModal && closeCalendarBtn) {
+        viewListBtn.onclick = () => {
+            window._currentView = 'list';
+            calendarModal.classList.add('hidden');
+            renderEntries();
+        };
+        viewCalendarBtn.onclick = () => {
+            window._currentView = 'calendar';
+            renderCalendarView();
+            calendarModal.classList.remove('hidden');
+        };
+        closeCalendarBtn.onclick = () => {
+            calendarModal.classList.add('hidden');
+            window._currentView = 'list';
+        };
+    }
+
+    function renderCalendarView() {
+        const calendarView = document.getElementById('calendar-view');
+        const entries = window._allEntries || [];
+        if (!calendarView) return;
+        // Build a map of dates with entries
+        const dateMap = {};
+        entries.forEach(e => {
+            const d = new Date(e.created);
+            d.setHours(0, 0, 0, 0);
+            const key = d.toISOString().slice(0, 10);
+            if (!dateMap[key]) dateMap[key] = [];
+            dateMap[key].push(e);
+        });
+        // Get current month
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth();
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const daysInMonth = lastDay.getDate();
+        // Build calendar grid
+        let html = `<div class="grid grid-cols-7 gap-2">`;
+        // Weekday headers
+        const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        weekdays.forEach(wd => {
+            html += `<div class="text-xs font-bold text-gray-500 dark:text-gray-400 text-center">${wd}</div>`;
+        });
+        // Pad first week
+        for (let i = 0; i < firstDay.getDay(); i++) {
+            html += `<div></div>`;
+        }
+        // Days
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateObj = new Date(year, month, d);
+            dateObj.setHours(0, 0, 0, 0);
+            const key = dateObj.toISOString().slice(0, 10);
+            const hasEntry = !!dateMap[key];
+            html += `<button class="rounded-lg px-2 py-2 text-sm font-semibold w-full h-12 flex flex-col items-center justify-center ${hasEntry ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500'}" data-date="${key}">${d}${hasEntry ? `<span class='block text-xs mt-1'>${dateMap[key].length} entry${dateMap[key].length > 1 ? 'ies' : 'y'}</span>` : ''}</button>`;
+        }
+        html += `</div>`;
+        calendarView.innerHTML = html;
+        // Add click listeners to calendar days
+        Array.from(calendarView.querySelectorAll('button[data-date]')).forEach(btn => {
+            btn.onclick = () => {
+                document.getElementById('date-filter').value = btn.getAttribute('data-date');
+                calendarModal.classList.add('hidden');
+                window._currentView = 'list';
+                renderEntries();
+            };
+        });
+    }
 }
 
 // Attach search and date filter listeners
@@ -358,6 +594,28 @@ window.addEventListener('DOMContentLoaded', () => {
     if (dateFilter) dateFilter.addEventListener('input', renderEntries);
     if (exportBtn) exportBtn.addEventListener('click', exportEntriesCSV);
     if (exportPdfBtn) exportPdfBtn.addEventListener('click', exportEntriesPDF);
+
+    // Attach view switcher and calendar modal listeners after DOM loaded
+    const viewListBtn = document.getElementById('view-list-btn');
+    const viewCalendarBtn = document.getElementById('view-calendar-btn');
+    const calendarModal = document.getElementById('calendar-modal');
+    const closeCalendarBtn = document.getElementById('close-calendar-btn');
+    if (viewListBtn && viewCalendarBtn && calendarModal && closeCalendarBtn) {
+        viewListBtn.onclick = () => {
+            window._currentView = 'list';
+            calendarModal.classList.add('hidden');
+            renderEntries();
+        };
+        viewCalendarBtn.onclick = () => {
+            window._currentView = 'calendar';
+            renderCalendarView();
+            calendarModal.classList.remove('hidden');
+        };
+        closeCalendarBtn.onclick = () => {
+            calendarModal.classList.add('hidden');
+            window._currentView = 'list';
+        };
+    }
 });
 
 function exportEntriesCSV() {
@@ -430,64 +688,67 @@ function exportEntriesPDF() {
     y += 6;
     doc.setTextColor(30);
 
-    entries.forEach((e, i) => {
-        let dateStr = '';
+    entriesList.innerHTML = '';
+    entries.forEach(e => {
+        const li = document.createElement('li');
+        li.className = "bg-gray-100 dark:bg-darkcard text-gray-800 dark:text-gray-100 rounded px-4 py-3 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2";
+
+        // Date stamp
+        const dateSpan = document.createElement('span');
         if (e.created) {
             const d = e.created instanceof Date ? e.created : new Date(e.created);
             const yyyy = d.getFullYear();
             const mm = String(d.getMonth() + 1).padStart(2, '0');
             const dd = String(d.getDate()).padStart(2, '0');
-            dateStr = `${yyyy}-${mm}-${dd}`;
+            dateSpan.textContent = `${yyyy}-${mm}-${dd}`;
+        } else {
+            dateSpan.textContent = '';
         }
-        // Decode URL-encoded newlines, split into lines, preserve user line breaks
-        let entryText = e.text || '';
+        dateSpan.className = "text-xs text-gray-500 dark:text-gray-400 mr-3 min-w-[90px] font-mono";
+
+        // Entry text (support multiline and decode URL-encoded newlines)
+        const entryText = document.createElement('span');
+        entryText.className = "flex-1 whitespace-pre-line";
+        let displayText = e.text;
         try {
-            entryText = decodeURIComponent(entryText);
+            displayText = decodeURIComponent(displayText);
         } catch { }
-        const entryRawLines = entryText.split(/\r?\n/);
-        let entryLines = [];
-        entryRawLines.forEach(rawLine => {
-            entryLines = entryLines.concat(doc.splitTextToSize(rawLine, pageWidth - margin * 2 - 8));
-        });
+        entryText.innerText = displayText;
 
-        // Draw entry box
-        doc.setDrawColor(220);
-        doc.setLineWidth(0.2);
-        const boxTop = y - 2;
-        let boxHeight = 10 + entryLines.length * 7;
-        if (boxTop + boxHeight > doc.internal.pageSize.getHeight() - 18) {
-            doc.addPage();
-            y = 22;
-            // Redraw title bar on new page
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(16);
-            doc.text('Gratitude Journal (cont.)', pageWidth / 2, y, { align: 'center' });
-            y += 10;
-            doc.setDrawColor(180);
-            doc.line(margin, y, pageWidth - margin, y);
-            y += 6;
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(12);
-            doc.setTextColor(30);
-        }
-        doc.roundedRect(margin, boxTop, pageWidth - margin * 2, boxHeight, 3, 3);
+        // Star button
+        const starBtn = document.createElement('button');
+        starBtn.innerHTML = e.starred ? '★' : '☆';
+        starBtn.title = e.starred ? 'Unstar' : 'Star';
+        starBtn.className = `px-2 py-1 rounded text-lg font-bold ${e.starred ? 'text-yellow-400' : 'text-gray-400'} hover:text-yellow-500`;
+        starBtn.onclick = async () => {
+            await toggleStarEntry(e.id, !e.starred);
+            updateProgressInfo();
+        };
 
-        // Date (bold)
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(12);
-        doc.text(dateStr, margin + 4, y + 6);
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(12);
-        y += 12;
-        // Entry lines
-        entryLines.forEach(line => {
-            doc.text(line, margin + 8, y);
-            y += 7;
-        });
-        y += 6;
+        // Buttons container
+        const btns = document.createElement('div');
+        btns.className = "flex gap-2 mt-2 sm:mt-0";
+        btns.appendChild(starBtn);
+        // Edit button
+        const editBtn = document.createElement('button');
+        editBtn.textContent = 'Edit';
+        editBtn.className = "px-3 py-1 rounded bg-yellow-400 text-gray-900 hover:bg-yellow-500 text-xs font-semibold";
+        editBtn.onclick = () => openEditModal(e.id, e.text);
+        // Delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.className = "px-3 py-1 rounded bg-red-500 text-white hover:bg-red-700 text-xs font-semibold";
+        deleteBtn.onclick = () => deleteEntry(e.id);
+        btns.appendChild(editBtn);
+        btns.appendChild(deleteBtn);
+
+        // Layout: [date] [entry text] [buttons]
+        li.appendChild(dateSpan);
+        li.appendChild(entryText);
+        li.appendChild(btns);
+        entriesList.appendChild(li);
     });
-
-    // Footer: page numbers
+    updateProgressInfo();
     const pageCount = doc.internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
