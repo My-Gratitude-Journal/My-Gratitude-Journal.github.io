@@ -411,10 +411,25 @@ function exportEntriesPDF() {
     // Use jsPDF
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    doc.setFont('helvetica');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 14;
+    let y = 22;
+
+    // Title
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.text('Gratitude Journal', pageWidth / 2, y, { align: 'center' });
+    y += 10;
     doc.setFontSize(12);
-    doc.text('Gratitude Journal Entries', 10, 15);
-    let y = 25;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100);
+    doc.text('Exported Entries', pageWidth / 2, y, { align: 'center' });
+    y += 8;
+    doc.setDrawColor(180);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 6;
+    doc.setTextColor(30);
+
     entries.forEach((e, i) => {
         let dateStr = '';
         if (e.created) {
@@ -432,21 +447,55 @@ function exportEntriesPDF() {
         const entryRawLines = entryText.split(/\r?\n/);
         let entryLines = [];
         entryRawLines.forEach(rawLine => {
-            entryLines = entryLines.concat(doc.splitTextToSize(rawLine, 170));
+            entryLines = entryLines.concat(doc.splitTextToSize(rawLine, pageWidth - margin * 2 - 8));
         });
-        doc.text(`${dateStr}:`, 10, y);
-        y += 6;
-        entryLines.forEach(line => {
-            doc.text(line, 20, y);
-            y += 6;
-        });
-        y += 4;
-        // Add new page if needed
-        if (y > 270 && i < entries.length - 1) {
+
+        // Draw entry box
+        doc.setDrawColor(220);
+        doc.setLineWidth(0.2);
+        const boxTop = y - 2;
+        let boxHeight = 10 + entryLines.length * 7;
+        if (boxTop + boxHeight > doc.internal.pageSize.getHeight() - 18) {
             doc.addPage();
-            y = 15;
+            y = 22;
+            // Redraw title bar on new page
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(16);
+            doc.text('Gratitude Journal (cont.)', pageWidth / 2, y, { align: 'center' });
+            y += 10;
+            doc.setDrawColor(180);
+            doc.line(margin, y, pageWidth - margin, y);
+            y += 6;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(12);
+            doc.setTextColor(30);
         }
+        doc.roundedRect(margin, boxTop, pageWidth - margin * 2, boxHeight, 3, 3);
+
+        // Date (bold)
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.text(dateStr, margin + 4, y + 6);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(12);
+        y += 12;
+        // Entry lines
+        entryLines.forEach(line => {
+            doc.text(line, margin + 8, y);
+            y += 7;
+        });
+        y += 6;
     });
+
+    // Footer: page numbers
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(10);
+        doc.setTextColor(120);
+        doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 8, { align: 'center' });
+    }
+
     doc.save('gratitude_entries.pdf');
 }
 
