@@ -567,6 +567,9 @@ function renderEntries() {
         viewListBtn.onclick = () => {
             window._currentView = 'list';
             calendarModal.classList.add('hidden');
+            // Clear date filter to show all entries
+            const dateFilter = document.getElementById('date-filter');
+            if (dateFilter) dateFilter.value = '';
             renderEntries();
         };
         viewCalendarBtn.onclick = () => {
@@ -651,7 +654,7 @@ function renderEntries() {
             btn.onclick = () => {
                 document.getElementById('date-filter').value = btn.getAttribute('data-date');
                 calendarModal.classList.add('hidden');
-                window._currentView = 'list';
+                window._currentView = 'calendar'; // Stay in calendar filter mode
                 renderEntries();
             };
         });
