@@ -78,7 +78,16 @@ if (!loadingMsg) {
 
 let userKey = '';
 
-
+// Favorite filter toggle
+window._showFavoritesOnly = false;
+const favoritesToggle = document.getElementById('favorites-toggle');
+if (favoritesToggle) {
+    favoritesToggle.onclick = () => {
+        window._showFavoritesOnly = !window._showFavoritesOnly;
+        favoritesToggle.textContent = window._showFavoritesOnly ? '★ Show All' : '★ Show Favorites Only';
+        renderEntries();
+    };
+}
 
 // Show/hide forms
 showRegisterBtn.onclick = () => {
@@ -379,12 +388,14 @@ async function loadEntries() {
 }
 
 function renderEntries() {
-    const entriesList = document.getElementById('entries-list');
+    let entries = window._allEntries || [];
     const searchInput = document.getElementById('search-input');
     const dateFilter = document.getElementById('date-filter');
-    let entries = window._allEntries || [];
     const keyword = (searchInput && searchInput.value.trim().toLowerCase()) || '';
     const dateVal = dateFilter && dateFilter.value;
+    if (window._showFavoritesOnly) {
+        entries = entries.filter(e => e.starred);
+    }
     if (keyword) {
         entries = entries.filter(e => e.text.toLowerCase().includes(keyword));
     }
@@ -802,19 +813,6 @@ function exportEntriesCSV() {
 }
 
 // Also re-render after edit/delete
-async function deleteEntry(entryId) {
-    if (!confirm('Delete this entry?')) return;
-    await db.collection('users')
-        .doc(auth.currentUser.uid)
-        .collection('gratitude')
-        .doc(entryId)
-        .delete();
-    loadEntries();
-}
-
-// ...existing code...
-
-// Delete entry
 async function deleteEntry(entryId) {
     if (!confirm('Delete this entry?')) return;
     await db.collection('users')
