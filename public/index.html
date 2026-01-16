@@ -169,19 +169,21 @@
             <div id="calendar-modal"
                 class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 hidden">
                 <div
-                    class="bg-white dark:bg-darkcard rounded-2xl p-8 shadow-2xl w-full max-w-lg border border-gray-200 dark:border-gray-700">
-                    <h3 class="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">Calendar</h3>
-                    <div class="flex items-center justify-between mb-4">
+                    class="bg-white dark:bg-darkcard rounded-2xl p-3 sm:p-8 shadow-2xl w-full max-w-lg border border-gray-200 dark:border-gray-700 mx-2">
+                    <h3 class="text-xl sm:text-2xl font-bold mb-4 text-gray-800 dark:text-gray-100 text-center">Calendar
+                    </h3>
+                    <div class="flex items-center justify-between mb-4 gap-2">
                         <button id="calendar-prev-month"
-                            class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 font-medium disabled:opacity-40 disabled:cursor-not-allowed">&#8592;</button>
-                        <span id="calendar-month-label" class="font-semibold text-lg"></span>
+                            class="px-3 py-2 sm:px-4 sm:py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 font-medium disabled:opacity-40 disabled:cursor-not-allowed text-lg sm:text-xl">&#8592;</button>
+                        <span id="calendar-month-label"
+                            class="font-semibold text-lg sm:text-xl text-center flex-1"></span>
                         <button id="calendar-next-month"
-                            class="px-3 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 font-medium disabled:opacity-40 disabled:cursor-not-allowed">&#8594;</button>
+                            class="px-3 py-2 sm:px-4 sm:py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 font-medium disabled:opacity-40 disabled:cursor-not-allowed text-lg sm:text-xl">&#8594;</button>
                     </div>
                     <div id="calendar-view" class="mb-6"></div>
                     <div class="flex justify-end gap-3">
                         <button id="close-calendar-btn"
-                            class="px-5 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 font-medium">Close</button>
+                            class="px-5 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 font-medium text-base sm:text-lg">Close</button>
                     </div>
                 </div>
             </div>

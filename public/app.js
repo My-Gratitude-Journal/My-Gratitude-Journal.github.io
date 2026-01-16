@@ -618,15 +618,15 @@ function renderEntries() {
         const lastDay = new Date(year, month + 1, 0);
         const daysInMonth = lastDay.getDate();
         // Build calendar grid
-        let html = `<div class="grid grid-cols-7 gap-2">`;
+        let html = `<div class="grid grid-cols-7 gap-1 sm:gap-2">`;
         // Weekday headers
         const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         weekdays.forEach(wd => {
-            html += `<div class="text-xs font-bold text-gray-500 dark:text-gray-400 text-center">${wd}</div>`;
+            html += `<div class="text-xs sm:text-sm font-bold text-gray-500 dark:text-gray-400 text-center">${wd}</div>`;
         });
-        // Pad first week
+        // Pad first week (disabled days)
         for (let i = 0; i < firstDay.getDay(); i++) {
-            html += `<button disabled class="rounded-lg px-2 py-2 w-full h-12 bg-gray-100 dark:bg-gray-800 opacity-40 cursor-not-allowed"></button>`;
+            html += `<button disabled class="rounded-lg px-1 py-2 sm:px-2 w-full h-10 sm:h-12 bg-gray-100 dark:bg-gray-800 opacity-40 cursor-not-allowed"></button>`;
         }
         // Days
         for (let d = 1; d <= daysInMonth; d++) {
@@ -638,7 +638,7 @@ function renderEntries() {
                 ? 'bg-primary text-white hover:bg-blue-600 dark:hover:bg-blue-400'
                 : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-500 opacity-60 cursor-not-allowed';
             let disabled = hasEntry ? '' : 'disabled';
-            html += `<button class="rounded-lg px-2 py-2 text-sm font-semibold w-full h-12 flex flex-col items-center justify-center ${btnClass}" data-date="${key}" ${disabled}>${d}${hasEntry ? `<span class='block text-xs mt-1'>${dateMap[key].length} entry${dateMap[key].length > 1 ? 'ies' : 'y'}</span>` : ''}</button>`;
+            html += `<button class="rounded-lg px-1 py-2 sm:px-2 text-sm sm:text-base font-semibold w-full h-10 sm:h-12 flex flex-col items-center justify-center ${btnClass}" data-date="${key}" ${disabled}>${d}${hasEntry ? `<span class='block text-[10px] sm:text-xs mt-1'>${dateMap[key].length} entry${dateMap[key].length > 1 ? 'ies' : 'y'}</span>` : ''}</button>`;
         }
         html += `</div>`;
         calendarView.innerHTML = html;
