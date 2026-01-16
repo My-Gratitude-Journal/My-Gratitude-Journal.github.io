@@ -477,10 +477,26 @@ function renderEntries() {
 
         // Star button
         const starBtn = document.createElement('button');
-        starBtn.innerHTML = e.starred ? '★' : '☆';
-        starBtn.title = e.starred ? 'Unstar' : 'Star';
-        starBtn.className = `px-2 py-1 rounded text-lg font-bold ${e.starred ? 'text-yellow-400' : 'text-gray-400'} hover:text-yellow-500`;
-        starBtn.onclick = () => toggleStarEntry(e.id, !e.starred);
+        function updateStarBtn(starred) {
+            starBtn.innerHTML = starred ? '★' : '☆';
+            starBtn.title = starred ? 'Unstar' : 'Star';
+            starBtn.className = `px-2 py-1 rounded text-lg font-bold ${starred ? 'text-yellow-400' : 'text-gray-400'} hover:text-yellow-500`;
+        }
+        updateStarBtn(e.starred);
+        starBtn.onclick = async () => {
+            // Optimistically update UI
+            e.starred = !e.starred;
+            updateStarBtn(e.starred);
+            // Update backend
+            try {
+                await toggleStarEntry(e.id, e.starred);
+            } catch (err) {
+                // Revert if failed
+                e.starred = !e.starred;
+                updateStarBtn(e.starred);
+                alert('Failed to update favorite. Please try again.');
+            }
+        };
 
         // Buttons container
         const btns = document.createElement('div');
@@ -512,7 +528,7 @@ function renderEntries() {
             .collection('gratitude')
             .doc(entryId)
             .update({ starred: star });
-        loadEntries();
+        // No immediate reload; UI is already updated optimistically
     }
     // Progress info (streaks, total)
     function updateProgressInfo() {
