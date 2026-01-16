@@ -638,7 +638,7 @@ function renderEntries() {
                 ? 'bg-primary text-white hover:bg-blue-600 dark:hover:bg-blue-400'
                 : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-500 opacity-60 cursor-not-allowed';
             let disabled = hasEntry ? '' : 'disabled';
-            html += `<button class="rounded-lg px-1 py-2 sm:px-2 text-sm sm:text-base font-semibold w-full h-10 sm:h-12 flex flex-col items-center justify-center ${btnClass}" data-date="${key}" ${disabled}>${d}${hasEntry ? `<span class='block text-[10px] sm:text-xs mt-1'>${dateMap[key].length} entry${dateMap[key].length > 1 ? 'ies' : 'y'}</span>` : ''}</button>`;
+            html += `<button class="rounded-lg px-1 py-2 sm:px-2 text-sm sm:text-base font-semibold w-full h-10 sm:h-12 flex flex-col items-center justify-center ${btnClass}" data-date="${key}" ${disabled}>${d}${hasEntry ? `<span class='block text-[10px] sm:text-xs mt-1'>${dateMap[key].length} ${dateMap[key].length === 1 ? 'entry' : 'entries'}</span>` : ''}</button>`;
         }
         html += `</div>`;
         calendarView.innerHTML = html;
