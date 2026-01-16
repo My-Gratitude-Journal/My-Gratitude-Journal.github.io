@@ -308,16 +308,21 @@ function renderEntries() {
             const yyyy = d.getFullYear();
             const mm = String(d.getMonth() + 1).padStart(2, '0');
             const dd = String(d.getDate()).padStart(2, '0');
-            dateSpan.textContent = `${yyyy}-${mm}-${dd}`;
+            dateSpan.textContent = `${mm}-${dd}-${yyyy}`;
         } else {
             dateSpan.textContent = '';
         }
         dateSpan.className = "text-xs text-gray-500 dark:text-gray-400 mr-3 min-w-[90px] font-mono";
 
-        // Entry text
+        // Entry text (support multiline and decode URL-encoded newlines)
         const entryText = document.createElement('span');
-        entryText.textContent = e.text;
-        entryText.className = "flex-1";
+        entryText.className = "flex-1 whitespace-pre-line";
+        let displayText = e.text;
+        try {
+            // Decode %0A and other URL-encoded characters
+            displayText = decodeURIComponent(displayText);
+        } catch { }
+        entryText.innerText = displayText;
 
         // Buttons container
         const btns = document.createElement('div');
@@ -355,7 +360,48 @@ window.addEventListener('DOMContentLoaded', () => {
     if (exportPdfBtn) exportPdfBtn.addEventListener('click', exportEntriesPDF);
 });
 
-// Export entries as PDF
+function exportEntriesCSV() {
+    const entries = window._allEntries || [];
+    if (!entries.length) {
+        alert('No entries to export.');
+        return;
+    }
+    // CSV header
+    let csv = 'Date,Entry\n';
+    entries.forEach(e => {
+        let dateStr = '';
+        if (e.created) {
+            const d = e.created instanceof Date ? e.created : new Date(e.created);
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            dateStr = `${yyyy}-${mm}-${dd}`;
+        }
+        // Decode URL-encoded newlines, escape quotes/commas, preserve newlines
+        let entryText = e.text || '';
+        try {
+            entryText = decodeURIComponent(entryText);
+        } catch { }
+        entryText = entryText.replace(/"/g, '""');
+        if (entryText.includes(',') || entryText.includes('"') || entryText.includes('\n')) {
+            entryText = `"${entryText.replace(/\r?\n/g, '\r\n')}"`;
+        }
+        csv += `${dateStr},${entryText}\n`;
+    });
+    // Download CSV
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'gratitude_entries.csv';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, 100);
+}
+
 function exportEntriesPDF() {
     const entries = window._allEntries || [];
     if (!entries.length) {
@@ -378,8 +424,16 @@ function exportEntriesPDF() {
             const dd = String(d.getDate()).padStart(2, '0');
             dateStr = `${yyyy}-${mm}-${dd}`;
         }
-        // Split entry text into lines if too long
-        const entryLines = doc.splitTextToSize(e.text || '', 170);
+        // Decode URL-encoded newlines, split into lines, preserve user line breaks
+        let entryText = e.text || '';
+        try {
+            entryText = decodeURIComponent(entryText);
+        } catch { }
+        const entryRawLines = entryText.split(/\r?\n/);
+        let entryLines = [];
+        entryRawLines.forEach(rawLine => {
+            entryLines = entryLines.concat(doc.splitTextToSize(rawLine, 170));
+        });
         doc.text(`${dateStr}:`, 10, y);
         y += 6;
         entryLines.forEach(line => {
@@ -396,7 +450,6 @@ function exportEntriesPDF() {
     doc.save('gratitude_entries.pdf');
 }
 
-// Export entries as CSV
 function exportEntriesCSV() {
     const entries = window._allEntries || [];
     if (!entries.length) {
@@ -404,7 +457,7 @@ function exportEntriesCSV() {
         return;
     }
     // CSV header
-    let csv = 'Date,Entry\n';
+    let csv = 'Date,Entry\r\n';
     entries.forEach(e => {
         let dateStr = '';
         if (e.created) {
@@ -414,12 +467,15 @@ function exportEntriesCSV() {
             const dd = String(d.getDate()).padStart(2, '0');
             dateStr = `${yyyy}-${mm}-${dd}`;
         }
-        // Escape quotes and commas in entry text
-        let entryText = (e.text || '').replace(/"/g, '""');
-        if (entryText.includes(',') || entryText.includes('"') || entryText.includes('\n')) {
-            entryText = `"${entryText}"`;
-        }
-        csv += `${dateStr},${entryText}\n`;
+        // Decode and escape for CSV
+        let entryText = e.text || '';
+        try {
+            entryText = decodeURIComponent(entryText);
+        } catch { }
+        entryText = entryText.replace(/"/g, '""').replace(/\r?\n/g, '\r\n');
+        // Always quote the entry field
+        entryText = `"${entryText}"`;
+        csv += `${dateStr},${entryText}\r\n`;
     });
     // Download CSV
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -443,7 +499,7 @@ async function deleteEntry(entryId) {
         .collection('gratitude')
         .doc(entryId)
         .delete();
-    await loadEntries();
+    loadEntries();
 }
 
 saveEditBtn.onclick = async () => {
@@ -457,7 +513,7 @@ saveEditBtn.onclick = async () => {
         .update({ entry: encrypted });
     editModal.classList.add('hidden');
     editingEntryId = null;
-    await loadEntries();
+    loadEntries();
 };
 
 // Delete entry
