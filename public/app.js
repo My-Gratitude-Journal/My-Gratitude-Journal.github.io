@@ -832,7 +832,7 @@ const cancelEditBtn = document.getElementById('cancel-edit-btn');
 
 function openEditModal(entryId, entryText) {
     editingEntryId = entryId;
-    editEntryInput.value = entryText;
+    editEntryInput.value = decodeURIComponent(entryText);
     editModal.classList.remove('hidden');
 }
 
