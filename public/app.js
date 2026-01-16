@@ -2,7 +2,7 @@ const firebaseConfig = {
     apiKey: "AIzaSyAg9MgUfOszU4lujZedZz0cP_H74KrbY1U",
     authDomain: "gratitude-30fbe.firebaseapp.com",
     projectId: "gratitude-30fbe",
-    storageBucket: "gratitude-30fbe.firebasestorage.app",
+    storageBucket: "gratitude-30fbe.appspot.com",
     messagingSenderId: "888516646215",
     appId: "1:888516646215:web:1f3544999e16a4faf2e862"
 };
@@ -25,6 +25,7 @@ function decrypt(data, key) {
 
 const emailInput = document.getElementById('email');
 const passwordInput = document.getElementById('password');
+
 const loginBtn = document.getElementById('login-btn');
 const logoutBtn = document.getElementById('logout-btn');
 const authSection = document.getElementById('auth-section');
@@ -33,21 +34,59 @@ const gratitudeForm = document.getElementById('gratitude-form');
 const gratitudeInput = document.getElementById('gratitude-input');
 const entriesList = document.getElementById('entries-list');
 
+// Add error and loading UI
+let errorMsg = document.getElementById('error-msg');
+if (!errorMsg) {
+    errorMsg = document.createElement('div');
+    errorMsg.id = 'error-msg';
+    errorMsg.style.color = 'red';
+    errorMsg.style.marginTop = '8px';
+    authSection.appendChild(errorMsg);
+}
+let loadingMsg = document.getElementById('loading-msg');
+if (!loadingMsg) {
+    loadingMsg = document.createElement('div');
+    loadingMsg.id = 'loading-msg';
+    loadingMsg.style.color = '#888';
+    loadingMsg.style.marginTop = '8px';
+    loadingMsg.style.display = 'none';
+    loadingMsg.textContent = 'Processing...';
+    authSection.appendChild(loadingMsg);
+}
+
 let userKey = '';
 
+
 loginBtn.onclick = async () => {
+    errorMsg.textContent = '';
+    loadingMsg.style.display = 'block';
+    loginBtn.disabled = true;
     const email = emailInput.value;
     const password = passwordInput.value;
     userKey = password;
+    if (!email || !password) {
+        errorMsg.textContent = 'Please enter both email and password.';
+        loadingMsg.style.display = 'none';
+        loginBtn.disabled = false;
+        return;
+    }
     try {
         await auth.signInWithEmailAndPassword(email, password);
     } catch (e) {
         if (e.code === 'auth/user-not-found') {
-            await auth.createUserWithEmailAndPassword(email, password);
+            try {
+                await auth.createUserWithEmailAndPassword(email, password);
+            } catch (signupErr) {
+                errorMsg.textContent = signupErr.message;
+                console.error('Signup error:', signupErr);
+            }
         } else {
-            alert(e.message);
+            errorMsg.textContent = e.message;
+            console.error('Login error:', e);
         }
     }
+    loadingMsg.style.display = 'none';
+    loginBtn.disabled = false;
 };
 
 logoutBtn.onclick = () => {
