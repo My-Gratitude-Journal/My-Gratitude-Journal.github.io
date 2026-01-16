@@ -1,11 +1,10 @@
-// TODO: Replace with your Firebase project config
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyAg9MgUfOszU4lujZedZz0cP_H74KrbY1U",
+    authDomain: "gratitude-30fbe.firebaseapp.com",
+    projectId: "gratitude-30fbe",
+    storageBucket: "gratitude-30fbe.firebasestorage.app",
+    messagingSenderId: "888516646215",
+    appId: "1:888516646215:web:1f3544999e16a4faf2e862"
 };
 
 firebase.initializeApp(firebaseConfig);
