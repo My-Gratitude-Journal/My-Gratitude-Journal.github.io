@@ -42,15 +42,35 @@
 <body class="min-h-screen bg-gray-100 dark:bg-darkbg transition-colors">
     <div id="app"
         class="max-w-lg mx-auto mt-6 sm:mt-10 bg-white dark:bg-darkcard rounded-xl shadow-lg p-3 sm:p-6 w-full min-h-[90vh] flex flex-col justify-between">
-        <div class="flex flex-col sm:flex-row justify-between items-center mb-4 sm:mb-6 gap-2 sm:gap-0">
-            <h1 class="text-2xl sm:text-3xl font-bold text-primary dark:text-blue-300 text-center sm:text-left">
-                Gratitude Journal</h1>
-            <div class="flex gap-2 w-full sm:w-auto justify-center sm:justify-end">
-                <button id="logout-btn" style="display:none;"
-                    class="w-1/2 sm:w-auto px-3 py-2 rounded bg-primary text-white dark:bg-blue-700 dark:text-white hover:bg-blue-600 dark:hover:bg-blue-800 transition text-sm">Logout</button>
-                <button id="delete-account-btn" style="display:none;"
-                    class="w-1/2 sm:w-auto px-3 py-2 rounded bg-red-500 text-white hover:bg-red-700 transition text-sm">Delete
-                    Account</button>
+        <!-- Header with Hamburger Menu -->
+        <div class="flex items-center justify-between mb-6 gap-4">
+            <h1 class="text-2xl sm:text-3xl font-bold text-primary dark:text-blue-300">Gratitude Journal</h1>
+            <button id="hamburger-toggle" class="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition focus:outline-none focus:ring-2 focus:ring-primary">
+                <svg id="hamburger-icon" class="w-6 h-6 text-gray-800 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Side Menu (Hamburger) -->
+        <div id="side-menu" class="hidden fixed inset-0 z-40">
+            <div id="menu-overlay" class="fixed inset-0 bg-black bg-opacity-50"></div>
+            <div class="fixed top-0 right-0 h-full w-64 bg-white dark:bg-gray-900 shadow-lg flex flex-col p-6 z-50">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-gray-800 dark:text-white">Menu</h2>
+                    <button id="hamburger-close" class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-800">
+                        <svg class="w-6 h-6 text-gray-800 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <nav class="space-y-2 flex-1">
+                    <button id="logout-btn" style="display:none;" class="w-full text-left px-4 py-3 rounded-lg text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-gray-800 transition font-medium">Logout</button>
+                    <button id="delete-account-btn" style="display:none;" class="w-full text-left px-4 py-3 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-gray-800 transition font-medium">Delete Account</button>
+                    <div class="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+                    <button id="menu-export-csv" class="w-full text-left px-4 py-3 rounded-lg text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-gray-800 transition font-medium">📊 Export CSV</button>
+                    <button id="menu-export-pdf" class="w-full text-left px-4 py-3 rounded-lg text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-gray-800 transition font-medium">📄 Export PDF</button>
+                </nav>
             </div>
         </div>
         <div id="auth-section" class="w-full">
@@ -122,12 +142,9 @@
                     class="flex-1 min-w-[140px] px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
                 <input id="date-filter" type="date"
                     class="min-w-[120px] px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
-                <button id="export-csv-btn" type="button"
-                    class="px-3 py-2 rounded bg-green-500 text-white hover:bg-green-600 text-sm font-semibold min-w-[110px]">Export
-                    CSV</button>
-                <button id="export-pdf-btn" type="button"
-                    class="px-3 py-2 rounded bg-purple-600 text-white hover:bg-purple-700 text-sm font-semibold min-w-[110px]">Export
-                    PDF</button>
+                <!-- Hidden export buttons triggered by menu -->
+                <button id="export-csv-btn" type="button" class="hidden">Export CSV</button>
+                <button id="export-pdf-btn" type="button" class="hidden">Export PDF</button>
             </div>
             <ul id="entries-list" class="space-y-2"></ul>
             <!-- Edit Entry Modal -->
@@ -153,6 +170,45 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script>
+    // Hamburger menu logic
+    document.addEventListener('DOMContentLoaded', function() {
+        const hamburgerToggle = document.getElementById('hamburger-toggle');
+        const hamburgerClose = document.getElementById('hamburger-close');
+        const sideMenu = document.getElementById('side-menu');
+        const menuOverlay = document.getElementById('menu-overlay');
+        
+        function closeMenu() {
+            sideMenu.classList.add('hidden');
+        }
+        
+        function openMenu() {
+            sideMenu.classList.remove('hidden');
+        }
+        
+        hamburgerToggle.addEventListener('click', openMenu);
+        hamburgerClose.addEventListener('click', closeMenu);
+        menuOverlay.addEventListener('click', closeMenu);
+        
+        // Export buttons in menu
+        const menuExportCSV = document.getElementById('menu-export-csv');
+        const menuExportPDF = document.getElementById('menu-export-pdf');
+        const exportCSVBtn = document.getElementById('export-csv-btn');
+        const exportPDFBtn = document.getElementById('export-pdf-btn');
+        if (menuExportCSV && exportCSVBtn) {
+            menuExportCSV.onclick = () => {
+                exportCSVBtn.click();
+                closeMenu();
+            };
+        }
+        if (menuExportPDF && exportPDFBtn) {
+            menuExportPDF.onclick = () => {
+                exportPDFBtn.click();
+                closeMenu();
+            };
+        }
+    });
+    </script>
     <script src="app.js"></script>
 </body>
 
