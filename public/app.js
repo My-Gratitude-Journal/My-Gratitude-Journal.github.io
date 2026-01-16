@@ -308,7 +308,7 @@ function renderEntries() {
             const yyyy = d.getFullYear();
             const mm = String(d.getMonth() + 1).padStart(2, '0');
             const dd = String(d.getDate()).padStart(2, '0');
-            dateSpan.textContent = `${mm}-${dd}-${yyyy}`;
+            dateSpan.textContent = `${yyyy}-${mm}-${dd}`;
         } else {
             dateSpan.textContent = '';
         }
@@ -502,19 +502,7 @@ async function deleteEntry(entryId) {
     loadEntries();
 }
 
-saveEditBtn.onclick = async () => {
-    const newText = editEntryInput.value.trim();
-    if (!newText || !editingEntryId) return;
-    const encrypted = encrypt(newText, userKey);
-    await db.collection('users')
-        .doc(auth.currentUser.uid)
-        .collection('gratitude')
-        .doc(editingEntryId)
-        .update({ entry: encrypted });
-    editModal.classList.add('hidden');
-    editingEntryId = null;
-    loadEntries();
-};
+// ...existing code...
 
 // Delete entry
 async function deleteEntry(entryId) {
