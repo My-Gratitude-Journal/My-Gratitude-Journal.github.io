@@ -363,8 +363,27 @@ function updateProgressInfo() {
         badgeClass = 'bronze';
     }
     document.body.classList.remove('theme-bronze', 'theme-silver', 'theme-gold', 'theme-diamond');
+    // Remove previous theme variables
+    document.body.style.removeProperty('--theme-bg');
+    document.body.style.removeProperty('--theme-card');
+    // Detect dark mode
+    const isDark = document.documentElement.classList.contains('dark') || window.matchMedia('(prefers-color-scheme: dark)').matches;
     if (theme) {
         document.body.classList.add(theme);
+        // Set theme variables explicitly for background and card, including dark mode
+        if (theme === 'theme-bronze') {
+            document.body.style.setProperty('--theme-bg', isDark ? '#3a2c1a' : '#fff8f0');
+            document.body.style.setProperty('--theme-card', isDark ? '#4b3a22' : '#f5e6d3');
+        } else if (theme === 'theme-silver') {
+            document.body.style.setProperty('--theme-bg', isDark ? '#23272a' : '#f8fafc');
+            document.body.style.setProperty('--theme-card', isDark ? '#35393c' : '#e6e8ea');
+        } else if (theme === 'theme-gold') {
+            document.body.style.setProperty('--theme-bg', isDark ? '#3a3200' : '#fffbe6');
+            document.body.style.setProperty('--theme-card', isDark ? '#4b4200' : '#fff3b0');
+        } else if (theme === 'theme-diamond') {
+            document.body.style.setProperty('--theme-bg', isDark ? '#1a2a2c' : '#f0fcff');
+            document.body.style.setProperty('--theme-card', isDark ? '#223a3c' : '#e0f7fa');
+        }
         if (badgeEl) {
             badgeEl.textContent = badge;
             badgeEl.className = 'streak-badge ' + badgeClass;

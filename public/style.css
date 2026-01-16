@@ -1,3 +1,70 @@
+/* Dark mode theme color classes for streak milestones */
+@media (prefers-color-scheme: dark) {
+    body.theme-bronze {
+        --theme-bg: #3a2c1a;
+        --theme-card: #4b3a22;
+        --theme-primary: #cd7f32;
+    }
+
+    body.theme-silver {
+        --theme-bg: #23272a;
+        --theme-card: #35393c;
+        --theme-primary: #bfc1c2;
+    }
+
+    body.theme-gold {
+        --theme-bg: #3a3200;
+        --theme-card: #4b4200;
+        --theme-primary: #ffd700;
+    }
+
+    body.theme-diamond {
+        --theme-bg: #1a2a2c;
+        --theme-card: #223a3c;
+        --theme-primary: #b9f2ff;
+    }
+}
+
+body.theme-bronze,
+body.theme-silver,
+body.theme-gold,
+body.theme-diamond {
+    color: #222;
+}
+
+@media (prefers-color-scheme: dark) {
+
+    body.theme-bronze,
+    body.theme-silver,
+    body.theme-gold,
+    body.theme-diamond {
+        color: #f7fafc;
+    }
+}
+
+/* Ensure readable text for badges in dark mode */
+@media (prefers-color-scheme: dark) {
+    .streak-badge.bronze {
+        background: linear-gradient(90deg, #cd7f32 60%, #4b3a22 100%);
+        color: #fff;
+    }
+
+    .streak-badge.silver {
+        background: linear-gradient(90deg, #bfc1c2 60%, #35393c 100%);
+        color: #fff;
+    }
+
+    .streak-badge.gold {
+        background: linear-gradient(90deg, #ffd700 60%, #4b4200 100%);
+        color: #fff8b0;
+    }
+
+    .streak-badge.diamond {
+        background: linear-gradient(90deg, #b9f2ff 60%, #223a3c 100%);
+        color: #b9f2ff;
+    }
+}
+
 /* Theme color classes for streak milestones */
 .theme-bronze {
     --theme-primary: #cd7f32;
