@@ -7,4 +7,6 @@ User is most comfortable with HTML, CSS, and JS but can make his way around othe
 
 User will most likely host on Github Pages. Firebase hosting is being considered.
 
+Site should be mobile friendly and incorporate dark mode.
+
 Ask for clarification and update these instructions as needed.
