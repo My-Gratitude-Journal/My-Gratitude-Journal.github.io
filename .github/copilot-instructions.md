@@ -1,17 +1,39 @@
+
 # Copilot Instructions for AI Coding Agents
 
 ## Project Overview
-This repository appears to be newly initialized or empty. No source files, documentation, or project structure were detected. As such, there are no established architectural patterns, workflows, or conventions to document at this time.
+This project is a web-based Gratitude Journal app using HTML, CSS, and JavaScript, with Firebase as the backend for authentication and storage. Data is encrypted client-side before being sent to Firestore. The app is designed for easy deployment on GitHub Pages (Firebase Hosting is also considered).
 
-## Guidance for AI Agents
-- Before making changes, check with the user for the intended project type, language, and goals.
-- If you are tasked with project setup, follow best practices for initializing new projects (e.g., create a README, set up version control, and establish a basic directory structure).
-- When adding files, prefer clear, conventional naming and organization (e.g., `src/`, `tests/`, `README.md`).
-- If the user provides additional context or files, update this document to reflect new patterns, workflows, or conventions as they emerge.
+## Architecture & Key Patterns
+- **Frontend:** All code is in `public/` (`index.html`, `app.js`, `style.css`).
+- **Backend:** Firebase (Firestore for storage, Auth for user management). No custom backend code.
+- **Data Flow:**
+	- User logs in/registers with email/password (Firebase Auth).
+	- Journal entries are encrypted in-browser (see `encrypt()` in `app.js`) using the user's password as a key, then stored in Firestore.
+	- Entries are decrypted client-side for display.
+- **Security:**
+	- All journal data is encrypted before leaving the browser. The encryption is simple (MVP), but the intent is to keep user data private even from Firebase.
+	- The encryption key is the user's password (see `userKey` in `app.js`).
 
-## Next Steps
-- Revisit and update these instructions as the codebase evolves.
-- If you are the first to add code, set the tone for structure and documentation.
+## Developer Workflow
+- **No build step:** All files are static and can be served directly.
+- **To run locally:** Open `public/index.html` in a browser. For Firebase features to work, you must provide your own Firebase config in `app.js`.
+- **Deployment:**
+	- For GitHub Pages: Copy contents of `public/` to the root of the `gh-pages` branch.
+	- For Firebase Hosting: Use `public/` as the hosting directory.
+- **Adding features:**
+	- Keep all logic in `app.js` unless refactoring for scale.
+	- Use only client-side JS; do not add server-side code.
+
+## Conventions & Integration
+- **Firebase config:** Must be replaced with real project credentials in `app.js`.
+- **Encryption:** The current method is for MVP only. If improving, use a strong, standard crypto library.
+- **UI/UX:** Minimal, clean, and mobile-friendly (see `style.css`).
+- **No tests or CI/CD** are present yet.
+
+## References
+- Main files: `public/index.html`, `public/app.js`, `public/style.css`
+- Project instructions: `.github/instructions/Project_Instructions.instructions.md`
 
 ---
 *Last updated: 2026-01-15. Please update as the project grows.*
