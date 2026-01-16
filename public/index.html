@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gratitude Journal</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="app">
+        <h1>Gratitude Journal</h1>
+        <div id="auth-section">
+            <input type="email" id="email" placeholder="Email">
+            <input type="password" id="password" placeholder="Password">
+            <button id="login-btn">Login / Register</button>
+            <button id="logout-btn" style="display:none;">Logout</button>
+        </div>
+        <div id="journal-section" style="display:none;">
+            <form id="gratitude-form">
+                <textarea id="gratitude-input" placeholder="What are you grateful for today?" required></textarea>
+                <button type="submit">Save Entry</button>
+            </form>
+            <h2>Your Entries</h2>
+            <ul id="entries-list"></ul>
+        </div>
+    </div>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
