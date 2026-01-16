@@ -122,6 +122,12 @@
                     class="flex-1 px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
                 <input id="date-filter" type="date"
                     class="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+                <button id="export-csv-btn" type="button"
+                    class="px-3 py-2 rounded bg-green-500 text-white hover:bg-green-600 text-sm font-semibold">Export
+                    CSV</button>
+                <button id="export-pdf-btn" type="button"
+                    class="px-3 py-2 rounded bg-purple-600 text-white hover:bg-purple-700 text-sm font-semibold">Export
+                    PDF</button>
             </div>
             <ul id="entries-list" class="space-y-2"></ul>
             <!-- Edit Entry Modal -->
@@ -143,6 +149,8 @@
         </div>
     </div>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <!-- jsPDF CDN for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="app.js"></script>

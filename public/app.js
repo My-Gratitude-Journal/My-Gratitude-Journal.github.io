@@ -300,9 +300,25 @@ function renderEntries() {
     entries.forEach(e => {
         const li = document.createElement('li');
         li.className = "bg-gray-100 dark:bg-darkcard text-gray-800 dark:text-gray-100 rounded px-4 py-3 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2";
+
+        // Date stamp
+        const dateSpan = document.createElement('span');
+        if (e.created) {
+            const d = e.created instanceof Date ? e.created : new Date(e.created);
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            dateSpan.textContent = `${yyyy}-${mm}-${dd}`;
+        } else {
+            dateSpan.textContent = '';
+        }
+        dateSpan.className = "text-xs text-gray-500 dark:text-gray-400 mr-3 min-w-[90px] font-mono";
+
+        // Entry text
         const entryText = document.createElement('span');
         entryText.textContent = e.text;
         entryText.className = "flex-1";
+
         // Buttons container
         const btns = document.createElement('div');
         btns.className = "flex gap-2 mt-2 sm:mt-0";
@@ -318,6 +334,9 @@ function renderEntries() {
         deleteBtn.onclick = () => deleteEntry(e.id);
         btns.appendChild(editBtn);
         btns.appendChild(deleteBtn);
+
+        // Layout: [date] [entry text] [buttons]
+        li.appendChild(dateSpan);
         li.appendChild(entryText);
         li.appendChild(btns);
         entriesList.appendChild(li);
@@ -328,9 +347,93 @@ function renderEntries() {
 window.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('search-input');
     const dateFilter = document.getElementById('date-filter');
+    const exportBtn = document.getElementById('export-csv-btn');
+    const exportPdfBtn = document.getElementById('export-pdf-btn');
     if (searchInput) searchInput.addEventListener('input', renderEntries);
     if (dateFilter) dateFilter.addEventListener('input', renderEntries);
+    if (exportBtn) exportBtn.addEventListener('click', exportEntriesCSV);
+    if (exportPdfBtn) exportPdfBtn.addEventListener('click', exportEntriesPDF);
 });
+
+// Export entries as PDF
+function exportEntriesPDF() {
+    const entries = window._allEntries || [];
+    if (!entries.length) {
+        alert('No entries to export.');
+        return;
+    }
+    // Use jsPDF
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFont('helvetica');
+    doc.setFontSize(12);
+    doc.text('Gratitude Journal Entries', 10, 15);
+    let y = 25;
+    entries.forEach((e, i) => {
+        let dateStr = '';
+        if (e.created) {
+            const d = e.created instanceof Date ? e.created : new Date(e.created);
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            dateStr = `${yyyy}-${mm}-${dd}`;
+        }
+        // Split entry text into lines if too long
+        const entryLines = doc.splitTextToSize(e.text || '', 170);
+        doc.text(`${dateStr}:`, 10, y);
+        y += 6;
+        entryLines.forEach(line => {
+            doc.text(line, 20, y);
+            y += 6;
+        });
+        y += 4;
+        // Add new page if needed
+        if (y > 270 && i < entries.length - 1) {
+            doc.addPage();
+            y = 15;
+        }
+    });
+    doc.save('gratitude_entries.pdf');
+}
+
+// Export entries as CSV
+function exportEntriesCSV() {
+    const entries = window._allEntries || [];
+    if (!entries.length) {
+        alert('No entries to export.');
+        return;
+    }
+    // CSV header
+    let csv = 'Date,Entry\n';
+    entries.forEach(e => {
+        let dateStr = '';
+        if (e.created) {
+            const d = e.created instanceof Date ? e.created : new Date(e.created);
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            dateStr = `${yyyy}-${mm}-${dd}`;
+        }
+        // Escape quotes and commas in entry text
+        let entryText = (e.text || '').replace(/"/g, '""');
+        if (entryText.includes(',') || entryText.includes('"') || entryText.includes('\n')) {
+            entryText = `"${entryText}"`;
+        }
+        csv += `${dateStr},${entryText}\n`;
+    });
+    // Download CSV
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'gratitude_entries.csv';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, 100);
+}
 
 // Also re-render after edit/delete
 async function deleteEntry(entryId) {
