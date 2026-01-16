@@ -14,7 +14,7 @@ const db = firebase.firestore();
 
 // Simple encryption (for MVP; use stronger encryption for production)
 function encrypt(text, key) {
-    return btoa(unescape(encodeURIComponent(text + key)));
+    return btoa(encodeURIComponent(text + key));
 }
 function decrypt(data, key) {
     try {
