@@ -713,6 +713,30 @@ async function loadEntries() {
                 cipher: data.entry
             });
         });
+        // Fetch ALL favorites and merge so they are always available
+        try {
+            const favSnap = await db.collection('users')
+                .doc(auth.currentUser.uid)
+                .collection('gratitude')
+                .where('starred', '==', true)
+                .get();
+            const byId = new Map(window._allEntries.map(e => [e.id, e]));
+            favSnap.forEach(doc => {
+                if (byId.has(doc.id)) return;
+                const data = doc.data();
+                byId.set(doc.id, {
+                    id: doc.id,
+                    text: decrypt(data.entry, activeKey),
+                    created: data.created && data.created.toDate ? data.created.toDate() : (data.created instanceof Date ? data.created : new Date(data.created)),
+                    starred: true,
+                    cipher: data.entry
+                });
+            });
+            window._allEntries = Array.from(byId.values())
+                .sort((a, b) => new Date(b.created) - new Date(a.created));
+        } catch (favErr) {
+            console.warn('Could not load favorites separately:', favErr);
+        }
         syncOfflineCacheFromMemory();
         updateProgressInfo();
         renderEntries();
