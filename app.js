@@ -956,10 +956,87 @@ function exportEntriesPDF() {
         alert('No entries to export.');
         return;
     }
-    // Use jsPDF
+
+    // Prefer styled HTML → PDF via html2pdf if available
+    const canUseHtml2pdf = !!(window.html2pdf);
+    if (canUseHtml2pdf) {
+        // Build a temporary printable container with Tailwind styles
+        const container = document.createElement('div');
+        container.id = 'pdf-export-container';
+        container.className = 'p-8 bg-white text-gray-800';
+
+        // Header
+        const header = document.createElement('div');
+        header.className = 'mb-6 text-center';
+        const title = document.createElement('h1');
+        title.className = 'text-3xl font-extrabold';
+        title.textContent = 'My Gratitude Journal';
+        const subtitle = document.createElement('p');
+        subtitle.className = 'text-sm text-gray-500';
+        // Determine date range
+        const sorted = [...entries].sort((a, b) => new Date(a.created) - new Date(b.created));
+        const start = sorted[0]?.created ? new Date(sorted[0].created) : null;
+        const end = sorted[sorted.length - 1]?.created ? new Date(sorted[sorted.length - 1].created) : null;
+        const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        subtitle.textContent = start && end ? `Entries from ${fmt(start)} to ${fmt(end)}` : 'Exported Entries';
+        header.appendChild(title);
+        header.appendChild(subtitle);
+        container.appendChild(header);
+
+        // Entries grid (responsive single column)
+        const list = document.createElement('div');
+        list.className = 'flex flex-col gap-3';
+        entries.forEach(e => {
+            let displayText = e.text;
+            try { displayText = decodeURIComponent(displayText); } catch { }
+            const d = e.created ? (e.created instanceof Date ? e.created : new Date(e.created)) : null;
+            const dateStr = d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` : '';
+
+            const card = document.createElement('div');
+            card.className = 'rounded-xl border border-gray-200 shadow-sm p-4';
+
+            const dateEl = document.createElement('div');
+            dateEl.className = 'text-xs text-gray-500 font-mono mb-2';
+            dateEl.textContent = dateStr;
+
+            const textEl = document.createElement('div');
+            textEl.className = 'prose prose-sm max-w-none whitespace-pre-line';
+            textEl.textContent = displayText;
+
+            card.appendChild(dateEl);
+            card.appendChild(textEl);
+            list.appendChild(card);
+        });
+        container.appendChild(list);
+
+        // Append to body, render to PDF, then clean up
+        document.body.appendChild(container);
+        const opt = {
+            margin: 10,
+            filename: 'gratitude_entries.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+            jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
+        };
+        window.html2pdf().from(container).set(opt).save().then(() => {
+            container.remove();
+        }).catch(() => {
+            container.remove();
+            // Fallback to jsPDF minimal export
+            fallbackJsPdfExport(entries);
+        });
+        return;
+    }
+
+    // Fallback: original jsPDF export with improved spacing and dividers
+    fallbackJsPdfExport(entries);
+}
+
+function fallbackJsPdfExport(entries) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 14;
     let y = 22;
 
@@ -971,47 +1048,67 @@ function exportEntriesPDF() {
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100);
-    doc.text('Exported Entries', pageWidth / 2, y, { align: 'center' });
+    // Date range subtitle
+    const sorted = [...entries].sort((a, b) => new Date(a.created) - new Date(b.created));
+    const start = sorted[0]?.created ? new Date(sorted[0].created) : null;
+    const end = sorted[sorted.length - 1]?.created ? new Date(sorted[sorted.length - 1].created) : null;
+    const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const sub = start && end ? `Entries from ${fmt(start)} to ${fmt(end)}` : 'Exported Entries';
+    doc.text(sub, pageWidth / 2, y, { align: 'center' });
     y += 8;
-    doc.setDrawColor(180);
+    doc.setDrawColor(200);
     doc.line(margin, y, pageWidth - margin, y);
-    y += 6;
+    y += 10;
     doc.setTextColor(30);
 
-    // Write entries to PDF
+    // Entry cards
     doc.setFontSize(11);
+    const lineHeight = 6.2;
     entries.forEach(e => {
-        let dateStr = '';
-        if (e.created) {
-            const d = e.created instanceof Date ? e.created : new Date(e.created);
-            const yyyy = d.getFullYear();
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
-            const dd = String(d.getDate()).padStart(2, '0');
-            dateStr = `${yyyy}-${mm}-${dd}`;
-        }
+        // Prepare data
+        const d = e.created ? (e.created instanceof Date ? e.created : new Date(e.created)) : null;
+        const dateStr = d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` : '';
         let displayText = e.text;
-        try {
-            displayText = decodeURIComponent(displayText);
-        } catch { }
-        // Wrap long text
-        const entryLines = doc.splitTextToSize(displayText, doc.internal.pageSize.getWidth() - margin * 2 - 30);
-        doc.setFont('helvetica', 'bold');
-        doc.text(dateStr, margin, y);
-        doc.setFont('helvetica', 'normal');
-        doc.text(entryLines, margin + 30, y);
-        y += entryLines.length * 7 + 4;
+        try { displayText = decodeURIComponent(displayText); } catch { }
+        const textWidth = pageWidth - margin * 2 - 10; // padding inside card
+        const lines = doc.splitTextToSize(displayText, textWidth);
+        const cardPadding = 5;
+        const cardHeight = (lineHeight * lines.length) + cardPadding * 2 + 6; // 6 for date
+
         // Add page if needed
-        if (y > doc.internal.pageSize.getHeight() - 20) {
+        if (y + cardHeight + 6 > pageHeight - margin) {
             doc.addPage();
             y = 22;
+            // page header rule
+            doc.setDrawColor(230);
+            doc.line(margin, y - 8, pageWidth - margin, y - 8);
         }
+
+        // Card background
+        doc.setDrawColor(220);
+        doc.setFillColor(248, 248, 248);
+        doc.roundedRect(margin, y, pageWidth - margin * 2, cardHeight, 3, 3, 'FD');
+
+        // Date
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(90);
+        doc.text(dateStr, margin + cardPadding, y + cardPadding + 4);
+
+        // Text
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(30);
+        doc.text(lines, margin + cardPadding, y + cardPadding + 10, { maxWidth: textWidth });
+
+        y += cardHeight + 6;
     });
+
+    // Footer page numbers
     const pageCount = doc.internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
         doc.setFontSize(10);
         doc.setTextColor(120);
-        doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 8, { align: 'center' });
+        doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
     }
 
     doc.save('gratitude_entries.pdf');
