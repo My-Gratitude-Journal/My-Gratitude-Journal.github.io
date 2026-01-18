@@ -500,14 +500,19 @@ gratitudeForm.onsubmit = async (e) => {
     // Increment days journaled counter if this is the first entry of the day
     if (!existingTodayEntry) {
         window._daysJournaled = (window._daysJournaled || 0) + 1;
-        try {
-            // Use set with merge to ensure the document exists and field is written
-            await db.collection('users').doc(auth.currentUser.uid).set({
-                daysJournaled: window._daysJournaled
-            }, { merge: true });
-        } catch (err) {
-            console.error('Error writing daysJournaled:', err);
-        }
+    }
+
+    // Always increment total entries counter
+    window._totalEntries = (window._totalEntries || 0) + 1;
+
+    try {
+        // Use set with merge to ensure the document exists and fields are written
+        await db.collection('users').doc(auth.currentUser.uid).set({
+            daysJournaled: window._daysJournaled,
+            totalEntries: window._totalEntries
+        }, { merge: true });
+    } catch (err) {
+        console.error('Error writing counters:', err);
     }
 
     gratitudeInput.value = '';
@@ -540,10 +545,14 @@ function updateProgressInfo() {
         daysJournaledEl.textContent = window._daysJournaled || '0';
     }
 
+    // Display the total entries from the Firebase counter
+    if (totalEntriesEl) {
+        totalEntriesEl.textContent = window._totalEntries || '0';
+    }
+
     if (!entries.length) {
         streakCountEl.textContent = '0';
         longestStreakEl.textContent = '0';
-        totalEntriesEl.textContent = '0';
         return;
     }
     // Sort by date ascending
@@ -574,7 +583,6 @@ function updateProgressInfo() {
     }
     streakCountEl.textContent = streakActive ? currentStreak : 0;
     longestStreakEl.textContent = longest;
-    totalEntriesEl.textContent = entries.length;
 }
 
 // Calendar view logic
@@ -596,10 +604,11 @@ async function loadEntries() {
         hideLoading();
         return;
     }
-    // Load user data to get daysJournaled counter
+    // Load user data to get counters
     try {
         const userDoc = await db.collection('users').doc(auth.currentUser.uid).get();
         window._daysJournaled = userDoc.exists ? (userDoc.data().daysJournaled || 0) : 0;
+        window._totalEntries = userDoc.exists ? (userDoc.data().totalEntries || 0) : 0;
         const snap = await db.collection('users')
             .doc(auth.currentUser.uid)
             .collection('gratitude')
@@ -1499,6 +1508,11 @@ async function deleteEntry(entryId) {
         .doc(entryId)
         .delete();
 
+    // Decrement total entries counter
+    window._totalEntries = Math.max(0, (window._totalEntries || 0) - 1);
+
+    let decrementDaysJournaled = false;
+
     // Check if there are other entries on the same day
     if (entryDateStr) {
         const otherEntriesSameDay = (window._allEntries || []).filter(e => {
@@ -1511,10 +1525,18 @@ async function deleteEntry(entryId) {
         // Decrement days journaled if no other entries on this day
         if (!otherEntriesSameDay) {
             window._daysJournaled = Math.max(0, (window._daysJournaled || 0) - 1);
-            await db.collection('users').doc(auth.currentUser.uid).update({
-                daysJournaled: firebase.firestore.FieldValue.increment(-1)
-            });
+            decrementDaysJournaled = true;
         }
+    }
+
+    // Update both counters in Firestore
+    try {
+        await db.collection('users').doc(auth.currentUser.uid).update({
+            daysJournaled: firebase.firestore.FieldValue.increment(decrementDaysJournaled ? -1 : 0),
+            totalEntries: firebase.firestore.FieldValue.increment(-1)
+        });
+    } catch (err) {
+        console.error('Error updating counters:', err);
     }
 
     // Remove from cache and update UI
