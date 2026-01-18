@@ -1079,15 +1079,46 @@ window.addEventListener('DOMContentLoaded', () => {
     const saveBtn = document.getElementById('pdf-settings-save');
     const cancelBtn = document.getElementById('pdf-settings-cancel');
     const defaultsBtn = document.getElementById('pdf-settings-defaults');
+    const errorMsg = document.getElementById('pdf-settings-error');
+
+    const showPdfError = (msg) => {
+        if (errorMsg) {
+            errorMsg.textContent = msg;
+            errorMsg.classList.remove('hidden');
+        }
+    };
+    const clearPdfError = () => {
+        if (errorMsg) {
+            errorMsg.textContent = '';
+            errorMsg.classList.add('hidden');
+        }
+    };
+
     if (settingsModal && saveBtn && cancelBtn && defaultsBtn) {
-        cancelBtn.onclick = () => settingsModal.classList.add('hidden');
+        cancelBtn.onclick = () => {
+            clearPdfError();
+            settingsModal.classList.add('hidden');
+        };
         defaultsBtn.onclick = () => {
             const s = DEFAULT_PDF_SETTINGS;
             setPdfSettings(s);
             populatePdfSettingsForm(s);
+            clearPdfError();
         };
         saveBtn.onclick = () => {
+            clearPdfError();
             const s = readPdfSettingsForm();
+
+            // Validate date range
+            if (s.dateFrom && s.dateTo) {
+                const fromDate = new Date(s.dateFrom);
+                const toDate = new Date(s.dateTo);
+                if (fromDate > toDate) {
+                    showPdfError('Start date is before end date.');
+                    return;
+                }
+            }
+
             setPdfSettings(s);
             settingsModal.classList.add('hidden');
         };
@@ -1211,6 +1242,7 @@ async function exportEntriesPDFAsync() {
         if (settings.dateFrom || settings.dateTo) {
             const fromDate = settings.dateFrom ? new Date(settings.dateFrom) : null;
             const toDate = settings.dateTo ? new Date(settings.dateTo) : null;
+
             entries = entries.filter(e => {
                 const entryDate = e.created ? new Date(e.created) : null;
                 if (!entryDate) return true;
