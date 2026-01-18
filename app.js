@@ -1235,12 +1235,13 @@ async function exportEntriesPDFAsync() {
                 const card = document.createElement('div');
                 if (settings.layout === 'compact') {
                     card.className = 'border-b border-gray-200 pb-2';
+                    card.style.cssText = 'page-break-inside: avoid; break-inside: avoid;';
                 } else {
                     card.className = 'rounded-xl shadow-sm p-4';
                     if (settings.colorStyle) {
-                        card.style.cssText = 'border: 2px solid #6495DC; background-color: #E6F0FF;';
+                        card.style.cssText = 'border: 2px solid #6495DC; background-color: #E6F0FF; page-break-inside: avoid; break-inside: avoid;';
                     } else {
-                        card.style.cssText = 'border: 1px solid #E5E7EB; background-color: #F8F8F8;';
+                        card.style.cssText = 'border: 1px solid #E5E7EB; background-color: #F8F8F8; page-break-inside: avoid; break-inside: avoid;';
                     }
                 }
 
