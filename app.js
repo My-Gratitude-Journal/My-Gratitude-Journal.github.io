@@ -169,9 +169,22 @@ function ensureOfflineBanner() {
     if (!banner) {
         banner = document.createElement('div');
         banner.id = 'offline-banner';
-        banner.className = 'hidden mb-3 p-3 rounded-lg border text-sm bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-200 border-red-200 dark:border-red-700';
+        banner.className = 'hidden mb-3 p-3 rounded-lg border text-sm bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-200 border-red-200 dark:border-red-700 flex items-center justify-between gap-3';
         const span = document.createElement('span');
         banner.appendChild(span);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'shrink-0 px-3 py-1 rounded-md bg-red-600 text-white hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 text-xs font-semibold';
+        btn.textContent = 'Retry';
+        btn.addEventListener('click', () => {
+            if (typeof navigator !== 'undefined' && navigator && navigator.onLine) {
+                showLoading('Syncing entries...');
+                try { loadEntries(true); } catch { /* ignore */ }
+            } else {
+                setStatus('Still offline. Retry when back online.', 'info');
+            }
+        });
+        banner.appendChild(btn);
         const appRoot = document.getElementById('app');
         if (appRoot) {
             appRoot.insertBefore(banner, appRoot.firstChild);
