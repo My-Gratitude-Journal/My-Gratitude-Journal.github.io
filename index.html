@@ -42,14 +42,6 @@
 </head>
 
 <body class="min-h-screen bg-gray-100 dark:bg-darkbg transition-colors">
-    <script>
-        // Register Service Worker for offline support (use relative path for GH Pages)
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').catch(function (err) {
-                console.warn('SW registration failed:', err);
-            });
-        }
-    </script>
     <div id="app"
         class="w-[95vw] max-w-4xl mx-auto mt-6 bg-white/90 dark:bg-darkcard/90 rounded-3xl shadow-2xl p-4 sm:p-10 min-h-[85vh] flex flex-col gap-8 border border-gray-200 dark:border-gray-800">
         <!-- Header with Hamburger Menu -->

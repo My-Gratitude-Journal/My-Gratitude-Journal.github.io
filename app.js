@@ -534,7 +534,21 @@ auth.onAuthStateChanged(async user => {
             }
             userSalt = salt;
         } catch (err) {
-            console.error('Error initializing user doc:', err);
+            console.error('Error initializing user doc (possibly offline):', err);
+            // If offline or Firestore unavailable, try to load salt from localStorage
+            const cachedSalt = localStorage.getItem(`gj_salt_${user.uid}`);
+            if (cachedSalt) {
+                userSalt = cachedSalt;
+            } else {
+                // Generate a temporary salt; will sync when online
+                userSalt = CryptoJS.lib.WordArray.random(16).toString(CryptoJS.enc.Hex);
+            }
+            window._daysJournaled = 0; // Will be synced when online
+        }
+
+        // Cache the salt for offline use
+        if (userSalt) {
+            localStorage.setItem(`gj_salt_${user.uid}`, userSalt);
         }
 
         // Derive userKey if missing but password is available
