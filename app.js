@@ -236,11 +236,16 @@ auth.onAuthStateChanged(async user => {
         if (exportBtn) exportBtn.style.display = '';
         if (exportPdfBtn) exportPdfBtn.style.display = '';
 
-        // Initialize user document if it doesn't exist
+        // Initialize user document only if it doesn't exist (avoid resetting existing counter)
         try {
-            await db.collection('users').doc(user.uid).set({
-                daysJournaled: 0
-            }, { merge: true });
+            const userRef = db.collection('users').doc(user.uid);
+            const snap = await userRef.get();
+            if (!snap.exists) {
+                await userRef.set({ daysJournaled: 0 }, { merge: true });
+                window._daysJournaled = 0;
+            } else {
+                window._daysJournaled = snap.data().daysJournaled || 0;
+            }
         } catch (err) {
             console.error('Error initializing user doc:', err);
         }
@@ -349,7 +354,9 @@ function updateProgressInfo() {
     const daysJournaledEl = document.getElementById('days-journaled');
     const totalEntriesEl = document.getElementById('total-entries');
 
-    daysJournaledEl.textContent = window._daysJournaled || '0';
+    if (daysJournaledEl) {
+        daysJournaledEl.textContent = window._daysJournaled || '0';
+    }
 
     if (!entries.length) {
         streakCountEl.textContent = '0';
