@@ -163,6 +163,50 @@ const hideLoading = () => {
     if (appRoot) appRoot.removeAttribute('aria-busy');
 };
 
+// Offline banner helpers
+function ensureOfflineBanner() {
+    let banner = document.getElementById('offline-banner');
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'offline-banner';
+        banner.className = 'hidden mb-3 p-3 rounded-lg border text-sm bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-200 border-red-200 dark:border-red-700';
+        const span = document.createElement('span');
+        banner.appendChild(span);
+        const appRoot = document.getElementById('app');
+        if (appRoot) {
+            appRoot.insertBefore(banner, appRoot.firstChild);
+        }
+    }
+    return banner;
+}
+
+function showOfflineBanner(message) {
+    const banner = ensureOfflineBanner();
+    const span = banner.querySelector('span') || banner;
+    span.textContent = message || "You're offline. Showing cached entries. Favorites are always available offline.";
+    banner.classList.remove('hidden');
+}
+
+function hideOfflineBanner() {
+    const banner = document.getElementById('offline-banner');
+    if (banner) banner.classList.add('hidden');
+}
+
+// Show banner on initial load if offline
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof navigator !== 'undefined' && navigator && navigator.onLine === false) {
+        showOfflineBanner("You're offline. Showing cached entries. Favorites are always available offline.");
+    }
+});
+
+// React to network changes
+window.addEventListener('offline', () => {
+    showOfflineBanner("You're offline. Showing cached entries. Favorites are always available offline.");
+});
+window.addEventListener('online', () => {
+    hideOfflineBanner();
+});
+
 // Skeleton placeholders for entries list
 function showEntriesSkeleton(count = 3) {
     if (!entriesList) return;
@@ -743,6 +787,8 @@ async function loadEntries() {
         if (window._currentView === 'calendar') {
             renderCalendarView();
         }
+        // We fetched successfully, ensure offline banner is hidden
+        hideOfflineBanner();
     } catch (err) {
         console.error('Error loading entries, attempting offline cache:', err);
         const offline = loadOfflineEntriesFromStorage();
@@ -750,6 +796,7 @@ async function loadEntries() {
             window._allEntries = offline;
             window._allEntriesLoaded = true;
             setStatus('You are viewing offline entries.', 'info');
+            showOfflineBanner("You're offline. Showing cached entries. Favorites are always available offline.");
             updateProgressInfo();
             renderEntries();
             if (window._currentView === 'calendar') {
