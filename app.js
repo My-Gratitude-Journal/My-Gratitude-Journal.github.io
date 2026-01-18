@@ -1103,7 +1103,9 @@ const DEFAULT_PDF_SETTINGS = {
     showHeader: true,
     customTitle: '',
     colorStyle: false,
-    favoritesOnly: false
+    favoritesOnly: false,
+    dateFrom: '',
+    dateTo: ''
 };
 
 function getPdfSettings() {
@@ -1131,6 +1133,8 @@ function populatePdfSettingsForm(s) {
     const customTitle = f('pdf-custom-title');
     const colorStyle = f('pdf-color-style');
     const favoritesOnly = f('pdf-favorites-only');
+    const dateFrom = f('pdf-date-from');
+    const dateTo = f('pdf-date-to');
     if (pageSize) pageSize.value = s.format;
     if (orientation) orientation.value = s.orientation;
     if (margin) margin.value = String(s.margin);
@@ -1139,6 +1143,8 @@ function populatePdfSettingsForm(s) {
     if (customTitle) customTitle.value = s.customTitle || '';
     if (colorStyle) colorStyle.checked = !!s.colorStyle;
     if (favoritesOnly) favoritesOnly.checked = !!s.favoritesOnly;
+    if (dateFrom) dateFrom.value = s.dateFrom || '';
+    if (dateTo) dateTo.value = s.dateTo || '';
 }
 
 function readPdfSettingsForm() {
@@ -1151,6 +1157,8 @@ function readPdfSettingsForm() {
     const customTitle = f('pdf-custom-title');
     const colorStyle = f('pdf-color-style');
     const favoritesOnly = f('pdf-favorites-only');
+    const dateFrom = f('pdf-date-from');
+    const dateTo = f('pdf-date-to');
     return {
         format: pageSize ? pageSize.value : DEFAULT_PDF_SETTINGS.format,
         orientation: orientation ? orientation.value : DEFAULT_PDF_SETTINGS.orientation,
@@ -1159,7 +1167,9 @@ function readPdfSettingsForm() {
         showHeader: showHeader ? !!showHeader.checked : DEFAULT_PDF_SETTINGS.showHeader,
         customTitle: customTitle ? (customTitle.value || '').trim() : DEFAULT_PDF_SETTINGS.customTitle,
         colorStyle: colorStyle ? !!colorStyle.checked : DEFAULT_PDF_SETTINGS.colorStyle,
-        favoritesOnly: favoritesOnly ? !!favoritesOnly.checked : DEFAULT_PDF_SETTINGS.favoritesOnly
+        favoritesOnly: favoritesOnly ? !!favoritesOnly.checked : DEFAULT_PDF_SETTINGS.favoritesOnly,
+        dateFrom: dateFrom ? (dateFrom.value || '').trim() : DEFAULT_PDF_SETTINGS.dateFrom,
+        dateTo: dateTo ? (dateTo.value || '').trim() : DEFAULT_PDF_SETTINGS.dateTo
     };
 }
 
@@ -1193,6 +1203,28 @@ async function exportEntriesPDFAsync() {
             entries = allEntries.filter(e => e.starred);
             if (!entries.length) {
                 alert('No starred entries to export.');
+                return;
+            }
+        }
+
+        // Filter by date range if specified
+        if (settings.dateFrom || settings.dateTo) {
+            const fromDate = settings.dateFrom ? new Date(settings.dateFrom) : null;
+            const toDate = settings.dateTo ? new Date(settings.dateTo) : null;
+            entries = entries.filter(e => {
+                const entryDate = e.created ? new Date(e.created) : null;
+                if (!entryDate) return true;
+                if (fromDate && entryDate < fromDate) return false;
+                if (toDate) {
+                    // Include the entire day, so add 1 day to toDate for comparison
+                    const endOfDay = new Date(toDate);
+                    endOfDay.setDate(endOfDay.getDate() + 1);
+                    if (entryDate >= endOfDay) return false;
+                }
+                return true;
+            });
+            if (!entries.length) {
+                alert('No entries found in the selected date range.');
                 return;
             }
         }
