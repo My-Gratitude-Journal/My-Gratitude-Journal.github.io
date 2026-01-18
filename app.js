@@ -351,57 +351,6 @@ function updateProgressInfo() {
 
 // Calendar view logic
 window._currentView = 'list';
-function renderCalendarView() {
-    const calendarView = document.getElementById('calendar-view');
-    const entries = window._allEntries || [];
-    if (!calendarView) return;
-    // Build a map of dates with entries
-    const dateMap = {};
-    entries.forEach(e => {
-        const d = new Date(e.created);
-        d.setHours(0, 0, 0, 0);
-        const key = d.toISOString().slice(0, 10);
-        if (!dateMap[key]) dateMap[key] = [];
-        dateMap[key].push(e);
-    });
-    // Get current month
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    // Build calendar grid
-    let html = `<div class="grid grid-cols-7 gap-2">`;
-    // Weekday headers
-    const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    weekdays.forEach(wd => {
-        html += `<div class="text-xs font-bold text-gray-500 dark:text-gray-400 text-center">${wd}</div>`;
-    });
-    // Pad first week
-    for (let i = 0; i < firstDay.getDay(); i++) {
-        html += `<div></div>`;
-    }
-    // Days
-    for (let d = 1; d <= daysInMonth; d++) {
-        const dateObj = new Date(year, month, d);
-        dateObj.setHours(0, 0, 0, 0);
-        const key = dateObj.toISOString().slice(0, 10);
-        const hasEntry = !!dateMap[key];
-        html += `<button class="rounded-lg px-2 py-2 text-sm font-semibold w-full h-12 flex flex-col items-center justify-center ${hasEntry ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-500'}" data-date="${key}">${d}${hasEntry ? `<span class='block text-xs mt-1'>${dateMap[key].length} entry${dateMap[key].length > 1 ? 'ies' : 'y'}</span>` : ''}</button>`;
-    }
-    html += `</div>`;
-    calendarView.innerHTML = html;
-    // Add click listeners to calendar days
-    Array.from(calendarView.querySelectorAll('button[data-date]')).forEach(btn => {
-        btn.onclick = () => {
-            document.getElementById('date-filter').value = btn.getAttribute('data-date');
-            document.getElementById('calendar-modal').classList.add('hidden');
-            window._currentView = 'list';
-            renderEntries();
-        };
-    });
-}
 
 async function loadEntries() {
     // Use cache unless forced refresh
@@ -685,7 +634,7 @@ function renderEntries() {
                 ? 'bg-primary text-white hover:bg-blue-600 dark:hover:bg-blue-400'
                 : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-500 opacity-60 cursor-not-allowed';
             let disabled = hasEntry ? '' : 'disabled';
-            html += `<button class="rounded-lg px-1 py-2 sm:px-2 text-sm sm:text-base font-semibold w-full h-10 sm:h-12 flex flex-col items-center justify-center ${btnClass}" data-date="${key}" ${disabled}>${d}${hasEntry ? `<span class='block text-[10px] sm:text-xs mt-1'>${dateMap[key].length} ${dateMap[key].length === 1 ? 'entry' : 'entries'}</span>` : ''}</button>`;
+            html += `<button class="rounded-lg px-1 py-3 sm:px-2 sm:py-4 text-base sm:text-lg font-semibold w-full h-auto min-h-[70px] sm:min-h-[80px] flex flex-col items-center justify-center gap-1 ${btnClass}" data-date="${key}" ${disabled}>${d}${hasEntry ? `<span class='block text-xs'>${dateMap[key].length} ${dateMap[key].length === 1 ? 'entry' : 'entries'}</span>` : ''}</button>`;
         }
         html += `</div>`;
         calendarView.innerHTML = html;
@@ -754,48 +703,6 @@ window.addEventListener('DOMContentLoaded', () => {
         };
     }
 });
-
-function exportEntriesCSV() {
-    const entries = window._allEntries || [];
-    if (!entries.length) {
-        alert('No entries to export.');
-        return;
-    }
-    // CSV header
-    let csv = 'Date,Entry\n';
-    entries.forEach(e => {
-        let dateStr = '';
-        if (e.created) {
-            const d = e.created instanceof Date ? e.created : new Date(e.created);
-            const yyyy = d.getFullYear();
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
-            const dd = String(d.getDate()).padStart(2, '0');
-            dateStr = `${yyyy}-${mm}-${dd}`;
-        }
-        // Decode URL-encoded newlines, escape quotes/commas, preserve newlines
-        let entryText = e.text || '';
-        try {
-            entryText = decodeURIComponent(entryText);
-        } catch { }
-        entryText = entryText.replace(/"/g, '""');
-        if (entryText.includes(',') || entryText.includes('"') || entryText.includes('\n')) {
-            entryText = `"${entryText.replace(/\r?\n/g, '\r\n')}"`;
-        }
-        csv += `${dateStr},${entryText}\n`;
-    });
-    // Download CSV
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'gratitude_entries.csv';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }, 100);
-}
 
 function exportEntriesPDF() {
     const entries = window._allEntries || [];
