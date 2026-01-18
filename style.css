@@ -53,15 +53,3 @@ textarea:focus-visible {
         transform: rotate(360deg);
     }
 }
-
-@media (max-width: 640px) {
-    #show-privacy-btn {
-        left: 50%;
-        right: auto;
-        bottom: 12px;
-        transform: translateX(-50%);
-        width: calc(100vw - 2.5rem);
-        max-width: 360px;
-        text-align: center;
-    }
-}
