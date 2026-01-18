@@ -1018,7 +1018,13 @@ function exportEntriesPDF() {
             html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
             jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
         };
-        window.html2pdf().from(container).set(opt).save().then(() => {
+        const worker = window.html2pdf().from(container).set(opt).toPdf();
+        worker.get('pdf').then(pdf => {
+            const blob = pdf.output('blob');
+            const url = URL.createObjectURL(blob);
+            showPdfPreview(url, opt.filename, () => {
+                URL.revokeObjectURL(url);
+            });
             container.remove();
         }).catch(() => {
             container.remove();
@@ -1111,7 +1117,61 @@ function fallbackJsPdfExport(entries) {
         doc.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
     }
 
-    doc.save('gratitude_entries.pdf');
+    const blob = doc.output('blob');
+    const url = URL.createObjectURL(blob);
+    showPdfPreview(url, 'gratitude_entries.pdf', () => {
+        URL.revokeObjectURL(url);
+    });
+}
+
+function showPdfPreview(blobUrl, filename, onClose) {
+    const overlay = document.createElement('div');
+    overlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-labelledby', 'pdf-preview-title');
+
+    const modal = document.createElement('div');
+    modal.className = 'bg-white dark:bg-darkcard rounded-2xl shadow-2xl w-full max-w-4xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col';
+
+    const header = document.createElement('div');
+    header.className = 'flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700';
+    const h = document.createElement('h2');
+    h.id = 'pdf-preview-title';
+    h.className = 'text-lg font-bold text-gray-800 dark:text-gray-100';
+    h.textContent = 'PDF Preview';
+    const actions = document.createElement('div');
+    actions.className = 'flex gap-2';
+    const downloadBtn = document.createElement('a');
+    downloadBtn.className = 'px-4 py-2 bg-primary text-white rounded hover:bg-blue-600 font-semibold';
+    downloadBtn.href = blobUrl;
+    downloadBtn.download = filename || 'export.pdf';
+    downloadBtn.textContent = 'Download';
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded hover:bg-gray-300 dark:hover:bg-gray-600 font-medium';
+    closeBtn.textContent = 'Close';
+    actions.appendChild(downloadBtn);
+    actions.appendChild(closeBtn);
+    header.appendChild(h);
+    header.appendChild(actions);
+
+    const frame = document.createElement('iframe');
+    frame.className = 'w-full h-[70vh]';
+    frame.src = blobUrl;
+
+    modal.appendChild(header);
+    modal.appendChild(frame);
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    function cleanup() {
+        overlay.remove();
+        if (typeof onClose === 'function') onClose();
+    }
+    closeBtn.onclick = cleanup;
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) cleanup();
+    });
 }
 
 function exportEntriesCSV() {
