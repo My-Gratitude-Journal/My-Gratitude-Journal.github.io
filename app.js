@@ -762,7 +762,7 @@ function exportEntriesPDF() {
     // Title
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(20);
-    doc.text('Gratitude Journal', pageWidth / 2, y, { align: 'center' });
+    doc.text('My Gratitude Journal', pageWidth / 2, y, { align: 'center' });
     y += 10;
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
