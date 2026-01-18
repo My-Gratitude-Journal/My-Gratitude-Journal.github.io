@@ -654,10 +654,7 @@ function renderEntries() {
             if (!e.created) return false;
             const entryDate = e.created instanceof Date ? e.created : new Date(e.created);
             // Compare only date part
-            const yyyy = entryDate.getFullYear();
-            const mm = String(entryDate.getMonth() + 1).padStart(2, '0');
-            const dd = String(entryDate.getDate()).padStart(2, '0');
-            return `${yyyy}-${mm}-${dd}` === dateVal;
+            return entryDate.toLocaleDateString() === new Date(dateVal).toLocaleDateString();
         });
     }
     entriesList.innerHTML = '';
@@ -669,10 +666,7 @@ function renderEntries() {
         const dateSpan = document.createElement('span');
         if (e.created) {
             const d = e.created instanceof Date ? e.created : new Date(e.created);
-            const yyyy = d.getFullYear();
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
-            const dd = String(d.getDate()).padStart(2, '0');
-            dateSpan.textContent = `${yyyy}-${mm}-${dd}`;
+            dateSpan.textContent = d.toLocaleDateString();
         } else {
             dateSpan.textContent = '';
         }
@@ -1065,7 +1059,7 @@ function exportEntriesPDF() {
         const sorted = [...entries].sort((a, b) => new Date(a.created) - new Date(b.created));
         const start = sorted[0]?.created ? new Date(sorted[0].created) : null;
         const end = sorted[sorted.length - 1]?.created ? new Date(sorted[sorted.length - 1].created) : null;
-        const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const fmt = (d) => d.toLocaleDateString();
         subtitle.textContent = (settings.showHeader && start && end) ? `Entries from ${fmt(start)} to ${fmt(end)}` : (settings.showHeader ? 'Exported Entries' : '');
         header.appendChild(title);
         if (settings.showHeader && subtitle.textContent) header.appendChild(subtitle);
@@ -1078,7 +1072,7 @@ function exportEntriesPDF() {
             let displayText = e.text;
             try { displayText = decodeURIComponent(displayText); } catch { }
             const d = e.created ? (e.created instanceof Date ? e.created : new Date(e.created)) : null;
-            const dateStr = d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` : '';
+            const dateStr = d ? d.toLocaleDateString() : '';
 
             const card = document.createElement('div');
             if (settings.layout === 'compact') {
@@ -1178,7 +1172,7 @@ function fallbackJsPdfExport(entries) {
     const sorted = [...entries].sort((a, b) => new Date(a.created) - new Date(b.created));
     const start = sorted[0]?.created ? new Date(sorted[0].created) : null;
     const end = sorted[sorted.length - 1]?.created ? new Date(sorted[sorted.length - 1].created) : null;
-    const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const fmt = (d) => d.toLocaleDateString();
     const sub = start && end ? `Entries from ${fmt(start)} to ${fmt(end)}` : 'Exported Entries';
     doc.text(sub, pageWidth / 2, y, { align: 'center' });
     y += 8;
@@ -1193,7 +1187,7 @@ function fallbackJsPdfExport(entries) {
     entries.forEach(e => {
         // Prepare data
         const d = e.created ? (e.created instanceof Date ? e.created : new Date(e.created)) : null;
-        const dateStr = d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` : '';
+        const dateStr = d ? d.toLocaleDateString() : '';
         let displayText = e.text;
         try { displayText = decodeURIComponent(displayText); } catch { }
         const textWidth = pageWidth - margin * 2 - 10; // padding inside card
