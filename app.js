@@ -629,6 +629,46 @@ async function loadEntries() {
 }
 
 // Fetch all entries (for export/counting, no limit)
+// Fetch entries with cursor-based pagination
+async function fetchEntriesBatch(startAt = 0, limit = 20) {
+    try {
+        let query = db.collection('users')
+            .doc(auth.currentUser.uid)
+            .collection('gratitude')
+            .orderBy('created', 'desc');
+
+        // If startAt > 0, we need to skip the first N entries
+        // Since offset isn't available, we'll fetch startAt + limit and slice
+        const allDocsNeeded = startAt + limit;
+        const snap = await query.limit(allDocsNeeded).get();
+
+        const entries = [];
+        const activeKey = userKey || legacyKey;
+        let index = 0;
+
+        snap.forEach(doc => {
+            // Only process documents after the startAt index
+            if (index >= startAt) {
+                const data = doc.data();
+                entries.push({
+                    id: doc.id,
+                    text: decrypt(data.entry, activeKey),
+                    created: data.created && data.created.toDate ? data.created.toDate() : (data.created instanceof Date ? data.created : new Date(data.created)),
+                    starred: !!data.starred
+                });
+            }
+            index++;
+        });
+
+        // Return only up to 'limit' entries
+        return entries.slice(0, limit);
+    } catch (e) {
+        console.error('Error fetching entries batch:', e);
+        return [];
+    }
+}
+
+// Legacy function for backward compatibility (used by exports)
 async function fetchAllEntries() {
     try {
         const snap = await db.collection('users')

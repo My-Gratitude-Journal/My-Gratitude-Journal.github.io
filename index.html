@@ -299,16 +299,30 @@
             const loadMoreBtn = document.getElementById('load-more-btn');
             if (loadMoreBtn) {
                 loadMoreBtn.addEventListener('click', async () => {
-                    if (window.fetchAllEntries) {
-                        showLoading('Loading all entries...');
+                    console.log('Load More button clicked');
+                    if (window.fetchEntriesBatch) {
+                        showLoading('Loading more entries...');
                         try {
-                            window._allEntries = await window.fetchAllEntries();
-                            window._allEntriesLoaded = true;
-                            if (window.updateProgressInfo) window.updateProgressInfo();
-                            renderEntries();
+                            const currentCount = (window._allEntries || []).length;
+                            console.log('Current count:', currentCount);
+                            const nextBatch = await window.fetchEntriesBatch(currentCount, 20);
+                            console.log('Next batch length:', nextBatch.length);
+                            if (nextBatch && nextBatch.length > 0) {
+                                window._allEntries = [...(window._allEntries || []), ...nextBatch];
+                                console.log('Total entries now:', window._allEntries.length);
+                                // If we got fewer than 20, we've reached the end
+                                if (nextBatch.length < 20) {
+                                    window._allEntriesLoaded = true;
+                                    console.log('All entries loaded');
+                                }
+                                if (window.updateProgressInfo) window.updateProgressInfo();
+                                renderEntries();
+                            }
                         } finally {
                             hideLoading();
                         }
+                    } else {
+                        console.log('fetchEntriesBatch not available');
                     }
                 });
             }
