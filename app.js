@@ -970,7 +970,8 @@ const DEFAULT_PDF_SETTINGS = {
     margin: 10,
     layout: 'comfortable',
     showHeader: true,
-    customTitle: ''
+    customTitle: '',
+    colorStyle: false
 };
 
 function getPdfSettings() {
@@ -996,12 +997,14 @@ function populatePdfSettingsForm(s) {
     const layout = f('pdf-layout');
     const showHeader = f('pdf-show-header');
     const customTitle = f('pdf-custom-title');
+    const colorStyle = f('pdf-color-style');
     if (pageSize) pageSize.value = s.format;
     if (orientation) orientation.value = s.orientation;
     if (margin) margin.value = String(s.margin);
     if (layout) layout.value = s.layout;
     if (showHeader) showHeader.checked = !!s.showHeader;
     if (customTitle) customTitle.value = s.customTitle || '';
+    if (colorStyle) colorStyle.checked = !!s.colorStyle;
 }
 
 function readPdfSettingsForm() {
@@ -1012,13 +1015,15 @@ function readPdfSettingsForm() {
     const layout = f('pdf-layout');
     const showHeader = f('pdf-show-header');
     const customTitle = f('pdf-custom-title');
+    const colorStyle = f('pdf-color-style');
     return {
         format: pageSize ? pageSize.value : DEFAULT_PDF_SETTINGS.format,
         orientation: orientation ? orientation.value : DEFAULT_PDF_SETTINGS.orientation,
         margin: margin ? Number(margin.value) : DEFAULT_PDF_SETTINGS.margin,
         layout: layout ? layout.value : DEFAULT_PDF_SETTINGS.layout,
         showHeader: showHeader ? !!showHeader.checked : DEFAULT_PDF_SETTINGS.showHeader,
-        customTitle: customTitle ? (customTitle.value || '').trim() : DEFAULT_PDF_SETTINGS.customTitle
+        customTitle: customTitle ? (customTitle.value || '').trim() : DEFAULT_PDF_SETTINGS.customTitle,
+        colorStyle: colorStyle ? !!colorStyle.checked : DEFAULT_PDF_SETTINGS.colorStyle
     };
 }
 
@@ -1078,11 +1083,21 @@ function exportEntriesPDF() {
             if (settings.layout === 'compact') {
                 card.className = 'border-b border-gray-200 pb-2';
             } else {
-                card.className = 'rounded-xl border border-gray-200 shadow-sm p-4';
+                card.className = 'rounded-xl shadow-sm p-4';
+                if (settings.colorStyle) {
+                    card.style.cssText = 'border: 2px solid #6495DC; background-color: #E6F0FF;';
+                } else {
+                    card.style.cssText = 'border: 1px solid #E5E7EB; background-color: #F8F8F8;';
+                }
             }
 
             const dateEl = document.createElement('div');
-            dateEl.className = 'text-xs text-gray-500 font-mono mb-2';
+            dateEl.className = 'text-xs font-mono mb-2';
+            if (settings.colorStyle) {
+                dateEl.style.cssText = 'color: #2860B4; font-weight: bold;';
+            } else {
+                dateEl.style.cssText = 'color: #6B7280;';
+            }
             dateEl.textContent = dateStr;
 
             const textEl = document.createElement('div');
@@ -1221,14 +1236,23 @@ function fallbackJsPdfExport(entries) {
             doc.setDrawColor(220);
             doc.line(margin, y, pageWidth - margin, y);
         } else {
-            doc.setDrawColor(220);
-            doc.setFillColor(248, 248, 248);
+            if (settings.colorStyle) {
+                doc.setDrawColor(100, 150, 220); // blue border
+                doc.setFillColor(230, 240, 255); // light blue background
+            } else {
+                doc.setDrawColor(220);
+                doc.setFillColor(248, 248, 248);
+            }
             doc.roundedRect(margin, y, pageWidth - margin * 2, cardHeight, 3, 3, 'FD');
         }
 
         // Date
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(90);
+        if (settings.colorStyle) {
+            doc.setTextColor(40, 100, 180); // darker blue for date
+        } else {
+            doc.setTextColor(90);
+        }
         doc.text(dateStr, margin + cardPadding, y + cardPadding + 4);
 
         // Text
