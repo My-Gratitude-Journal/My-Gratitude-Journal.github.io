@@ -69,11 +69,15 @@ const showLoading = (msg = 'Loading your entries...') => {
     const span = overlay.querySelector('span');
     if (span) span.textContent = msg;
     overlay.classList.remove('hidden');
+    const appRoot = document.getElementById('app');
+    if (appRoot) appRoot.setAttribute('aria-busy', 'true');
 };
 const hideLoading = () => {
     const overlay = getLoadingOverlay();
     if (!overlay) return;
     overlay.classList.add('hidden');
+    const appRoot = document.getElementById('app');
+    if (appRoot) appRoot.removeAttribute('aria-busy');
 };
 
 // Skeleton placeholders for entries list
@@ -158,6 +162,8 @@ let statusTimer = null;
 if (!statusMsg) {
     statusMsg = document.createElement('div');
     statusMsg.id = 'status-msg';
+    statusMsg.setAttribute('role', 'status');
+    statusMsg.setAttribute('aria-live', 'polite');
     statusMsg.style.display = 'none';
     statusMsg.style.marginTop = '8px';
     statusMsg.style.padding = '10px 12px';
@@ -212,8 +218,10 @@ if (favoritesToggle) {
     favoritesToggle.onclick = () => {
         window._showFavoritesOnly = !window._showFavoritesOnly;
         favoritesToggle.textContent = window._showFavoritesOnly ? '★ Show All Entries' : '★ Show Favorites Only';
+        favoritesToggle.setAttribute('aria-pressed', String(window._showFavoritesOnly));
         renderEntries();
     };
+    favoritesToggle.setAttribute('aria-pressed', 'false');
 }
 
 // Show/hide forms
@@ -684,6 +692,8 @@ function renderEntries() {
         starBtn.innerHTML = e.starred ? '★' : '☆';
         starBtn.title = e.starred ? 'Unstar' : 'Star';
         starBtn.className = `px-2 py-1 rounded text-lg font-bold ${e.starred ? 'text-yellow-400' : 'text-gray-400'} hover:text-yellow-500`;
+        starBtn.setAttribute('aria-pressed', String(e.starred));
+        starBtn.setAttribute('aria-label', e.starred ? 'Unfavorite entry' : 'Mark entry as favorite');
         starBtn.onclick = () => optimisticToggleStar(e.id, !e.starred);
         // Optimistic UI for starring an entry
         function optimisticToggleStar(entryId, newStarValue) {
@@ -803,6 +813,8 @@ function renderEntries() {
             window._currentView = 'calendar';
             renderCalendarView();
             calendarModal.classList.remove('hidden');
+            const closeBtn = document.getElementById('close-calendar-btn');
+            if (closeBtn) closeBtn.focus();
         };
         closeCalendarBtn.onclick = () => {
             calendarModal.classList.add('hidden');
@@ -928,6 +940,8 @@ window.addEventListener('DOMContentLoaded', () => {
             window._currentView = 'calendar';
             renderCalendarView();
             calendarModal.classList.remove('hidden');
+            const closeBtn = document.getElementById('close-calendar-btn');
+            if (closeBtn) closeBtn.focus();
         };
         closeCalendarBtn.onclick = () => {
             calendarModal.classList.add('hidden');
@@ -1097,6 +1111,7 @@ function openEditModal(entryId, entryText) {
     editingEntryId = entryId;
     editEntryInput.value = decodeURIComponent(entryText);
     editModal.classList.remove('hidden');
+    setTimeout(() => editEntryInput.focus(), 0);
 }
 
 cancelEditBtn.onclick = () => {

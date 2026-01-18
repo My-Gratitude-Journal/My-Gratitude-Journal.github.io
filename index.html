@@ -49,7 +49,7 @@
             <h1
                 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-primary dark:text-blue-300 drop-shadow-lg">
                 My Gratitude Journal</h1>
-            <button id="hamburger-toggle"
+            <button id="hamburger-toggle" aria-label="Open menu" aria-expanded="false"
                 class="p-2 rounded-xl bg-gray-100 dark:bg-gray-700 hover:bg-blue-100 dark:hover:bg-gray-600 transition focus:outline-none focus:ring-2 focus:ring-primary shadow">
                 <svg id="hamburger-icon" class="w-7 h-7 text-gray-800 dark:text-white" fill="none" stroke="currentColor"
                     viewBox="0 0 24 24">
@@ -60,12 +60,13 @@
         </div>
 
         <!-- Side Menu (Hamburger) -->
-        <div id="side-menu" class="hidden fixed inset-0 z-40">
-            <div id="menu-overlay" class="fixed inset-0 bg-black bg-opacity-40"></div>
+        <div id="side-menu" class="hidden fixed inset-0 z-40" role="dialog" aria-modal="true"
+            aria-labelledby="menu-title">
+            <div id="menu-overlay" class="fixed inset-0 bg-black bg-opacity-40" aria-hidden="true"></div>
             <div
                 class="fixed top-0 right-0 h-full w-72 bg-white/95 dark:bg-gray-900/95 shadow-2xl flex flex-col p-8 z-50 rounded-l-3xl border-l border-gray-200 dark:border-gray-800">
                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-bold text-gray-800 dark:text-white">Menu</h2>
+                    <h2 id="menu-title" class="text-xl font-bold text-gray-800 dark:text-white">Menu</h2>
                     <button id="hamburger-close" class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-800">
                         <svg class="w-6 h-6 text-gray-800 dark:text-white" fill="none" stroke="currentColor"
                             viewBox="0 0 24 24">
@@ -161,10 +162,12 @@
             </div>
             <!-- Calendar Modal -->
             <div id="calendar-modal"
-                class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 hidden">
+                class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 hidden" role="dialog"
+                aria-modal="true" aria-labelledby="calendar-title">
                 <div
                     class="bg-white dark:bg-darkcard rounded-2xl p-4 sm:p-6 shadow-2xl w-full max-w-2xl border border-gray-200 dark:border-gray-700 mx-2 max-h-[90vh] overflow-y-auto">
-                    <h3 class="text-2xl sm:text-3xl font-bold mb-4 text-gray-800 dark:text-gray-100 text-center">
+                    <h3 id="calendar-title"
+                        class="text-2xl sm:text-3xl font-bold mb-4 text-gray-800 dark:text-gray-100 text-center">
                         Calendar
                     </h3>
                     <div class="flex items-center justify-between mb-4 gap-2">
@@ -211,10 +214,12 @@
             <ul id="entries-list" class="space-y-4"></ul>
             <!-- Edit Entry Modal -->
             <div id="edit-modal"
-                class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 hidden">
+                class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 hidden" role="dialog"
+                aria-modal="true" aria-labelledby="edit-modal-title">
                 <div
                     class="bg-white dark:bg-darkcard rounded-2xl p-8 shadow-2xl w-full max-w-md border border-gray-200 dark:border-gray-700">
-                    <h3 class="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">Edit Entry</h3>
+                    <h3 id="edit-modal-title" class="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">Edit Entry
+                    </h3>
                     <textarea id="edit-entry-input"
                         class="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 mb-6 shadow-sm"
                         rows="4"></textarea>
@@ -243,10 +248,12 @@
 
             function closeMenu() {
                 sideMenu.classList.add('hidden');
+                if (hamburgerToggle) hamburgerToggle.setAttribute('aria-expanded', 'false');
             }
 
             function openMenu() {
                 sideMenu.classList.remove('hidden');
+                if (hamburgerToggle) hamburgerToggle.setAttribute('aria-expanded', 'true');
             }
 
             hamburgerToggle.addEventListener('click', openMenu);
@@ -274,9 +281,10 @@
     </script>
     <script src="app.js"></script>
     <!-- Privacy Notice Modal -->
-    <div id="privacy-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div id="privacy-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden"
+        role="dialog" aria-modal="true" aria-labelledby="privacy-title">
         <div class="bg-white dark:bg-darkcard rounded-lg shadow-lg max-w-lg w-full p-6 relative">
-            <h2 class="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">Privacy Notice</h2>
+            <h2 id="privacy-title" class="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">Privacy Notice</h2>
             <div class="text-gray-700 dark:text-gray-200 text-sm mb-4 max-h-64 overflow-y-auto">
                 <p><strong>Data Encryption:</strong> Your journal entries are encrypted in your browser using your
                     password before being sent to Firebase. Only you can decrypt your data; no one (including the app
@@ -295,7 +303,7 @@
         </div>
     </div>
     <!-- Loading overlay for entry fetches -->
-    <div id="loading-overlay"
+    <div id="loading-overlay" role="status" aria-live="polite"
         class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
         <div
             class="bg-white dark:bg-darkcard text-gray-800 dark:text-gray-100 px-5 py-4 rounded-xl shadow-lg flex items-center gap-3 text-base font-semibold border border-gray-200 dark:border-gray-700">
