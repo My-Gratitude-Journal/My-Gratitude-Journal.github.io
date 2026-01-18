@@ -226,7 +226,7 @@ logoutBtn.onclick = () => {
     auth.signOut();
 };
 
-auth.onAuthStateChanged(user => {
+auth.onAuthStateChanged(async user => {
     const exportBtn = document.getElementById('export-csv-btn');
     const exportPdfBtn = document.getElementById('export-pdf-btn');
     if (user) {
@@ -235,6 +235,16 @@ auth.onAuthStateChanged(user => {
         // Show export buttons
         if (exportBtn) exportBtn.style.display = '';
         if (exportPdfBtn) exportPdfBtn.style.display = '';
+
+        // Initialize user document if it doesn't exist
+        try {
+            await db.collection('users').doc(user.uid).set({
+                daysJournaled: 0
+            }, { merge: true });
+        } catch (err) {
+            console.error('Error initializing user doc:', err);
+        }
+
         // Read most recent entries
         loadEntries(true);
         logoutBtn.style.display = 'inline-block';
@@ -283,6 +293,17 @@ gratitudeForm.onsubmit = async (e) => {
     const entry = gratitudeInput.value.trim();
     if (!entry) return;
     const encrypted = encrypt(entry, userKey);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().slice(0, 10);
+
+    // Check if user already has an entry today
+    const existingTodayEntry = (window._allEntries || []).some(e => {
+        const eDate = e.created instanceof Date ? e.created : new Date(e.created);
+        eDate.setHours(0, 0, 0, 0);
+        return eDate.toISOString().slice(0, 10) === todayStr;
+    });
+
     await db.collection('users')
         .doc(auth.currentUser.uid)
         .collection('gratitude')
@@ -291,6 +312,20 @@ gratitudeForm.onsubmit = async (e) => {
             created: new Date(),
             starred: false
         });
+
+    // Increment days journaled counter if this is the first entry of the day
+    if (!existingTodayEntry) {
+        window._daysJournaled = (window._daysJournaled || 0) + 1;
+        try {
+            // Use set with merge to ensure the document exists and field is written
+            await db.collection('users').doc(auth.currentUser.uid).set({
+                daysJournaled: window._daysJournaled
+            }, { merge: true });
+        } catch (err) {
+            console.error('Error writing daysJournaled:', err);
+        }
+    }
+
     gratitudeInput.value = '';
     // Update cache and UI without re-reading from Firestore
     window._allEntries = [
@@ -311,7 +346,11 @@ function updateProgressInfo() {
     const entries = window._allEntries || [];
     const streakCountEl = document.getElementById('streak-count');
     const longestStreakEl = document.getElementById('longest-streak');
+    const daysJournaledEl = document.getElementById('days-journaled');
     const totalEntriesEl = document.getElementById('total-entries');
+
+    daysJournaledEl.textContent = window._daysJournaled || '0';
+
     if (!entries.length) {
         streakCountEl.textContent = '0';
         longestStreakEl.textContent = '0';
@@ -362,6 +401,9 @@ async function loadEntries() {
         }
         return;
     }
+    // Load user data to get daysJournaled counter
+    const userDoc = await db.collection('users').doc(auth.currentUser.uid).get();
+    window._daysJournaled = userDoc.exists ? (userDoc.data().daysJournaled || 0) : 0;
     const snap = await db.collection('users')
         .doc(auth.currentUser.uid)
         .collection('gratitude')
@@ -622,7 +664,7 @@ function renderEntries() {
         });
         // Pad first week (disabled days)
         for (let i = 0; i < firstDay.getDay(); i++) {
-            html += `<button disabled class="rounded-lg px-1 py-2 sm:px-2 w-full h-10 sm:h-12 bg-gray-100 dark:bg-gray-800 opacity-40 cursor-not-allowed"></button>`;
+            html += `<button disabled class="rounded px-1 py-2 sm:px-2 sm:py-3 w-full h-14 sm:h-16 bg-gray-100 dark:bg-gray-800 opacity-40 cursor-not-allowed"></button>`;
         }
         // Days
         for (let d = 1; d <= daysInMonth; d++) {
@@ -634,7 +676,7 @@ function renderEntries() {
                 ? 'bg-primary text-white hover:bg-blue-600 dark:hover:bg-blue-400'
                 : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-500 opacity-60 cursor-not-allowed';
             let disabled = hasEntry ? '' : 'disabled';
-            html += `<button class="rounded-lg px-1 py-3 sm:px-2 sm:py-4 text-base sm:text-lg font-semibold w-full h-auto min-h-[70px] sm:min-h-[80px] flex flex-col items-center justify-center gap-1 ${btnClass}" data-date="${key}" ${disabled}>${d}${hasEntry ? `<span class='block text-xs'>${dateMap[key].length} ${dateMap[key].length === 1 ? 'entry' : 'entries'}</span>` : ''}</button>`;
+            html += `<button class="rounded px-1 py-2 sm:px-2 sm:py-3 text-base sm:text-lg font-semibold w-full h-14 sm:h-16 flex flex-col items-center justify-center gap-1 ${btnClass}" data-date="${key}" ${disabled}>${d}${hasEntry ? `<span class='block text-xs sm:text-sm leading-tight'>(${dateMap[key].length})</span>` : ''}</button>`;
         }
         html += `</div>`;
         calendarView.innerHTML = html;
@@ -815,11 +857,39 @@ function exportEntriesCSV() {
 // Also re-render after edit/delete
 async function deleteEntry(entryId) {
     if (!confirm('Delete this entry?')) return;
+
+    // Find the entry to get its date
+    const entryToDelete = (window._allEntries || []).find(e => e.id === entryId);
+    const entryDate = entryToDelete ? new Date(entryToDelete.created) : null;
+    if (entryDate) {
+        entryDate.setHours(0, 0, 0, 0);
+    }
+    const entryDateStr = entryDate ? entryDate.toISOString().slice(0, 10) : null;
+
     await db.collection('users')
         .doc(auth.currentUser.uid)
         .collection('gratitude')
         .doc(entryId)
         .delete();
+
+    // Check if there are other entries on the same day
+    if (entryDateStr) {
+        const otherEntriesSameDay = (window._allEntries || []).filter(e => {
+            if (e.id === entryId) return false;
+            const eDate = e.created instanceof Date ? e.created : new Date(e.created);
+            eDate.setHours(0, 0, 0, 0);
+            return eDate.toISOString().slice(0, 10) === entryDateStr;
+        }).length > 0;
+
+        // Decrement days journaled if no other entries on this day
+        if (!otherEntriesSameDay) {
+            window._daysJournaled = Math.max(0, (window._daysJournaled || 0) - 1);
+            await db.collection('users').doc(auth.currentUser.uid).update({
+                daysJournaled: firebase.firestore.FieldValue.increment(-1)
+            });
+        }
+    }
+
     // Remove from cache and update UI
     window._allEntries = (window._allEntries || []).filter(e => e.id !== entryId);
     updateProgressInfo();
