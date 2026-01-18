@@ -215,6 +215,11 @@
                 <button id="export-pdf-btn" type="button" class="hidden">Export PDF</button>
             </div>
             <ul id="entries-list" class="space-y-4"></ul>
+            <div class="mt-4 flex justify-center">
+                <button id="load-more-btn" type="button"
+                    class="hidden px-4 py-2 rounded-lg bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-400 dark:hover:bg-gray-600 font-medium">Load
+                    More Entries</button>
+            </div>
             <!-- Edit Entry Modal -->
             <div id="edit-modal"
                 class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 hidden" role="dialog"
@@ -288,6 +293,23 @@
                     if (window.openPdfSettings) window.openPdfSettings();
                     closeMenu();
                 };
+            }
+
+            // Load More button event handler
+            const loadMoreBtn = document.getElementById('load-more-btn');
+            if (loadMoreBtn) {
+                loadMoreBtn.addEventListener('click', async () => {
+                    if (window.fetchAllEntries) {
+                        showLoading('Loading all entries...');
+                        try {
+                            window._allEntries = await window.fetchAllEntries();
+                            window._allEntriesLoaded = true;
+                            renderEntries();
+                        } finally {
+                            hideLoading();
+                        }
+                    }
+                });
             }
         });
     </script>

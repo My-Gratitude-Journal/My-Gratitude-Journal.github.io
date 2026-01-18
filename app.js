@@ -604,6 +604,7 @@ async function loadEntries() {
             .limit(20)
             .get();
         window._allEntries = [];
+        window._allEntriesLoaded = false;  // Set flag to false since we only loaded limited entries
         const activeKey = userKey || legacyKey;
         snap.forEach(doc => {
             const data = doc.data();
@@ -621,6 +622,32 @@ async function loadEntries() {
         }
     } finally {
         hideLoading();
+    }
+}
+
+// Fetch all entries (for export/counting, no limit)
+async function fetchAllEntries() {
+    try {
+        const snap = await db.collection('users')
+            .doc(auth.currentUser.uid)
+            .collection('gratitude')
+            .orderBy('created', 'desc')
+            .get();
+        const allEntries = [];
+        const activeKey = userKey || legacyKey;
+        snap.forEach(doc => {
+            const data = doc.data();
+            allEntries.push({
+                id: doc.id,
+                text: decrypt(data.entry, activeKey),
+                created: data.created && data.created.toDate ? data.created.toDate() : (data.created instanceof Date ? data.created : new Date(data.created)),
+                starred: !!data.starred
+            });
+        });
+        return allEntries;
+    } catch (e) {
+        console.error('Error fetching all entries:', e);
+        return [];
     }
 }
 
@@ -814,6 +841,24 @@ function renderEntries() {
             calendarModal.classList.add('hidden');
             window._currentView = 'list';
         };
+    }
+
+    // Show/hide Load More button
+    const loadMoreBtn = document.getElementById('load-more-btn');
+    if (loadMoreBtn) {
+        // Show button only if:
+        // 1. We have 20 entries (suggesting there might be more)
+        // 2. We're not filtering (no search, date filter, or favorites only)
+        // 3. We haven't loaded all entries yet
+        const allEntriesCount = window._allEntries ? window._allEntries.length : 0;
+        const isFiltered = (dateVal) || (keyword) || (window._showFavoritesOnly);
+        const shouldShow = allEntriesCount >= 20 && !isFiltered && !window._allEntriesLoaded;
+
+        if (shouldShow) {
+            loadMoreBtn.classList.remove('hidden');
+        } else {
+            loadMoreBtn.classList.add('hidden');
+        }
     }
 
     function renderCalendarView() {
@@ -1037,132 +1082,144 @@ function openPdfSettings() {
 window.openPdfSettings = openPdfSettings;
 
 function exportEntriesPDF() {
-    const entries = window._allEntries || [];
-    if (!entries.length) {
-        alert('No entries to export.');
-        return;
-    }
+    exportEntriesPDFAsync();
+}
 
-    // Prefer styled HTML → PDF via html2pdf if available
-    const canUseHtml2pdf = !!(window.html2pdf);
-    if (canUseHtml2pdf) {
-        const settings = getPdfSettings();
-        // Build a temporary printable container with Tailwind styles
-        const container = document.createElement('div');
-        container.id = 'pdf-export-container';
-        container.className = 'p-8 bg-white text-gray-800';
+async function exportEntriesPDFAsync() {
+    try {
+        // Fetch all entries for export (not just the limited 20)
+        const allEntries = await fetchAllEntries();
+        if (!allEntries || !allEntries.length) {
+            alert('No entries to export.');
+            return;
+        }
 
-        // Header
-        const header = document.createElement('div');
-        header.className = 'mb-6 text-center';
-        const title = document.createElement('h1');
-        title.className = 'text-3xl font-extrabold';
-        title.textContent = (settings.customTitle && settings.customTitle.trim()) ? settings.customTitle.trim() : 'My Gratitude Journal';
-        const subtitle = document.createElement('p');
-        subtitle.className = 'text-sm text-gray-500';
-        // Determine date range
-        const sorted = [...entries].sort((a, b) => new Date(a.created) - new Date(b.created));
-        const start = sorted[0]?.created ? new Date(sorted[0].created) : null;
-        const end = sorted[sorted.length - 1]?.created ? new Date(sorted[sorted.length - 1].created) : null;
-        const fmt = (d) => d.toLocaleDateString();
-        subtitle.textContent = (settings.showHeader && start && end) ? `Entries from ${fmt(start)} to ${fmt(end)}` : (settings.showHeader ? 'Exported Entries' : '');
-        header.appendChild(title);
-        if (settings.showHeader && subtitle.textContent) header.appendChild(subtitle);
-        container.appendChild(header);
+        const entries = allEntries;
 
-        // Entries grid (responsive single column)
-        const list = document.createElement('div');
-        list.className = 'flex flex-col gap-3';
-        entries.forEach(e => {
-            let displayText = e.text;
-            try { displayText = decodeURIComponent(displayText); } catch { }
-            const d = e.created ? (e.created instanceof Date ? e.created : new Date(e.created)) : null;
-            const dateStr = d ? d.toLocaleDateString() : '';
+        // Prefer styled HTML → PDF via html2pdf if available
+        const canUseHtml2pdf = !!(window.html2pdf);
+        if (canUseHtml2pdf) {
+            const settings = getPdfSettings();
+            // Build a temporary printable container with Tailwind styles
+            const container = document.createElement('div');
+            container.id = 'pdf-export-container';
+            container.className = 'p-8 bg-white text-gray-800';
 
-            const card = document.createElement('div');
-            if (settings.layout === 'compact') {
-                card.className = 'border-b border-gray-200 pb-2';
-            } else {
-                card.className = 'rounded-xl shadow-sm p-4';
-                if (settings.colorStyle) {
-                    card.style.cssText = 'border: 2px solid #6495DC; background-color: #E6F0FF;';
+            // Header
+            const header = document.createElement('div');
+            header.className = 'mb-6 text-center';
+            const title = document.createElement('h1');
+            title.className = 'text-3xl font-extrabold';
+            title.textContent = (settings.customTitle && settings.customTitle.trim()) ? settings.customTitle.trim() : 'My Gratitude Journal';
+            const subtitle = document.createElement('p');
+            subtitle.className = 'text-sm text-gray-500';
+            // Determine date range
+            const sorted = [...entries].sort((a, b) => new Date(a.created) - new Date(b.created));
+            const start = sorted[0]?.created ? new Date(sorted[0].created) : null;
+            const end = sorted[sorted.length - 1]?.created ? new Date(sorted[sorted.length - 1].created) : null;
+            const fmt = (d) => d.toLocaleDateString();
+            subtitle.textContent = (settings.showHeader && start && end) ? `Entries from ${fmt(start)} to ${fmt(end)}` : (settings.showHeader ? 'Exported Entries' : '');
+            header.appendChild(title);
+            if (settings.showHeader && subtitle.textContent) header.appendChild(subtitle);
+            container.appendChild(header);
+
+            // Entries grid (responsive single column)
+            const list = document.createElement('div');
+            list.className = 'flex flex-col gap-3';
+            entries.forEach(e => {
+                let displayText = e.text;
+                try { displayText = decodeURIComponent(displayText); } catch { }
+                const d = e.created ? (e.created instanceof Date ? e.created : new Date(e.created)) : null;
+                const dateStr = d ? d.toLocaleDateString() : '';
+
+                const card = document.createElement('div');
+                if (settings.layout === 'compact') {
+                    card.className = 'border-b border-gray-200 pb-2';
                 } else {
-                    card.style.cssText = 'border: 1px solid #E5E7EB; background-color: #F8F8F8;';
-                }
-            }
-
-            const dateEl = document.createElement('div');
-            dateEl.className = 'text-xs font-mono mb-2';
-            if (settings.colorStyle) {
-                dateEl.style.cssText = 'color: #2860B4; font-weight: bold;';
-            } else {
-                dateEl.style.cssText = 'color: #6B7280;';
-            }
-            dateEl.textContent = dateStr;
-
-            const textEl = document.createElement('div');
-            textEl.className = settings.layout === 'compact' ? 'prose prose-xs max-w-none whitespace-pre-line' : 'prose prose-sm max-w-none whitespace-pre-line';
-            textEl.textContent = displayText;
-
-            card.appendChild(dateEl);
-            card.appendChild(textEl);
-            list.appendChild(card);
-        });
-        container.appendChild(list);
-
-        // Append to body, render to PDF, then clean up
-        document.body.appendChild(container);
-        const opt = {
-            margin: settings.margin,
-            filename: 'gratitude_entries.pdf',
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
-            jsPDF: { unit: 'mm', format: settings.format, orientation: settings.orientation }
-        };
-        const worker = window.html2pdf().from(container).set(opt).toPdf();
-        worker.get('pdf').then(pdf => {
-            // Always add page numbers in footer and small headers from page 2
-            const pageCount = pdf.internal.getNumberOfPages();
-            const pageWidth = pdf.internal.pageSize.getWidth();
-            const pageHeight = pdf.internal.pageSize.getHeight();
-            // Compute date range
-            const sortedHdr = [...entries].sort((a, b) => new Date(a.created) - new Date(b.created));
-            const startHdr = sortedHdr[0]?.created ? new Date(sortedHdr[0].created) : null;
-            const endHdr = sortedHdr[sortedHdr.length - 1]?.created ? new Date(sortedHdr[sortedHdr.length - 1].created) : null;
-            const dateRangeHdr = (startHdr && endHdr) ? `${startHdr.toLocaleDateString()} — ${endHdr.toLocaleDateString()}` : '';
-            pdf.setFontSize(10);
-            for (let i = 1; i <= pageCount; i++) {
-                pdf.setPage(i);
-                pdf.setTextColor(120);
-                pdf.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
-                if (i >= 2) {
-                    const headerTitle = (settings.customTitle && settings.customTitle.trim()) ? settings.customTitle.trim() : 'My Gratitude Journal';
-                    pdf.setFontSize(9);
-                    pdf.setTextColor(120);
-                    pdf.text(headerTitle, pageWidth / 2, 10, { align: 'center' });
-                    if (dateRangeHdr) {
-                        pdf.setFontSize(8);
-                        pdf.setTextColor(140);
-                        pdf.text(dateRangeHdr, pageWidth / 2, 14, { align: 'center' });
+                    card.className = 'rounded-xl shadow-sm p-4';
+                    if (settings.colorStyle) {
+                        card.style.cssText = 'border: 2px solid #6495DC; background-color: #E6F0FF;';
+                    } else {
+                        card.style.cssText = 'border: 1px solid #E5E7EB; background-color: #F8F8F8;';
                     }
                 }
-            }
-            const blob = pdf.output('blob');
-            const url = URL.createObjectURL(blob);
-            showPdfPreview(url, opt.filename, () => {
-                URL.revokeObjectURL(url);
-            });
-            container.remove();
-        }).catch(() => {
-            container.remove();
-            // Fallback to jsPDF minimal export
-            fallbackJsPdfExport(entries);
-        });
-        return;
-    }
 
-    // Fallback: original jsPDF export with improved spacing and dividers
-    fallbackJsPdfExport(entries);
+                const dateEl = document.createElement('div');
+                dateEl.className = 'text-xs font-mono mb-2';
+                if (settings.colorStyle) {
+                    dateEl.style.cssText = 'color: #2860B4; font-weight: bold;';
+                } else {
+                    dateEl.style.cssText = 'color: #6B7280;';
+                }
+                dateEl.textContent = dateStr;
+
+                const textEl = document.createElement('div');
+                textEl.className = settings.layout === 'compact' ? 'prose prose-xs max-w-none whitespace-pre-line' : 'prose prose-sm max-w-none whitespace-pre-line';
+                textEl.textContent = displayText;
+
+                card.appendChild(dateEl);
+                card.appendChild(textEl);
+                list.appendChild(card);
+            });
+            container.appendChild(list);
+
+            // Append to body, render to PDF, then clean up
+            document.body.appendChild(container);
+            const opt = {
+                margin: settings.margin,
+                filename: 'gratitude_entries.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+                jsPDF: { unit: 'mm', format: settings.format, orientation: settings.orientation }
+            };
+            const worker = window.html2pdf().from(container).set(opt).toPdf();
+            worker.get('pdf').then(pdf => {
+                // Always add page numbers in footer and small headers from page 2
+                const pageCount = pdf.internal.getNumberOfPages();
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                // Compute date range
+                const sortedHdr = [...entries].sort((a, b) => new Date(a.created) - new Date(b.created));
+                const startHdr = sortedHdr[0]?.created ? new Date(sortedHdr[0].created) : null;
+                const endHdr = sortedHdr[sortedHdr.length - 1]?.created ? new Date(sortedHdr[sortedHdr.length - 1].created) : null;
+                const dateRangeHdr = (startHdr && endHdr) ? `${startHdr.toLocaleDateString()} — ${endHdr.toLocaleDateString()}` : '';
+                pdf.setFontSize(10);
+                for (let i = 1; i <= pageCount; i++) {
+                    pdf.setPage(i);
+                    pdf.setTextColor(120);
+                    pdf.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+                    if (i >= 2) {
+                        const headerTitle = (settings.customTitle && settings.customTitle.trim()) ? settings.customTitle.trim() : 'My Gratitude Journal';
+                        pdf.setFontSize(9);
+                        pdf.setTextColor(120);
+                        pdf.text(headerTitle, pageWidth / 2, 10, { align: 'center' });
+                        if (dateRangeHdr) {
+                            pdf.setFontSize(8);
+                            pdf.setTextColor(140);
+                            pdf.text(dateRangeHdr, pageWidth / 2, 14, { align: 'center' });
+                        }
+                    }
+                }
+                const blob = pdf.output('blob');
+                const url = URL.createObjectURL(blob);
+                showPdfPreview(url, opt.filename, () => {
+                    URL.revokeObjectURL(url);
+                });
+                container.remove();
+            }).catch(() => {
+                container.remove();
+                // Fallback to jsPDF minimal export
+                fallbackJsPdfExport(entries);
+            });
+            return;
+        }
+
+        // Fallback: original jsPDF export with improved spacing and dividers
+        fallbackJsPdfExport(entries);
+    } catch (e) {
+        console.error('Error exporting PDF:', e);
+        alert('Failed to export PDF. Please try again.');
+    }
 }
 
 function fallbackJsPdfExport(entries) {
@@ -1330,44 +1387,55 @@ function showPdfPreview(blobUrl, filename, onClose) {
 }
 
 function exportEntriesCSV() {
-    const entries = window._allEntries || [];
-    if (!entries.length) {
-        alert('No entries to export.');
-        return;
-    }
-    // CSV header
-    let csv = 'Date,Entry\r\n';
-    entries.forEach(e => {
-        let dateStr = '';
-        if (e.created) {
-            const d = e.created instanceof Date ? e.created : new Date(e.created);
-            const yyyy = d.getFullYear();
-            const mm = String(d.getMonth() + 1).padStart(2, '0');
-            const dd = String(d.getDate()).padStart(2, '0');
-            dateStr = `${yyyy}-${mm}-${dd}`;
+    exportEntriesCSVAsync();
+}
+
+async function exportEntriesCSVAsync() {
+    try {
+        // Fetch all entries for export (not just the limited 20)
+        const allEntries = await fetchAllEntries();
+        const entries = allEntries || [];
+        if (!entries.length) {
+            alert('No entries to export.');
+            return;
         }
-        // Decode and escape for CSV
-        let entryText = e.text || '';
-        try {
-            entryText = decodeURIComponent(entryText);
-        } catch { }
-        entryText = entryText.replace(/"/g, '""').replace(/\r?\n/g, '\r\n');
-        // Always quote the entry field
-        entryText = `"${entryText}"`;
-        csv += `${dateStr},${entryText}\r\n`;
-    });
-    // Download CSV
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'gratitude_entries.csv';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }, 100);
+        // CSV header
+        let csv = 'Date,Entry\r\n';
+        entries.forEach(e => {
+            let dateStr = '';
+            if (e.created) {
+                const d = e.created instanceof Date ? e.created : new Date(e.created);
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                dateStr = `${yyyy}-${mm}-${dd}`;
+            }
+            // Decode and escape for CSV
+            let entryText = e.text || '';
+            try {
+                entryText = decodeURIComponent(entryText);
+            } catch { }
+            entryText = entryText.replace(/"/g, '""').replace(/\r?\n/g, '\r\n');
+            // Always quote the entry field
+            entryText = `"${entryText}"`;
+            csv += `${dateStr},${entryText}\r\n`;
+        });
+        // Download CSV
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'gratitude_entries.csv';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 100);
+    } catch (e) {
+        console.error('Error exporting CSV:', e);
+        alert('Failed to export CSV. Please try again.');
+    }
 }
 
 // Also re-render after edit/delete
