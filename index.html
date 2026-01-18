@@ -294,6 +294,16 @@
                 class="px-4 py-2 bg-primary text-white rounded hover:bg-blue-600">Close</button>
         </div>
     </div>
+    <!-- Loading overlay for entry fetches -->
+    <div id="loading-overlay"
+        class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div
+            class="bg-white dark:bg-darkcard text-gray-800 dark:text-gray-100 px-5 py-4 rounded-xl shadow-lg flex items-center gap-3 text-base font-semibold border border-gray-200 dark:border-gray-700">
+            <div class="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin"
+                aria-hidden="true"></div>
+            <span>Loading your entries...</span>
+        </div>
+    </div>
     <button id="show-privacy-btn"
         class="fixed bottom-4 left-4 px-4 py-2 bg-gray-800 text-white rounded shadow-lg z-40 hover:bg-primary focus:outline-none focus:ring-2 focus:ring-primary/70 transition-transform hover:-translate-y-0.5">Privacy
         Notice</button>

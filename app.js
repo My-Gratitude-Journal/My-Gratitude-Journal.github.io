@@ -61,6 +61,37 @@ function decrypt(data, keyLike) {
     return '[Decryption failed]';
 }
 
+// Loading overlay helpers (lookup when needed so late-rendered DOM works)
+const getLoadingOverlay = () => document.getElementById('loading-overlay');
+const showLoading = (msg = 'Loading your entries...') => {
+    const overlay = getLoadingOverlay();
+    if (!overlay) return;
+    const span = overlay.querySelector('span');
+    if (span) span.textContent = msg;
+    overlay.classList.remove('hidden');
+};
+const hideLoading = () => {
+    const overlay = getLoadingOverlay();
+    if (!overlay) return;
+    overlay.classList.add('hidden');
+};
+
+// Skeleton placeholders for entries list
+function showEntriesSkeleton(count = 3) {
+    if (!entriesList) return;
+    entriesList.innerHTML = '';
+    for (let i = 0; i < count; i++) {
+        const li = document.createElement('li');
+        li.className = 'bg-gray-100 dark:bg-darkcard/80 rounded px-4 py-3 shadow-sm animate-pulse';
+        li.innerHTML = `
+            <div class="h-4 w-24 bg-gray-300 dark:bg-gray-700 rounded mb-3"></div>
+            <div class="h-4 w-full bg-gray-300 dark:bg-gray-700 rounded mb-2"></div>
+            <div class="h-4 w-2/3 bg-gray-300 dark:bg-gray-700 rounded"></div>
+        `;
+        entriesList.appendChild(li);
+    }
+}
+
 
 // Login form
 const emailInput = document.getElementById('email');
@@ -241,6 +272,8 @@ loginBtn.onclick = async () => {
             await auth.signOut();
         } else {
             setStatus('Logged in! Loading your journal...', 'success');
+            showLoading('Loading your entries...');
+            showEntriesSkeleton();
         }
     } catch (e) {
         errorMsg.textContent = e.message;
@@ -318,6 +351,7 @@ logoutBtn.onclick = () => {
     legacyKey = '';
     userSalt = null;
     auth.signOut();
+    hideLoading();
 };
 
 auth.onAuthStateChanged(async user => {
@@ -326,6 +360,8 @@ auth.onAuthStateChanged(async user => {
     if (user) {
         authSection.style.display = 'none';
         journalSection.style.display = 'block';
+        showLoading('Loading your entries...');
+        showEntriesSkeleton();
         // Show export buttons
         if (exportBtn) exportBtn.style.display = '';
         if (exportPdfBtn) exportPdfBtn.style.display = '';
@@ -363,6 +399,7 @@ auth.onAuthStateChanged(async user => {
                     sessionStorage.setItem(LEGACY_KEY_STORAGE, legacyKey);
                 } else {
                     setStatus('Enter your password to view entries.', 'info');
+                    hideLoading();
                     return;
                 }
             }
@@ -390,6 +427,7 @@ auth.onAuthStateChanged(async user => {
         pendingPassword = '';
         legacyKey = '';
         userSalt = null;
+        hideLoading();
         // Hide export buttons
         if (exportBtn) exportBtn.style.display = 'none';
         if (exportPdfBtn) exportPdfBtn.style.display = 'none';
@@ -536,6 +574,7 @@ async function loadEntries() {
         setStatus('Enter your password to view entries.', 'info');
         return;
     }
+    showLoading('Loading your entries...');
     // Use cache unless forced refresh
     if (window._allEntries && !arguments[0]) {
         updateProgressInfo();
@@ -543,32 +582,37 @@ async function loadEntries() {
         if (window._currentView === 'calendar') {
             renderCalendarView();
         }
+        hideLoading();
         return;
     }
     // Load user data to get daysJournaled counter
-    const userDoc = await db.collection('users').doc(auth.currentUser.uid).get();
-    window._daysJournaled = userDoc.exists ? (userDoc.data().daysJournaled || 0) : 0;
-    const snap = await db.collection('users')
-        .doc(auth.currentUser.uid)
-        .collection('gratitude')
-        .orderBy('created', 'desc')
-        .limit(20)
-        .get();
-    window._allEntries = [];
-    const activeKey = userKey || legacyKey;
-    snap.forEach(doc => {
-        const data = doc.data();
-        window._allEntries.push({
-            id: doc.id,
-            text: decrypt(data.entry, activeKey),
-            created: data.created && data.created.toDate ? data.created.toDate() : (data.created instanceof Date ? data.created : new Date(data.created)),
-            starred: !!data.starred
+    try {
+        const userDoc = await db.collection('users').doc(auth.currentUser.uid).get();
+        window._daysJournaled = userDoc.exists ? (userDoc.data().daysJournaled || 0) : 0;
+        const snap = await db.collection('users')
+            .doc(auth.currentUser.uid)
+            .collection('gratitude')
+            .orderBy('created', 'desc')
+            .limit(20)
+            .get();
+        window._allEntries = [];
+        const activeKey = userKey || legacyKey;
+        snap.forEach(doc => {
+            const data = doc.data();
+            window._allEntries.push({
+                id: doc.id,
+                text: decrypt(data.entry, activeKey),
+                created: data.created && data.created.toDate ? data.created.toDate() : (data.created instanceof Date ? data.created : new Date(data.created)),
+                starred: !!data.starred
+            });
         });
-    });
-    updateProgressInfo();
-    renderEntries();
-    if (window._currentView === 'calendar') {
-        renderCalendarView();
+        updateProgressInfo();
+        renderEntries();
+        if (window._currentView === 'calendar') {
+            renderCalendarView();
+        }
+    } finally {
+        hideLoading();
     }
 }
 

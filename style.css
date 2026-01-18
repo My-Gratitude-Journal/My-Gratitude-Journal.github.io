@@ -27,6 +27,21 @@ textarea:focus-visible {
     line-height: 1.55;
 }
 
+/* Ensure CSS spin animation exists (tailwind may be stripped in some environments) */
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 @media (max-width: 640px) {
     #show-privacy-btn {
         left: 50%;
