@@ -12,14 +12,22 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 
 // Simple encryption (for MVP; use stronger encryption for production)
+// AES encryption using CryptoJS
 function encrypt(text, key) {
-    return btoa(encodeURIComponent(text + key));
+    // Use SHA256 to derive a key from password
+    const hashedKey = CryptoJS.SHA256(key).toString();
+    const ciphertext = CryptoJS.AES.encrypt(text, hashedKey).toString();
+    return ciphertext;
 }
+
 function decrypt(data, key) {
     try {
-        return decodeURIComponent(escape(atob(data))).replace(key, "");
-    } catch {
-        return "";
+        const hashedKey = CryptoJS.SHA256(key).toString();
+        const bytes = CryptoJS.AES.decrypt(data, hashedKey);
+        const plaintext = bytes.toString(CryptoJS.enc.Utf8);
+        return plaintext;
+    } catch (e) {
+        return '[Decryption failed]';
     }
 }
 

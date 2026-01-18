@@ -5,7 +5,7 @@
 This project is a web-based Gratitude Journal app using HTML, CSS, and JavaScript, with Firebase as the backend for authentication and storage. Data is encrypted client-side before being sent to Firestore. The app is designed for easy deployment on GitHub Pages (Firebase Hosting is also considered).
 
 ## Architecture & Key Patterns
-- **Frontend:** All code is in `public/` (`index.html`, `app.js`, `style.css`).
+- **Frontend:** All code is in the root directory (`index.html`, `app.js`, `style.css`).
 - **Backend:** Firebase (Firestore for storage, Auth for user management). No custom backend code.
 - **Data Flow:**
 	- User logs in/registers with email/password (Firebase Auth).
@@ -17,10 +17,10 @@ This project is a web-based Gratitude Journal app using HTML, CSS, and JavaScrip
 
 ## Developer Workflow
 - **No build step:** All files are static and can be served directly.
-- **To run locally:** Open `public/index.html` in a browser. For Firebase features to work, you must provide your own Firebase config in `app.js`.
+- **To run locally:** Open `index.html` in a browser. For Firebase features to work, you must provide your own Firebase config in `app.js`.
 - **Deployment:**
-	- For GitHub Pages: Copy contents of `public/` to the root of the `gh-pages` branch.
-	- For Firebase Hosting: Use `public/` as the hosting directory.
+	- For GitHub Pages: Copy contents of the root directory to the root of the `gh-pages` branch.
+	- For Firebase Hosting: Use the root directory as the hosting directory.
 - **Adding features:**
 	- Keep all logic in `app.js` unless refactoring for scale.
 	- Use only client-side JS; do not add server-side code.
@@ -32,7 +32,7 @@ This project is a web-based Gratitude Journal app using HTML, CSS, and JavaScrip
 - **No tests or CI/CD** are present yet.
 
 ## References
-- Main files: `public/index.html`, `public/app.js`, `public/style.css`
+- Main files: `index.html`, `app.js`, `style.css`
 - Project instructions: `.github/instructions/Project_Instructions.instructions.md`
 
 ---
