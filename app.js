@@ -1068,7 +1068,8 @@ const DEFAULT_PDF_SETTINGS = {
     layout: 'comfortable',
     showHeader: true,
     customTitle: '',
-    colorStyle: false
+    colorStyle: false,
+    favoritesOnly: false
 };
 
 function getPdfSettings() {
@@ -1095,6 +1096,7 @@ function populatePdfSettingsForm(s) {
     const showHeader = f('pdf-show-header');
     const customTitle = f('pdf-custom-title');
     const colorStyle = f('pdf-color-style');
+    const favoritesOnly = f('pdf-favorites-only');
     if (pageSize) pageSize.value = s.format;
     if (orientation) orientation.value = s.orientation;
     if (margin) margin.value = String(s.margin);
@@ -1102,6 +1104,7 @@ function populatePdfSettingsForm(s) {
     if (showHeader) showHeader.checked = !!s.showHeader;
     if (customTitle) customTitle.value = s.customTitle || '';
     if (colorStyle) colorStyle.checked = !!s.colorStyle;
+    if (favoritesOnly) favoritesOnly.checked = !!s.favoritesOnly;
 }
 
 function readPdfSettingsForm() {
@@ -1113,6 +1116,7 @@ function readPdfSettingsForm() {
     const showHeader = f('pdf-show-header');
     const customTitle = f('pdf-custom-title');
     const colorStyle = f('pdf-color-style');
+    const favoritesOnly = f('pdf-favorites-only');
     return {
         format: pageSize ? pageSize.value : DEFAULT_PDF_SETTINGS.format,
         orientation: orientation ? orientation.value : DEFAULT_PDF_SETTINGS.orientation,
@@ -1120,7 +1124,8 @@ function readPdfSettingsForm() {
         layout: layout ? layout.value : DEFAULT_PDF_SETTINGS.layout,
         showHeader: showHeader ? !!showHeader.checked : DEFAULT_PDF_SETTINGS.showHeader,
         customTitle: customTitle ? (customTitle.value || '').trim() : DEFAULT_PDF_SETTINGS.customTitle,
-        colorStyle: colorStyle ? !!colorStyle.checked : DEFAULT_PDF_SETTINGS.colorStyle
+        colorStyle: colorStyle ? !!colorStyle.checked : DEFAULT_PDF_SETTINGS.colorStyle,
+        favoritesOnly: favoritesOnly ? !!favoritesOnly.checked : DEFAULT_PDF_SETTINGS.favoritesOnly
     };
 }
 
@@ -1146,12 +1151,21 @@ async function exportEntriesPDFAsync() {
             return;
         }
 
-        const entries = allEntries;
+        const settings = getPdfSettings();
+
+        // Filter by favorites if enabled
+        let entries = allEntries;
+        if (settings.favoritesOnly) {
+            entries = allEntries.filter(e => e.starred);
+            if (!entries.length) {
+                alert('No starred entries to export.');
+                return;
+            }
+        }
 
         // Prefer styled HTML → PDF via html2pdf if available
         const canUseHtml2pdf = !!(window.html2pdf);
         if (canUseHtml2pdf) {
-            const settings = getPdfSettings();
             // Build a temporary printable container with Tailwind styles
             const container = document.createElement('div');
             container.id = 'pdf-export-container';
@@ -1446,11 +1460,21 @@ async function exportEntriesCSVAsync() {
     try {
         // Fetch all entries for export (not just the limited 20)
         const allEntries = await fetchAllEntries();
-        const entries = allEntries || [];
-        if (!entries.length) {
+        const settings = getPdfSettings();
+
+        // Filter by favorites if enabled
+        let entries = allEntries || [];
+        if (settings.favoritesOnly) {
+            entries = entries.filter(e => e.starred);
+            if (!entries.length) {
+                alert('No starred entries to export.');
+                return;
+            }
+        } else if (!entries.length) {
             alert('No entries to export.');
             return;
         }
+
         // CSV header
         let csv = 'Date,Entry\r\n';
         entries.forEach(e => {
