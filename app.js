@@ -13,6 +13,7 @@ const db = firebase.firestore();
 
 const USER_KEY_STORAGE = 'gj_user_key';
 const LEGACY_KEY_STORAGE = 'gj_user_legacy_key';
+const OFFLINE_CACHE_PREFIX = 'gj_offline_entries_';
 let userKey = sessionStorage.getItem(USER_KEY_STORAGE) || '';
 let legacyKey = sessionStorage.getItem(LEGACY_KEY_STORAGE) || '';
 let pendingPassword = '';
@@ -60,6 +61,88 @@ function decrypt(data, keyLike) {
     }
     return '[Decryption failed]';
 }
+
+// Offline cache helpers (store encrypted payloads in localStorage)
+const offlineKeyForUser = () => {
+    const user = auth.currentUser;
+    return user ? `${OFFLINE_CACHE_PREFIX}${user.uid}` : null;
+};
+
+function selectOfflineEntries(entries) {
+    // Keep all favorites plus the 20 most recent non-favorites
+    const sorted = [...(entries || [])].sort((a, b) => new Date(b.created) - new Date(a.created));
+    const favorites = [];
+    const offline = [];
+    const seen = new Set();
+    for (const e of sorted) {
+        if (e.starred && !seen.has(e.id)) {
+            favorites.push(e);
+            offline.push(e);
+            seen.add(e.id);
+        }
+    }
+    for (const e of sorted) {
+        if (offline.length - favorites.length >= 20) break;
+        if (seen.has(e.id)) continue;
+        offline.push(e);
+        seen.add(e.id);
+    }
+    return offline;
+}
+
+function persistOfflineEntries(entries) {
+    const key = offlineKeyForUser();
+    if (!key || !entries) return;
+    try {
+        const activeKey = userKey || legacyKey;
+        const payload = entries.map(e => {
+            const createdVal = e.created instanceof Date ? e.created : new Date(e.created || Date.now());
+            const cipher = e.cipher || encrypt(e.text || '', activeKey);
+            return {
+                id: e.id,
+                entry: cipher,
+                created: createdVal.toISOString(),
+                starred: !!e.starred
+            };
+        });
+        localStorage.setItem(key, JSON.stringify(payload));
+    } catch (err) {
+        console.error('Failed to persist offline entries:', err);
+    }
+}
+
+function loadOfflineEntriesFromStorage() {
+    const key = offlineKeyForUser();
+    if (!key) return [];
+    try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        const activeKey = userKey || legacyKey;
+        return parsed.map(item => ({
+            id: item.id,
+            text: decrypt(item.entry, activeKey),
+            created: new Date(item.created),
+            starred: !!item.starred,
+            cipher: item.entry
+        }));
+    } catch (err) {
+        console.error('Failed to read offline entries:', err);
+        return [];
+    }
+}
+
+function syncOfflineCacheFromMemory() {
+    try {
+        const snapshot = selectOfflineEntries(window._allEntries || []);
+        persistOfflineEntries(snapshot);
+    } catch (err) {
+        console.error('Failed to sync offline cache:', err);
+    }
+}
+
+// Expose for scripts defined before app.js
+window.syncOfflineCacheFromMemory = syncOfflineCacheFromMemory;
 
 // Loading overlay helpers (lookup when needed so late-rendered DOM works)
 const getLoadingOverlay = () => document.getElementById('loading-overlay');
@@ -521,7 +604,8 @@ gratitudeForm.onsubmit = async (e) => {
         id: Math.random().toString(36).substr(2, 9), // temp id
         text: entry,
         created: new Date(),
-        starred: false
+        starred: false,
+        cipher: encrypted
     };
     window._allEntries = [newEntry, ...(window._allEntries || [])];
 
@@ -529,6 +613,7 @@ gratitudeForm.onsubmit = async (e) => {
     if (!window._allEntriesLoaded) {
         window._allEntries = window._allEntries.slice(0, 20);
     }
+    syncOfflineCacheFromMemory();
     updateProgressInfo();
     renderEntries();
 };
@@ -604,8 +689,8 @@ async function loadEntries() {
         hideLoading();
         return;
     }
-    // Load user data to get counters
     try {
+        // Load user data to get counters
         const userDoc = await db.collection('users').doc(auth.currentUser.uid).get();
         window._daysJournaled = userDoc.exists ? (userDoc.data().daysJournaled || 0) : 0;
         window._totalEntries = userDoc.exists ? (userDoc.data().totalEntries || 0) : 0;
@@ -624,13 +709,30 @@ async function loadEntries() {
                 id: doc.id,
                 text: decrypt(data.entry, activeKey),
                 created: data.created && data.created.toDate ? data.created.toDate() : (data.created instanceof Date ? data.created : new Date(data.created)),
-                starred: !!data.starred
+                starred: !!data.starred,
+                cipher: data.entry
             });
         });
+        syncOfflineCacheFromMemory();
         updateProgressInfo();
         renderEntries();
         if (window._currentView === 'calendar') {
             renderCalendarView();
+        }
+    } catch (err) {
+        console.error('Error loading entries, attempting offline cache:', err);
+        const offline = loadOfflineEntriesFromStorage();
+        if (offline.length) {
+            window._allEntries = offline;
+            window._allEntriesLoaded = true;
+            setStatus('You are viewing offline entries.', 'info');
+            updateProgressInfo();
+            renderEntries();
+            if (window._currentView === 'calendar') {
+                renderCalendarView();
+            }
+        } else {
+            setStatus('Unable to load entries. Check your connection.', 'info');
         }
     } finally {
         hideLoading();
@@ -788,11 +890,13 @@ function renderEntries() {
             const prevStar = entry.starred;
             entry.starred = newStarValue;
             renderEntries();
+            syncOfflineCacheFromMemory();
             // Update Firestore in background
             toggleStarEntry(entryId, newStarValue).catch(() => {
                 // Revert on error
                 entry.starred = prevStar;
                 renderEntries();
+                syncOfflineCacheFromMemory();
                 alert('Failed to update favorite. Please try again.');
             });
         }
@@ -1666,6 +1770,7 @@ async function deleteEntry(entryId) {
     window._allEntries = (window._allEntries || []).filter(e => e.id !== entryId);
     updateProgressInfo();
     renderEntries();
+    syncOfflineCacheFromMemory();
 }
 
 // Edit entry modal logic
@@ -1698,12 +1803,13 @@ saveEditBtn.onclick = async () => {
         .update({ entry: encrypted });
     // Update cache and UI
     window._allEntries = (window._allEntries || []).map(e =>
-        e.id === editingEntryId ? { ...e, text: newText } : e
+        e.id === editingEntryId ? { ...e, text: newText, cipher: encrypted } : e
     );
     editModal.classList.add('hidden');
     editingEntryId = null;
     updateProgressInfo();
     renderEntries();
+    syncOfflineCacheFromMemory();
 };
 
 // Privacy Notice modal logic

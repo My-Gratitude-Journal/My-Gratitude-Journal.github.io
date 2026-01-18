@@ -316,6 +316,7 @@
                                     console.log('All entries loaded');
                                 }
                                 if (window.updateProgressInfo) window.updateProgressInfo();
+                                if (window.syncOfflineCacheFromMemory) window.syncOfflineCacheFromMemory();
                                 renderEntries();
                             }
                         } finally {
