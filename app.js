@@ -952,3 +952,22 @@ saveEditBtn.onclick = async () => {
     updateProgressInfo();
     renderEntries();
 };
+
+// Privacy Notice modal logic
+document.addEventListener('DOMContentLoaded', function () {
+    const showPrivacyBtn = document.getElementById('show-privacy-btn');
+    const privacyModal = document.getElementById('privacy-modal');
+    const closePrivacyBtn = document.getElementById('close-privacy-btn');
+    if (showPrivacyBtn && privacyModal && closePrivacyBtn) {
+        showPrivacyBtn.onclick = () => {
+            privacyModal.classList.remove('hidden');
+        };
+        closePrivacyBtn.onclick = () => {
+            privacyModal.classList.add('hidden');
+        };
+        // Optional: close modal when clicking outside
+        privacyModal.onclick = (e) => {
+            if (e.target === privacyModal) privacyModal.classList.add('hidden');
+        };
+    }
+});
