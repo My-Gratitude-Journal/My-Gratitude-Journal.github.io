@@ -88,6 +88,9 @@
                     <button id="menu-export-pdf"
                         class="w-full text-left px-4 py-3 rounded-lg text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-gray-800 transition font-medium">📄
                         Export PDF</button>
+                    <button id="menu-pdf-settings"
+                        class="w-full text-left px-4 py-3 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition font-medium">⚙️
+                        PDF Settings</button>
                 </nav>
             </div>
         </div>
@@ -265,6 +268,7 @@
             // Export buttons in menu
             const menuExportCSV = document.getElementById('menu-export-csv');
             const menuExportPDF = document.getElementById('menu-export-pdf');
+            const menuPdfSettings = document.getElementById('menu-pdf-settings');
             const exportCSVBtn = document.getElementById('export-csv-btn');
             const exportPDFBtn = document.getElementById('export-pdf-btn');
             if (menuExportCSV && exportCSVBtn) {
@@ -276,6 +280,12 @@
             if (menuExportPDF && exportPDFBtn) {
                 menuExportPDF.onclick = () => {
                     exportPDFBtn.click();
+                    closeMenu();
+                };
+            }
+            if (menuPdfSettings) {
+                menuPdfSettings.onclick = () => {
+                    if (window.openPdfSettings) window.openPdfSettings();
                     closeMenu();
                 };
             }
@@ -302,6 +312,74 @@
             </div>
             <button id="close-privacy-btn"
                 class="px-4 py-2 bg-primary text-white rounded hover:bg-blue-600">Close</button>
+        </div>
+    </div>
+    <!-- PDF Settings Modal -->
+    <div id="pdf-settings-modal"
+        class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 hidden" role="dialog"
+        aria-modal="true" aria-labelledby="pdf-settings-title">
+        <div
+            class="bg-white dark:bg-darkcard rounded-2xl p-6 shadow-2xl w-full max-w-lg border border-gray-200 dark:border-gray-700 mx-2">
+            <h2 id="pdf-settings-title" class="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">PDF Settings
+            </h2>
+            <div class="space-y-4 text-sm">
+                <div>
+                    <label for="pdf-page-size" class="block font-medium text-gray-700 dark:text-gray-200 mb-1">Page
+                        Size</label>
+                    <select id="pdf-page-size"
+                        class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                        <option value="letter">Letter</option>
+                        <option value="a4">A4</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="pdf-orientation"
+                        class="block font-medium text-gray-700 dark:text-gray-200 mb-1">Orientation</label>
+                    <select id="pdf-orientation"
+                        class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                        <option value="portrait">Portrait</option>
+                        <option value="landscape">Landscape</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="pdf-margin"
+                        class="block font-medium text-gray-700 dark:text-gray-200 mb-1">Margins</label>
+                    <select id="pdf-margin"
+                        class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                        <option value="5">Small (5 mm)</option>
+                        <option value="10">Medium (10 mm)</option>
+                        <option value="15">Large (15 mm)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="pdf-custom-title"
+                        class="block font-medium text-gray-700 dark:text-gray-200 mb-1">Title/Name (optional)</label>
+                    <input id="pdf-custom-title" type="text" placeholder="e.g., Jane Doe — Gratitude Journal"
+                        class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+                </div>
+
+                <div>
+                    <label for="pdf-layout" class="block font-medium text-gray-700 dark:text-gray-200 mb-1">Layout
+                        Density</label>
+                    <select id="pdf-layout"
+                        class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                        <option value="comfortable">Comfortable</option>
+                        <option value="compact">Compact</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="pdf-show-header" class="rounded border-gray-300 dark:border-gray-600">
+                    <label for="pdf-show-header" class="text-gray-700 dark:text-gray-200">Show date range header</label>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+                <button id="pdf-settings-defaults"
+                    class="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600">Defaults</button>
+                <button id="pdf-settings-cancel"
+                    class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600">Cancel</button>
+                <button id="pdf-settings-save"
+                    class="px-4 py-2 rounded-lg bg-primary text-white hover:bg-blue-600 font-semibold">Save</button>
+            </div>
         </div>
     </div>
     <!-- Loading overlay for entry fetches -->
