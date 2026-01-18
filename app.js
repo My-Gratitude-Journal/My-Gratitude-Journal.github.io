@@ -705,6 +705,7 @@ async function fetchAllEntries() {
 
 function renderEntries() {
     let entries = window._allEntries || [];
+    console.log('renderEntries called, total entries available:', entries.length);
     updateShowAllEntriesBtn();
     // Disable 'Show All Entries' button if all entries are already shown
     function updateShowAllEntriesBtn() {
@@ -722,6 +723,7 @@ function renderEntries() {
     const dateFilter = document.getElementById('date-filter');
     const keyword = (searchInput && searchInput.value.trim().toLowerCase()) || '';
     const dateVal = dateFilter && dateFilter.value;
+    console.log('Filter values - dateVal:', dateVal, 'keyword:', keyword, 'favorites:', window._showFavoritesOnly);
     if (window._showFavoritesOnly) {
         entries = entries.filter(e => e.starred);
     }
@@ -729,12 +731,21 @@ function renderEntries() {
         entries = entries.filter(e => e.text.toLowerCase().includes(keyword));
     }
     if (dateVal) {
+        console.log('Filtering by date:', dateVal);
         entries = entries.filter(e => {
             if (!e.created) return false;
             const entryDate = e.created instanceof Date ? e.created : new Date(e.created);
-            // Compare only date part
-            return entryDate.toLocaleDateString() === new Date(dateVal).toLocaleDateString();
+            // Compare year, month, and day to avoid timezone issues
+            const filterDate = new Date(dateVal + 'T00:00:00'); // Parse as local time
+            const match = entryDate.getFullYear() === filterDate.getFullYear() &&
+                entryDate.getMonth() === filterDate.getMonth() &&
+                entryDate.getDate() === filterDate.getDate();
+            if (match) {
+                console.log('Found matching entry for date:', entryDate.toLocaleDateString());
+            }
+            return match;
         });
+        console.log('After date filter, entries count:', entries.length);
     }
     entriesList.innerHTML = '';
     entries.forEach(e => {
@@ -915,92 +926,115 @@ function renderEntries() {
 
     function renderCalendarView() {
         const calendarView = document.getElementById('calendar-view');
-        const entries = window._allEntries || [];
         if (!calendarView) return;
-        // Build a map of dates with entries
-        const dateMap = {};
-        entries.forEach(e => {
-            const d = new Date(e.created);
-            d.setHours(0, 0, 0, 0);
-            const key = d.toISOString().slice(0, 10);
-            if (!dateMap[key]) dateMap[key] = [];
-            dateMap[key].push(e);
-        });
-        // Find min/max entry months
-        let minMonth = null, maxMonth = null;
-        if (entries.length) {
-            const dates = entries.map(e => new Date(e.created));
-            dates.sort((a, b) => a - b);
-            minMonth = new Date(dates[0].getFullYear(), dates[0].getMonth(), 1);
-            maxMonth = new Date(dates[dates.length - 1].getFullYear(), dates[dates.length - 1].getMonth(), 1);
-        }
-        // Track current calendar month in window._calendarMonth
-        if (!window._calendarMonth) {
-            window._calendarMonth = new Date();
-            window._calendarMonth.setDate(1);
-        }
-        // Clamp to min/max
-        if (minMonth && window._calendarMonth < minMonth) window._calendarMonth = new Date(minMonth);
-        if (maxMonth && window._calendarMonth > maxMonth) window._calendarMonth = new Date(maxMonth);
-        const year = window._calendarMonth.getFullYear();
-        const month = window._calendarMonth.getMonth();
-        const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0);
-        const daysInMonth = lastDay.getDate();
-        // Build calendar grid
-        let html = `<div class="grid grid-cols-7 gap-1 sm:gap-2">`;
-        // Weekday headers
-        const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        weekdays.forEach(wd => {
-            html += `<div class="text-xs sm:text-sm font-bold text-gray-500 dark:text-gray-400 text-center">${wd}</div>`;
-        });
-        // Pad first week (disabled days)
-        for (let i = 0; i < firstDay.getDay(); i++) {
-            html += `<button disabled class="rounded px-1 py-2 sm:px-2 sm:py-3 w-full h-14 sm:h-16 bg-gray-100 dark:bg-gray-800 opacity-40 cursor-not-allowed"></button>`;
-        }
-        // Days
-        for (let d = 1; d <= daysInMonth; d++) {
-            const dateObj = new Date(year, month, d);
-            dateObj.setHours(0, 0, 0, 0);
-            const key = dateObj.toISOString().slice(0, 10);
-            const hasEntry = !!dateMap[key];
-            let btnClass = hasEntry
-                ? 'bg-primary text-white hover:bg-blue-600 dark:hover:bg-blue-400'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-500 opacity-60 cursor-not-allowed';
-            let disabled = hasEntry ? '' : 'disabled';
-            html += `<button class="rounded px-1 py-2 sm:px-2 sm:py-3 text-base sm:text-lg font-semibold w-full h-14 sm:h-16 flex flex-col items-center justify-center gap-1 ${btnClass}" data-date="${key}" ${disabled}>${d}${hasEntry ? `<span class='block text-xs sm:text-sm leading-tight'>(${dateMap[key].length})</span>` : ''}</button>`;
-        }
-        html += `</div>`;
-        calendarView.innerHTML = html;
-        // Update month label and prev/next buttons
-        const label = document.getElementById('calendar-month-label');
-        if (label) label.textContent = window._calendarMonth.toLocaleString('default', { month: 'long', year: 'numeric' });
-        const prevBtn = document.getElementById('calendar-prev-month');
-        const nextBtn = document.getElementById('calendar-next-month');
-        if (prevBtn) prevBtn.disabled = minMonth && (window._calendarMonth.getFullYear() === minMonth.getFullYear() && window._calendarMonth.getMonth() === minMonth.getMonth());
-        if (nextBtn) nextBtn.disabled = maxMonth && (window._calendarMonth.getFullYear() === maxMonth.getFullYear() && window._calendarMonth.getMonth() === maxMonth.getMonth());
-        // Add click listeners to calendar days
-        Array.from(calendarView.querySelectorAll('button[data-date]:not([disabled])')).forEach(btn => {
-            btn.onclick = () => {
-                document.getElementById('date-filter').value = btn.getAttribute('data-date');
-                calendarModal.classList.add('hidden');
-                window._currentView = 'calendar'; // Stay in calendar filter mode
-                renderEntries();
+
+        // For calendar, we need to show ALL entries, not just the loaded 20
+        // So we'll use window._allEntries if all are loaded, otherwise fetch them
+        (async () => {
+            const entries = window._allEntriesLoaded ? (window._allEntries || []) : (await fetchAllEntries() || []);
+
+            // Build a map of dates with entries
+            const dateMap = {};
+            entries.forEach(e => {
+                const d = new Date(e.created);
+                d.setHours(0, 0, 0, 0);
+                const key = d.toISOString().slice(0, 10);
+                if (!dateMap[key]) dateMap[key] = [];
+                dateMap[key].push(e);
+            });
+            // Find min/max entry months
+            let minMonth = null, maxMonth = null;
+            if (entries.length) {
+                const dates = entries.map(e => new Date(e.created));
+                dates.sort((a, b) => a - b);
+                minMonth = new Date(dates[0].getFullYear(), dates[0].getMonth(), 1);
+                maxMonth = new Date(dates[dates.length - 1].getFullYear(), dates[dates.length - 1].getMonth(), 1);
+            }
+            // Track current calendar month in window._calendarMonth
+            if (!window._calendarMonth) {
+                window._calendarMonth = new Date();
+                window._calendarMonth.setDate(1);
+            }
+            // Clamp to min/max
+            if (minMonth && window._calendarMonth < minMonth) window._calendarMonth = new Date(minMonth);
+            if (maxMonth && window._calendarMonth > maxMonth) window._calendarMonth = new Date(maxMonth);
+            const year = window._calendarMonth.getFullYear();
+            const month = window._calendarMonth.getMonth();
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            // Build calendar grid
+            let html = `<div class="grid grid-cols-7 gap-1 sm:gap-2">`;
+            // Weekday headers
+            const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            weekdays.forEach(wd => {
+                html += `<div class="text-xs sm:text-sm font-bold text-gray-500 dark:text-gray-400 text-center">${wd}</div>`;
+            });
+            // Pad first week (disabled days)
+            for (let i = 0; i < firstDay.getDay(); i++) {
+                html += `<button disabled class="rounded px-1 py-2 sm:px-2 sm:py-3 w-full h-14 sm:h-16 bg-gray-100 dark:bg-gray-800 opacity-40 cursor-not-allowed"></button>`;
+            }
+            // Days
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateObj = new Date(year, month, d);
+                dateObj.setHours(0, 0, 0, 0);
+                const key = dateObj.toISOString().slice(0, 10);
+                const hasEntry = !!dateMap[key];
+                let btnClass = hasEntry
+                    ? 'bg-primary text-white hover:bg-blue-600 dark:hover:bg-blue-400'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-500 opacity-60 cursor-not-allowed';
+                let disabled = hasEntry ? '' : 'disabled';
+                html += `<button class="rounded px-1 py-2 sm:px-2 sm:py-3 text-base sm:text-lg font-semibold w-full h-14 sm:h-16 flex flex-col items-center justify-center gap-1 ${btnClass}" data-date="${key}" ${disabled}>${d}${hasEntry ? `<span class='block text-xs sm:text-sm leading-tight'>(${dateMap[key].length})</span>` : ''}</button>`;
+            }
+            html += `</div>`;
+            calendarView.innerHTML = html;
+            // Update month label and prev/next buttons
+            const label = document.getElementById('calendar-month-label');
+            if (label) label.textContent = window._calendarMonth.toLocaleString('default', { month: 'long', year: 'numeric' });
+            const prevBtn = document.getElementById('calendar-prev-month');
+            const nextBtn = document.getElementById('calendar-next-month');
+            if (prevBtn) prevBtn.disabled = minMonth && (window._calendarMonth.getFullYear() === minMonth.getFullYear() && window._calendarMonth.getMonth() === minMonth.getMonth());
+            if (nextBtn) nextBtn.disabled = maxMonth && (window._calendarMonth.getFullYear() === maxMonth.getFullYear() && window._calendarMonth.getMonth() === maxMonth.getMonth());
+            // Add click listeners to calendar days
+            Array.from(calendarView.querySelectorAll('button[data-date]:not([disabled])')).forEach(btn => {
+                btn.onclick = () => {
+                    const selectedDate = btn.getAttribute('data-date');
+                    console.log('Calendar date clicked:', selectedDate);
+                    document.getElementById('date-filter').value = selectedDate;
+                    console.log('Date filter set to:', document.getElementById('date-filter').value);
+                    calendarModal.classList.add('hidden');
+                    window._currentView = 'calendar'; // Stay in calendar filter mode
+
+                    // When filtering by date, ensure we have all entries loaded
+                    if (!window._allEntriesLoaded) {
+                        console.log('Not all entries loaded, fetching...');
+                        (async () => {
+                            window._allEntries = await fetchAllEntries();
+                            console.log('Fetched all entries:', window._allEntries.length);
+                            window._allEntriesLoaded = true;
+                            console.log('About to render entries with filter:', selectedDate);
+                            renderEntries();
+                        })();
+                    } else {
+                        console.log('All entries already loaded, rendering with filter:', selectedDate);
+                        renderEntries();
+                    }
+                };
+            });
+            // Add prev/next handlers
+            if (prevBtn) prevBtn.onclick = () => {
+                if (minMonth && (window._calendarMonth > minMonth)) {
+                    window._calendarMonth.setMonth(window._calendarMonth.getMonth() - 1);
+                    renderCalendarView();
+                }
             };
-        });
-        // Add prev/next handlers
-        if (prevBtn) prevBtn.onclick = () => {
-            if (minMonth && (window._calendarMonth > minMonth)) {
-                window._calendarMonth.setMonth(window._calendarMonth.getMonth() - 1);
-                renderCalendarView();
-            }
-        };
-        if (nextBtn) nextBtn.onclick = () => {
-            if (maxMonth && (window._calendarMonth < maxMonth)) {
-                window._calendarMonth.setMonth(window._calendarMonth.getMonth() + 1);
-                renderCalendarView();
-            }
-        };
+            if (nextBtn) nextBtn.onclick = () => {
+                if (maxMonth && (window._calendarMonth < maxMonth)) {
+                    window._calendarMonth.setMonth(window._calendarMonth.getMonth() + 1);
+                    renderCalendarView();
+                }
+            };
+        })();
     }
 }
 
