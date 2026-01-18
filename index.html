@@ -304,6 +304,7 @@
                         try {
                             window._allEntries = await window.fetchAllEntries();
                             window._allEntriesLoaded = true;
+                            if (window.updateProgressInfo) window.updateProgressInfo();
                             renderEntries();
                         } finally {
                             hideLoading();

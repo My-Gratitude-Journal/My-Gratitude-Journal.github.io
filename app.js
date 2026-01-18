@@ -512,15 +512,18 @@ gratitudeForm.onsubmit = async (e) => {
 
     gratitudeInput.value = '';
     // Update cache and UI without re-reading from Firestore
-    window._allEntries = [
-        {
-            id: Math.random().toString(36).substr(2, 9), // temp id
-            text: entry,
-            created: new Date(),
-            starred: false
-        },
-        ...(window._allEntries || [])
-    ].slice(0, 20);
+    const newEntry = {
+        id: Math.random().toString(36).substr(2, 9), // temp id
+        text: entry,
+        created: new Date(),
+        starred: false
+    };
+    window._allEntries = [newEntry, ...(window._allEntries || [])];
+
+    // Only keep the limit if we haven't loaded all entries yet
+    if (!window._allEntriesLoaded) {
+        window._allEntries = window._allEntries.slice(0, 20);
+    }
     updateProgressInfo();
     renderEntries();
 };
