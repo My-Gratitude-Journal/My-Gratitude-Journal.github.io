@@ -11,24 +11,54 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+const USER_KEY_STORAGE = 'gj_user_key';
+const LEGACY_KEY_STORAGE = 'gj_user_legacy_key';
+let userKey = sessionStorage.getItem(USER_KEY_STORAGE) || '';
+let legacyKey = sessionStorage.getItem(LEGACY_KEY_STORAGE) || '';
+let pendingPassword = '';
+
 // Simple encryption (for MVP; use stronger encryption for production)
-// AES encryption using CryptoJS
-function encrypt(text, key) {
-    // Use SHA256 to derive a key from password
-    const hashedKey = CryptoJS.SHA256(key).toString();
-    const ciphertext = CryptoJS.AES.encrypt(text, hashedKey).toString();
-    return ciphertext;
+// Derive and store a hashed key (not the raw password) for the session using PBKDF2+salt
+let userSalt = null; // hex string stored per user
+
+function normalizeKey(keyMaybeDerived) {
+    const isHexHash = /^[a-f0-9]{64}$/i.test(keyMaybeDerived || '');
+    return isHexHash ? keyMaybeDerived : CryptoJS.SHA256(keyMaybeDerived || '').toString();
 }
 
-function decrypt(data, key) {
-    try {
-        const hashedKey = CryptoJS.SHA256(key).toString();
-        const bytes = CryptoJS.AES.decrypt(data, hashedKey);
-        const plaintext = bytes.toString(CryptoJS.enc.Utf8);
-        return plaintext;
-    } catch (e) {
-        return '[Decryption failed]';
+function deriveKeyFromPassword(password, saltHex) {
+    if (!password) return '';
+    if (saltHex) {
+        const salt = CryptoJS.enc.Hex.parse(saltHex);
+        return CryptoJS.PBKDF2(password, salt, { keySize: 256 / 32, iterations: 100000 }).toString();
     }
+    return normalizeKey(password);
+}
+
+function encrypt(text, keyLike) {
+    const key = normalizeKey(keyLike);
+    return CryptoJS.AES.encrypt(text, key).toString();
+}
+
+function tryDecryptWithKey(data, keyLike) {
+    const key = normalizeKey(keyLike);
+    const bytes = CryptoJS.AES.decrypt(data, key);
+    return bytes.toString(CryptoJS.enc.Utf8);
+}
+
+function decrypt(data, keyLike) {
+    try {
+        const primary = tryDecryptWithKey(data, keyLike);
+        if (primary) return primary;
+    } catch (e) { /* ignore and fall through */ }
+    // Fallback to legacy key if present (for pre-PBKDF2 entries)
+    if (legacyKey) {
+        try {
+            const legacy = tryDecryptWithKey(data, legacyKey);
+            if (legacy) return legacy;
+        } catch { /* ignore */ }
+    }
+    return '[Decryption failed]';
 }
 
 
@@ -91,7 +121,58 @@ if (!loadingMsg) {
     authSection.appendChild(loadingMsg);
 }
 
-let userKey = '';
+// Lightweight status banner for success/info messages
+let statusMsg = document.getElementById('status-msg');
+let statusTimer = null;
+if (!statusMsg) {
+    statusMsg = document.createElement('div');
+    statusMsg.id = 'status-msg';
+    statusMsg.style.display = 'none';
+    statusMsg.style.marginTop = '8px';
+    statusMsg.style.padding = '10px 12px';
+    statusMsg.style.borderRadius = '8px';
+    statusMsg.style.fontWeight = '600';
+    authSection.appendChild(statusMsg);
+}
+
+// Debounce helper to cut down on rerenders while typing
+const debounce = (fn, delay = 200) => {
+    let t;
+    return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn(...args), delay);
+    };
+};
+
+function setStatus(message, type = 'info') {
+    if (!statusMsg) return;
+    if (statusTimer) {
+        clearTimeout(statusTimer);
+        statusTimer = null;
+    }
+    if (!message) {
+        statusMsg.style.display = 'none';
+        return;
+    }
+    const palette = {
+        success: '#155724',
+        info: '#0c4a6e'
+    };
+    const bgPalette = {
+        success: '#d4edda',
+        info: '#e0f2fe'
+    };
+    statusMsg.style.color = palette[type] || palette.info;
+    statusMsg.style.backgroundColor = bgPalette[type] || bgPalette.info;
+    statusMsg.style.border = `1px solid ${(palette[type] || palette.info)}30`;
+    statusMsg.textContent = message;
+    statusMsg.style.display = 'block';
+    // Auto-clear after a short delay
+    statusTimer = setTimeout(() => {
+        statusMsg.style.display = 'none';
+        statusTimer = null;
+    }, 4000);
+}
 
 // Favorite filter toggle
 window._showFavoritesOnly = false;
@@ -110,24 +191,28 @@ showRegisterBtn.onclick = () => {
     registerForm.style.display = 'block';
     resetForm.style.display = 'none';
     errorMsg.textContent = '';
+    setStatus('');
 };
 showLoginBtn.onclick = () => {
     loginForm.style.display = 'block';
     registerForm.style.display = 'none';
     resetForm.style.display = 'none';
     errorMsg.textContent = '';
+    setStatus('');
 };
 showLoginBtn2.onclick = () => {
     loginForm.style.display = 'block';
     registerForm.style.display = 'none';
     resetForm.style.display = 'none';
     errorMsg.textContent = '';
+    setStatus('');
 };
 showResetBtn.onclick = () => {
     loginForm.style.display = 'none';
     registerForm.style.display = 'none';
     resetForm.style.display = 'block';
     errorMsg.textContent = '';
+    setStatus('');
 };
 
 // Login logic
@@ -137,7 +222,12 @@ loginBtn.onclick = async () => {
     loginBtn.disabled = true;
     const email = emailInput.value;
     const password = passwordInput.value;
-    userKey = password;
+    pendingPassword = password;
+    legacyKey = normalizeKey(password);
+    sessionStorage.setItem(LEGACY_KEY_STORAGE, legacyKey);
+    // Clear any stale derived key; will derive once salt is loaded
+    userKey = '';
+    sessionStorage.removeItem(USER_KEY_STORAGE);
     if (!email || !password) {
         errorMsg.textContent = 'Please enter both email and password.';
         loadingMsg.style.display = 'none';
@@ -150,8 +240,7 @@ loginBtn.onclick = async () => {
             errorMsg.textContent = 'Please verify your email before logging in.';
             await auth.signOut();
         } else {
-            // Successful login, refresh page
-            window.location.reload();
+            setStatus('Logged in! Loading your journal...', 'success');
         }
     } catch (e) {
         errorMsg.textContent = e.message;
@@ -184,8 +273,8 @@ registerBtn.onclick = async () => {
     try {
         const cred = await auth.createUserWithEmailAndPassword(email, password);
         await cred.user.sendEmailVerification();
-        errorMsg.style.color = 'green';
-        errorMsg.textContent = 'Registration successful! Please check your email to verify your account.';
+        errorMsg.style.color = 'red';
+        setStatus('Registration successful! Check your email to verify, then log in.', 'success');
         // Optionally, sign out immediately after registration
         await auth.signOut();
     } catch (e) {
@@ -211,8 +300,8 @@ resetBtn.onclick = async () => {
     }
     try {
         await auth.sendPasswordResetEmail(email);
-        errorMsg.style.color = 'green';
-        errorMsg.textContent = 'Password reset email sent! Please check your inbox.';
+        errorMsg.style.color = 'red';
+        setStatus('Password reset email sent! Check your inbox for the link.', 'success');
     } catch (e) {
         errorMsg.style.color = 'red';
         errorMsg.textContent = e.message;
@@ -223,6 +312,11 @@ resetBtn.onclick = async () => {
 };
 
 logoutBtn.onclick = () => {
+    sessionStorage.removeItem(USER_KEY_STORAGE);
+    sessionStorage.removeItem(LEGACY_KEY_STORAGE);
+    pendingPassword = '';
+    legacyKey = '';
+    userSalt = null;
     auth.signOut();
 };
 
@@ -236,18 +330,47 @@ auth.onAuthStateChanged(async user => {
         if (exportBtn) exportBtn.style.display = '';
         if (exportPdfBtn) exportPdfBtn.style.display = '';
 
-        // Initialize user document only if it doesn't exist (avoid resetting existing counter)
+        // Initialize user document only if it doesn't exist (avoid resetting existing counter) and ensure salt
         try {
             const userRef = db.collection('users').doc(user.uid);
             const snap = await userRef.get();
+            let salt = null;
             if (!snap.exists) {
-                await userRef.set({ daysJournaled: 0 }, { merge: true });
+                salt = CryptoJS.lib.WordArray.random(16).toString(CryptoJS.enc.Hex);
+                await userRef.set({ daysJournaled: 0, keySalt: salt }, { merge: true });
                 window._daysJournaled = 0;
             } else {
-                window._daysJournaled = snap.data().daysJournaled || 0;
+                const data = snap.data();
+                window._daysJournaled = data.daysJournaled || 0;
+                salt = data.keySalt;
+                if (!salt) {
+                    salt = CryptoJS.lib.WordArray.random(16).toString(CryptoJS.enc.Hex);
+                    await userRef.set({ keySalt: salt }, { merge: true });
+                }
             }
+            userSalt = salt;
         } catch (err) {
             console.error('Error initializing user doc:', err);
+        }
+
+        // Derive userKey if missing but password is available
+        if (!userKey) {
+            if (!pendingPassword) {
+                const pwd = prompt('Enter your password to decrypt your entries:');
+                if (pwd) {
+                    pendingPassword = pwd;
+                    legacyKey = normalizeKey(pwd);
+                    sessionStorage.setItem(LEGACY_KEY_STORAGE, legacyKey);
+                } else {
+                    setStatus('Enter your password to view entries.', 'info');
+                    return;
+                }
+            }
+            if (pendingPassword && userSalt) {
+                userKey = deriveKeyFromPassword(pendingPassword, userSalt);
+                sessionStorage.setItem(USER_KEY_STORAGE, userKey);
+                pendingPassword = '';
+            }
         }
 
         // Read most recent entries
@@ -262,6 +385,11 @@ auth.onAuthStateChanged(async user => {
         deleteAccountBtn.style.display = 'none';
         // Clear cached entries
         window._allEntries = [];
+        sessionStorage.removeItem(USER_KEY_STORAGE);
+        sessionStorage.removeItem(LEGACY_KEY_STORAGE);
+        pendingPassword = '';
+        legacyKey = '';
+        userSalt = null;
         // Hide export buttons
         if (exportBtn) exportBtn.style.display = 'none';
         if (exportPdfBtn) exportPdfBtn.style.display = 'none';
@@ -282,6 +410,11 @@ auth.onAuthStateChanged(async user => {
             // Delete Auth user
             await user.delete();
             alert('Account and all data deleted.');
+            sessionStorage.removeItem(USER_KEY_STORAGE);
+            sessionStorage.removeItem(LEGACY_KEY_STORAGE);
+            pendingPassword = '';
+            legacyKey = '';
+            userSalt = null;
         } catch (e) {
             if (e.code === 'auth/requires-recent-login') {
                 alert('Please log in again before deleting your account.');
@@ -399,6 +532,10 @@ function updateProgressInfo() {
 window._currentView = 'list';
 
 async function loadEntries() {
+    if (!userKey && !legacyKey) {
+        setStatus('Enter your password to view entries.', 'info');
+        return;
+    }
     // Use cache unless forced refresh
     if (window._allEntries && !arguments[0]) {
         updateProgressInfo();
@@ -418,11 +555,12 @@ async function loadEntries() {
         .limit(20)
         .get();
     window._allEntries = [];
+    const activeKey = userKey || legacyKey;
     snap.forEach(doc => {
         const data = doc.data();
         window._allEntries.push({
             id: doc.id,
-            text: decrypt(data.entry, userKey),
+            text: decrypt(data.entry, activeKey),
             created: data.created && data.created.toDate ? data.created.toDate() : (data.created instanceof Date ? data.created : new Date(data.created)),
             starred: !!data.starred
         });
@@ -725,7 +863,8 @@ window.addEventListener('DOMContentLoaded', () => {
     const dateFilter = document.getElementById('date-filter');
     const exportBtn = document.getElementById('export-csv-btn');
     const exportPdfBtn = document.getElementById('export-pdf-btn');
-    if (searchInput) searchInput.addEventListener('input', renderEntries);
+    const debouncedRenderEntries = debounce(renderEntries, 200);
+    if (searchInput) searchInput.addEventListener('input', debouncedRenderEntries);
     if (dateFilter) dateFilter.addEventListener('input', renderEntries);
     if (exportBtn) exportBtn.addEventListener('click', exportEntriesCSV);
     if (exportPdfBtn) exportPdfBtn.addEventListener('click', exportEntriesPDF);

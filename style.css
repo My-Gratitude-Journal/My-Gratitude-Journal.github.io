@@ -1,0 +1,40 @@
+:root {
+    --shadow-strong: 0 10px 30px rgba(0, 0, 0, 0.18);
+    --transition-fast: 160ms ease;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+    outline: 2px solid #4299e1;
+    outline-offset: 2px;
+}
+
+#app {
+    backdrop-filter: blur(6px);
+}
+
+#entries-list li {
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+#entries-list li:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-strong);
+}
+
+#privacy-modal .text-sm {
+    line-height: 1.55;
+}
+
+@media (max-width: 640px) {
+    #show-privacy-btn {
+        left: 50%;
+        right: auto;
+        bottom: 12px;
+        transform: translateX(-50%);
+        width: calc(100vw - 2.5rem);
+        max-width: 360px;
+        text-align: center;
+    }
+}
