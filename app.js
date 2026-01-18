@@ -149,6 +149,9 @@ loginBtn.onclick = async () => {
         if (!cred.user.emailVerified) {
             errorMsg.textContent = 'Please verify your email before logging in.';
             await auth.signOut();
+        } else {
+            // Successful login, refresh page
+            window.location.reload();
         }
     } catch (e) {
         errorMsg.textContent = e.message;
