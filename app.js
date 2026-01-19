@@ -1305,8 +1305,8 @@ function renderEntries() {
             : "btn-icon-expand px-3 py-1 rounded bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-100 text-xs font-semibold";
         offlineBtn.title = (isOfflineReady || isOfflinePinned) ? 'Remove offline copy' : 'Save this entry for offline viewing';
         offlineBtn.onclick = () => toggleOfflineAvailability(e.id);
-        btns.appendChild(offlineBtn);
         btns.appendChild(starBtn);
+        btns.appendChild(offlineBtn);
         // Edit button
         const editBtn = document.createElement('button');
         editBtn.innerHTML = '<i class="fa-solid fa-pen"></i><span class="icon" aria-hidden="true"><svg class="w-3 h-3 inline" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 0 0 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></span><span class="btn-text">Edit</span>';
