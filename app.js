@@ -2223,6 +2223,18 @@ function updateEntryInCache(entryId, updates) {
     }
 }
 
+// Safely derive a Date from various entry fields
+function getEntryDate(entry) {
+    const candidate = entry?.created ?? entry?.timestamp ?? entry?.createdAt;
+    if (!candidate) return null;
+    if (candidate instanceof Date) return candidate;
+    if (typeof candidate === 'object' && typeof candidate.seconds === 'number') {
+        return new Date(candidate.seconds * 1000);
+    }
+    const parsed = new Date(candidate);
+    return isNaN(parsed.getTime()) ? null : parsed;
+}
+
 if (editModal) {
     editModal.addEventListener('click', (e) => {
         if (e.target === editModal) {
@@ -2251,11 +2263,10 @@ function openEntryModal(entry) {
 
     // Set content
     modalEntryText.textContent = decodeURIComponent(entry.text);
-    modalEntryDate.textContent = new Date(entry.timestamp).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
+    const entryDate = getEntryDate(entry);
+    modalEntryDate.textContent = entryDate
+        ? entryDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+        : '';
 
     // Render action buttons
     renderModalActionButtons(entry);
