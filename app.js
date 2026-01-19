@@ -2412,15 +2412,23 @@ document.addEventListener('DOMContentLoaded', function () {
     const privacyModal = document.getElementById('privacy-modal');
     const closePrivacyBtn = document.getElementById('close-privacy-btn');
     if (showPrivacyBtn && privacyModal && closePrivacyBtn) {
+        if (privacyModal.parentElement !== document.body) {
+            document.body.appendChild(privacyModal);
+        }
         showPrivacyBtn.onclick = () => {
             privacyModal.classList.remove('hidden');
+            document.body.classList.add('modal-open');
         };
         closePrivacyBtn.onclick = () => {
             privacyModal.classList.add('hidden');
+            document.body.classList.remove('modal-open');
         };
         // Optional: close modal when clicking outside
         privacyModal.onclick = (e) => {
-            if (e.target === privacyModal) privacyModal.classList.add('hidden');
+            if (e.target === privacyModal) {
+                privacyModal.classList.add('hidden');
+                document.body.classList.remove('modal-open');
+            }
         };
     }
 });
