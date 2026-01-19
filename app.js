@@ -1392,6 +1392,9 @@ function renderEntries() {
     const viewListBtn = document.getElementById('view-list-btn');
     const viewCalendarBtn = document.getElementById('view-calendar-btn');
     const calendarModal = document.getElementById('calendar-modal');
+    if (calendarModal && calendarModal.parentElement !== document.body) {
+        document.body.appendChild(calendarModal);
+    }
     const closeCalendarBtn = document.getElementById('close-calendar-btn');
 
     if (viewListBtn && viewCalendarBtn && calendarModal && closeCalendarBtn) {
@@ -2207,6 +2210,10 @@ const editEntryInput = document.getElementById('edit-entry-input');
 const saveEditBtn = document.getElementById('save-edit-btn');
 const cancelEditBtn = document.getElementById('cancel-edit-btn');
 
+if (editModal && editModal.parentElement !== document.body) {
+    document.body.appendChild(editModal);
+}
+
 function openEntryModal(entry) {
     currentModalEntry = entry;
     editingEntryId = null;
@@ -2229,6 +2236,7 @@ function openEntryModal(entry) {
     renderModalActionButtons(entry);
 
     editModal.classList.remove('hidden');
+    document.body.classList.add('modal-open');
 }
 
 function renderModalActionButtons(entry) {
@@ -2280,6 +2288,7 @@ function renderModalActionButtons(entry) {
         if (confirm('Are you sure you want to delete this entry?')) {
             deleteEntry(entry.id);
             editModal.classList.add('hidden');
+            document.body.classList.remove('modal-open');
         }
     };
 
@@ -2320,6 +2329,7 @@ cancelEditBtn.onclick = () => {
     } else {
         // Close modal
         editModal.classList.add('hidden');
+        document.body.classList.remove('modal-open');
         currentModalEntry = null;
     }
 };
