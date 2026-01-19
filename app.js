@@ -1217,7 +1217,14 @@ function renderEntries() {
     entriesList.innerHTML = '';
     entries.forEach(e => {
         const li = document.createElement('li');
-        li.className = "bg-gray-100 dark:bg-darkcard text-gray-800 dark:text-gray-100 rounded px-4 py-3 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2";
+        li.className = "bg-gray-100 dark:bg-darkcard text-gray-800 dark:text-gray-100 rounded px-4 py-3 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2 cursor-pointer hover:shadow-md transition-shadow";
+
+        // Make card clickable (but not the buttons)
+        li.onclick = (event) => {
+            // Don't trigger if clicking on a button
+            if (event.target.closest('button')) return;
+            openEntryModal(e);
+        };
 
         const isOfflineReady = offlineCachedIds.has(e.id);
         const isOfflinePinned = offlinePinnedIds.has(e.id);
@@ -1311,7 +1318,10 @@ function renderEntries() {
         const editBtn = document.createElement('button');
         editBtn.innerHTML = '<i class="fa-solid fa-pen"></i><span class="icon" aria-hidden="true"><svg class="w-3 h-3 inline" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 0 0 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></span><span class="btn-text">Edit</span>';
         editBtn.className = "btn-icon-expand px-3 py-1 rounded bg-yellow-400 text-gray-900 hover:bg-yellow-500 text-xs font-semibold";
-        editBtn.onclick = () => openEditModal(e.id, e.text);
+        editBtn.onclick = (event) => {
+            event.stopPropagation();
+            openEditModal(e.id, e.text);
+        };
         // Delete button
         const deleteBtn = document.createElement('button');
         deleteBtn.innerHTML = '<i class="fa-solid fa-trash"></i><span class="icon" aria-hidden="true"><svg class="w-3 h-3 inline" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></span><span class="btn-text">Delete</span>';
@@ -2184,23 +2194,134 @@ async function deleteEntry(entryId) {
     }
 }
 
-// Edit entry modal logic
+// Entry view/edit modal logic
 let editingEntryId = null;
+let currentModalEntry = null;
 const editModal = document.getElementById('edit-modal');
+const modalViewMode = document.getElementById('modal-view-mode');
+const modalEditMode = document.getElementById('modal-edit-mode');
+const modalEntryText = document.getElementById('modal-entry-text');
+const modalEntryDate = document.getElementById('modal-entry-date');
+const modalActionButtons = document.getElementById('modal-action-buttons');
 const editEntryInput = document.getElementById('edit-entry-input');
 const saveEditBtn = document.getElementById('save-edit-btn');
 const cancelEditBtn = document.getElementById('cancel-edit-btn');
 
-function openEditModal(entryId, entryText) {
-    editingEntryId = entryId;
-    editEntryInput.value = decodeURIComponent(entryText);
+function openEntryModal(entry) {
+    currentModalEntry = entry;
+    editingEntryId = null;
+
+    // Show view mode
+    modalViewMode.classList.remove('hidden');
+    modalEditMode.classList.add('hidden');
+    saveEditBtn.classList.add('hidden');
+    cancelEditBtn.textContent = 'Close';
+
+    // Set content
+    modalEntryText.textContent = decodeURIComponent(entry.text);
+    modalEntryDate.textContent = new Date(entry.timestamp).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+
+    // Render action buttons
+    renderModalActionButtons(entry);
+
     editModal.classList.remove('hidden');
+}
+
+function renderModalActionButtons(entry) {
+    modalActionButtons.innerHTML = '';
+
+    const offlineCachedIds = window._offlineCacheIds instanceof Set ? window._offlineCacheIds : new Set();
+    const offlinePinnedIds = getOfflinePinnedIds();
+    const isOfflineReady = offlineCachedIds.has(entry.id);
+    const isOfflinePinned = offlinePinnedIds.has(entry.id);
+
+    // Star button
+    const starBtn = document.createElement('button');
+    starBtn.innerHTML = entry.starred
+        ? '<i class="fa-solid fa-star"></i><span class="icon" aria-hidden="true"><svg class="w-4 h-4 inline" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.56 5.82 22 7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></span><span class="btn-text ml-2">Unfavorite</span>'
+        : '<i class="fa-regular fa-star"></i><span class="icon" aria-hidden="true"><svg class="w-4 h-4 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.56 5.82 22 7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></span><span class="btn-text ml-2">Favorite</span>';
+    starBtn.className = entry.starred
+        ? "btn-icon-expand px-3 py-2 rounded bg-yellow-400 text-gray-900 hover:bg-yellow-500 text-sm font-semibold"
+        : "btn-icon-expand px-3 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600 text-sm font-semibold";
+    starBtn.onclick = async () => {
+        await toggleStarEntry(entry.id, !entry.starred);
+        currentModalEntry.starred = !entry.starred;
+        renderModalActionButtons(currentModalEntry);
+    };
+
+    // Offline button
+    const offlineBtn = document.createElement('button');
+    offlineBtn.innerHTML = (isOfflineReady || isOfflinePinned)
+        ? '<i class="fa-solid fa-cloud-arrow-down"></i><span class="icon" aria-hidden="true"><svg class="w-4 h-4 inline" viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg></span><span class="btn-text ml-2">Offline ✓</span>'
+        : '<i class="fa-solid fa-cloud"></i><span class="icon" aria-hidden="true"><svg class="w-4 h-4 inline" viewBox="0 0 24 24" fill="currentColor"><path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/></svg></span><span class="btn-text ml-2">Save offline</span>';
+    offlineBtn.className = (isOfflineReady || isOfflinePinned)
+        ? "btn-icon-expand px-3 py-2 rounded bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-100 text-sm font-semibold border border-green-200 dark:border-green-700"
+        : "btn-icon-expand px-3 py-2 rounded bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-100 text-sm font-semibold";
+    offlineBtn.onclick = () => {
+        toggleOfflineAvailability(entry.id);
+        renderModalActionButtons(currentModalEntry);
+    };
+
+    // Edit button
+    const editBtn = document.createElement('button');
+    editBtn.innerHTML = '<i class="fa-solid fa-pen"></i><span class="icon" aria-hidden="true"><svg class="w-4 h-4 inline" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 0 0 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></span><span class="btn-text ml-2">Edit</span>';
+    editBtn.className = "btn-icon-expand px-3 py-2 rounded bg-yellow-400 text-gray-900 hover:bg-yellow-500 text-sm font-semibold";
+    editBtn.onclick = () => switchToEditMode();
+
+    // Delete button
+    const deleteBtn = document.createElement('button');
+    deleteBtn.innerHTML = '<i class="fa-solid fa-trash"></i><span class="icon" aria-hidden="true"><svg class="w-4 h-4 inline" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></span><span class="btn-text ml-2">Delete</span>';
+    deleteBtn.className = "btn-icon-expand px-3 py-2 rounded bg-red-500 text-white hover:bg-red-700 text-sm font-semibold";
+    deleteBtn.onclick = () => {
+        if (confirm('Are you sure you want to delete this entry?')) {
+            deleteEntry(entry.id);
+            editModal.classList.add('hidden');
+        }
+    };
+
+    modalActionButtons.appendChild(starBtn);
+    modalActionButtons.appendChild(offlineBtn);
+    modalActionButtons.appendChild(editBtn);
+    modalActionButtons.appendChild(deleteBtn);
+}
+
+function switchToEditMode() {
+    editingEntryId = currentModalEntry.id;
+    editEntryInput.value = decodeURIComponent(currentModalEntry.text);
+
+    modalViewMode.classList.add('hidden');
+    modalEditMode.classList.remove('hidden');
+    saveEditBtn.classList.remove('hidden');
+    cancelEditBtn.textContent = 'Cancel';
+
     setTimeout(() => editEntryInput.focus(), 0);
 }
 
+function openEditModal(entryId, entryText) {
+    const entry = (window._allEntries || []).find(e => e.id === entryId);
+    if (entry) {
+        openEntryModal(entry);
+        setTimeout(() => switchToEditMode(), 0);
+    }
+}
+
 cancelEditBtn.onclick = () => {
-    editModal.classList.add('hidden');
-    editingEntryId = null;
+    if (editingEntryId) {
+        // Cancel edit, return to view mode
+        editingEntryId = null;
+        modalViewMode.classList.remove('hidden');
+        modalEditMode.classList.add('hidden');
+        saveEditBtn.classList.add('hidden');
+        cancelEditBtn.textContent = 'Close';
+    } else {
+        // Close modal
+        editModal.classList.add('hidden');
+        currentModalEntry = null;
+    }
 };
 
 saveEditBtn.onclick = async () => {
@@ -2213,7 +2334,18 @@ saveEditBtn.onclick = async () => {
     window._allEntries = (window._allEntries || []).map(e =>
         e.id === targetId ? { ...e, text: newText, cipher: encrypted } : e
     );
-    editModal.classList.add('hidden');
+
+    // Update current modal entry
+    currentModalEntry = window._allEntries.find(e => e.id === targetId);
+
+    // Return to view mode
+    editingEntryId = null;
+    modalEntryText.textContent = newText;
+    modalViewMode.classList.remove('hidden');
+    modalEditMode.classList.add('hidden');
+    saveEditBtn.classList.add('hidden');
+    cancelEditBtn.textContent = 'Close';
+
     updateProgressInfo();
     renderEntries();
     syncOfflineCacheFromMemory();
