@@ -890,8 +890,25 @@ auth.onAuthStateChanged(async user => {
     // Delete Account logic
     deleteAccountBtn.onclick = async () => {
         if (!confirm('Are you sure you want to delete your account and all your data? This cannot be undone.')) return;
+
+        const user = auth.currentUser;
+        if (!user) {
+            alert('No user logged in.');
+            return;
+        }
+
+        // Prompt for password to reauthenticate before deletion
+        const password = prompt('Please enter your password to confirm account deletion:');
+        if (!password) {
+            return; // User cancelled
+        }
+
         try {
-            const user = auth.currentUser;
+            // Reauthenticate to ensure we have fresh credentials
+            const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
+            await user.reauthenticateWithCredential(credential);
+
+            // Now that we're reauthenticated, delete data first (while still authenticated)
             // Delete all gratitude entries (subcollection)
             const entriesSnap = await db.collection('users').doc(user.uid).collection('gratitude').get();
             const batch = db.batch();
@@ -899,8 +916,10 @@ auth.onAuthStateChanged(async user => {
             await batch.commit();
             // Delete user document
             await db.collection('users').doc(user.uid).delete();
-            // Delete Auth user
+
+            // Finally delete the auth user (will succeed since we just reauthenticated)
             await user.delete();
+
             alert('Account and all data deleted.');
             sessionStorage.removeItem(USER_KEY_STORAGE);
             sessionStorage.removeItem(LEGACY_KEY_STORAGE);
@@ -908,7 +927,9 @@ auth.onAuthStateChanged(async user => {
             legacyKey = '';
             userSalt = null;
         } catch (e) {
-            if (e.code === 'auth/requires-recent-login') {
+            if (e.code === 'auth/wrong-password') {
+                alert('Incorrect password. Account deletion cancelled.');
+            } else if (e.code === 'auth/requires-recent-login') {
                 alert('Please log in again before deleting your account.');
             } else {
                 alert('Error deleting account: ' + e.message);
