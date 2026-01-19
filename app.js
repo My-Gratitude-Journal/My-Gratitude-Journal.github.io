@@ -15,6 +15,8 @@ const USER_KEY_STORAGE = 'gj_user_key';
 const LEGACY_KEY_STORAGE = 'gj_user_legacy_key';
 const OFFLINE_CACHE_PREFIX = 'gj_offline_entries_';
 const PENDING_OPS_PREFIX = 'gj_pending_ops_';
+const OFFLINE_PINS_PREFIX = 'gj_offline_pins_';
+const OFFLINE_EXCLUDES_PREFIX = 'gj_offline_excludes_';
 let userKey = sessionStorage.getItem(USER_KEY_STORAGE) || '';
 let legacyKey = sessionStorage.getItem(LEGACY_KEY_STORAGE) || '';
 let pendingPassword = '';
@@ -67,6 +69,16 @@ function decrypt(data, keyLike) {
 const offlineKeyForUser = () => {
     const user = auth.currentUser;
     return user ? `${OFFLINE_CACHE_PREFIX}${user.uid}` : null;
+};
+
+const offlinePinsKeyForUser = () => {
+    const user = auth.currentUser;
+    return user ? `${OFFLINE_PINS_PREFIX}${user.uid}` : null;
+};
+
+const offlineExcludesKeyForUser = () => {
+    const user = auth.currentUser;
+    return user ? `${OFFLINE_EXCLUDES_PREFIX}${user.uid}` : null;
 };
 
 const pendingOpsKeyForUser = () => {
@@ -180,23 +192,36 @@ async function flushPendingOps() {
 }
 
 function selectOfflineEntries(entries) {
-    // Keep all favorites plus the 20 most recent non-favorites
+    const pins = getOfflinePinnedIds();
+    const excludes = getOfflineExcludedIds();
     const sorted = [...(entries || [])].sort((a, b) => new Date(b.created) - new Date(a.created));
-    const favorites = [];
     const offline = [];
     const seen = new Set();
+
+    // Always keep pinned entries
     for (const e of sorted) {
-        if (e.starred && !seen.has(e.id)) {
-            favorites.push(e);
+        if (pins.has(e.id) && !excludes.has(e.id) && !seen.has(e.id)) {
             offline.push(e);
             seen.add(e.id);
         }
     }
+
+    // Always keep favorites
     for (const e of sorted) {
-        if (offline.length - favorites.length >= 20) break;
-        if (seen.has(e.id)) continue;
+        if (e.starred && !excludes.has(e.id) && !seen.has(e.id)) {
+            offline.push(e);
+            seen.add(e.id);
+        }
+    }
+
+    // Add 20 most recent remaining entries
+    let recentAdded = 0;
+    for (const e of sorted) {
+        if (seen.has(e.id) || excludes.has(e.id)) continue;
+        if (recentAdded >= 20) break;
         offline.push(e);
         seen.add(e.id);
+        recentAdded++;
     }
     return offline;
 }
@@ -217,6 +242,7 @@ function persistOfflineEntries(entries) {
             };
         });
         localStorage.setItem(key, JSON.stringify(payload));
+        window._offlineCacheIds = new Set(payload.map(item => item.id));
     } catch (err) {
         console.error('Failed to persist offline entries:', err);
     }
@@ -230,13 +256,15 @@ function loadOfflineEntriesFromStorage() {
         if (!raw) return [];
         const parsed = JSON.parse(raw);
         const activeKey = userKey || legacyKey;
-        return parsed.map(item => ({
+        const offlineEntries = parsed.map(item => ({
             id: item.id,
             text: decrypt(item.entry, activeKey),
             created: new Date(item.created),
             starred: !!item.starred,
             cipher: item.entry
         }));
+        window._offlineCacheIds = new Set(parsed.map(item => item.id));
+        return offlineEntries;
     } catch (err) {
         console.error('Failed to read offline entries:', err);
         return [];
@@ -250,6 +278,89 @@ function syncOfflineCacheFromMemory() {
     } catch (err) {
         console.error('Failed to sync offline cache:', err);
     }
+}
+
+function getOfflinePinnedIds() {
+    if (window._offlinePinnedIds instanceof Set) return window._offlinePinnedIds;
+    const key = offlinePinsKeyForUser();
+    if (!key) {
+        window._offlinePinnedIds = new Set();
+        return window._offlinePinnedIds;
+    }
+    try {
+        const raw = localStorage.getItem(key);
+        const parsed = raw ? JSON.parse(raw) : [];
+        window._offlinePinnedIds = new Set(parsed);
+        return window._offlinePinnedIds;
+    } catch (err) {
+        console.error('Failed to read offline pins:', err);
+        window._offlinePinnedIds = new Set();
+        return window._offlinePinnedIds;
+    }
+}
+
+function persistOfflinePinnedIds(pinSet) {
+    const key = offlinePinsKeyForUser();
+    if (!key) return;
+    try {
+        localStorage.setItem(key, JSON.stringify(Array.from(pinSet || [])));
+    } catch (err) {
+        console.error('Failed to persist offline pins:', err);
+    }
+}
+
+function getOfflineExcludedIds() {
+    if (window._offlineExcludedIds instanceof Set) return window._offlineExcludedIds;
+    const key = offlineExcludesKeyForUser();
+    if (!key) {
+        window._offlineExcludedIds = new Set();
+        return window._offlineExcludedIds;
+    }
+    try {
+        const raw = localStorage.getItem(key);
+        const parsed = raw ? JSON.parse(raw) : [];
+        window._offlineExcludedIds = new Set(parsed);
+        return window._offlineExcludedIds;
+    } catch (err) {
+        console.error('Failed to read offline excludes:', err);
+        window._offlineExcludedIds = new Set();
+        return window._offlineExcludedIds;
+    }
+}
+
+function persistOfflineExcludedIds(excludeSet) {
+    const key = offlineExcludesKeyForUser();
+    if (!key) return;
+    try {
+        localStorage.setItem(key, JSON.stringify(Array.from(excludeSet || [])));
+    } catch (err) {
+        console.error('Failed to persist offline excludes:', err);
+    }
+}
+
+function toggleOfflineAvailability(entryId) {
+    const pins = new Set(getOfflinePinnedIds());
+    const excludes = new Set(getOfflineExcludedIds());
+    const isCached = (window._offlineCacheIds instanceof Set && window._offlineCacheIds.has(entryId)) || pins.has(entryId);
+
+    let message = '';
+    if (isCached) {
+        pins.delete(entryId);
+        excludes.add(entryId);
+        message = 'Offline copy removed for this entry.';
+    } else {
+        excludes.delete(entryId);
+        pins.add(entryId);
+        message = 'Entry will stay available offline.';
+    }
+
+    window._offlinePinnedIds = pins;
+    window._offlineExcludedIds = excludes;
+    persistOfflinePinnedIds(pins);
+    persistOfflineExcludedIds(excludes);
+    syncOfflineCacheFromMemory();
+    renderEntries();
+    setStatus(message, 'success');
 }
 
 // Expose for scripts defined before app.js
@@ -663,6 +774,10 @@ auth.onAuthStateChanged(async user => {
             localStorage.setItem(`gj_salt_${user.uid}`, userSalt);
         }
 
+        // Prime offline pin cache for this user
+        window._offlinePinnedIds = getOfflinePinnedIds();
+        window._offlineExcludedIds = getOfflineExcludedIds();
+
         // Derive userKey if missing but password is available
         if (!userKey) {
             if (!pendingPassword) {
@@ -702,6 +817,9 @@ auth.onAuthStateChanged(async user => {
         deleteAccountBtn.style.display = 'none';
         // Clear cached entries
         window._allEntries = [];
+        window._offlinePinnedIds = new Set();
+        window._offlineExcludedIds = new Set();
+        window._offlineCacheIds = new Set();
         sessionStorage.removeItem(USER_KEY_STORAGE);
         sessionStorage.removeItem(LEGACY_KEY_STORAGE);
         pendingPassword = '';
@@ -951,6 +1069,7 @@ async function loadEntries() {
         if (offline.length) {
             window._allEntries = offline;
             window._allEntriesLoaded = true;
+            window._offlineCacheIds = new Set(offline.map(e => e.id));
             setStatus('You are viewing offline entries.', 'info');
             showOfflineBanner("You're offline. Showing cached entries. Favorites are always available offline.");
             updateProgressInfo();
@@ -1034,6 +1153,8 @@ async function fetchAllEntries() {
 
 function renderEntries() {
     let entries = window._allEntries || [];
+    const offlineCachedIds = window._offlineCacheIds instanceof Set ? window._offlineCacheIds : new Set();
+    const offlinePinnedIds = getOfflinePinnedIds();
     console.log('renderEntries called, total entries available:', entries.length);
     updateShowAllEntriesBtn();
     // Disable 'Show All Entries' button if all entries are already shown
@@ -1081,6 +1202,9 @@ function renderEntries() {
         const li = document.createElement('li');
         li.className = "bg-gray-100 dark:bg-darkcard text-gray-800 dark:text-gray-100 rounded px-4 py-3 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2";
 
+        const isOfflineReady = offlineCachedIds.has(e.id);
+        const isOfflinePinned = offlinePinnedIds.has(e.id);
+
         // Date stamp
         const dateSpan = document.createElement('span');
         if (e.created) {
@@ -1090,6 +1214,17 @@ function renderEntries() {
             dateSpan.textContent = '';
         }
         dateSpan.className = "text-xs text-gray-500 dark:text-gray-400 mr-3 min-w-[90px] font-mono";
+
+        const metaWrap = document.createElement('div');
+        metaWrap.className = "flex items-center gap-2";
+        metaWrap.appendChild(dateSpan);
+        if (isOfflineReady) {
+            const offlineChip = document.createElement('span');
+            offlineChip.className = "px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-200 border border-green-200 dark:border-green-700";
+            offlineChip.textContent = 'Offline';
+            offlineChip.title = 'This entry is stored for offline access';
+            metaWrap.appendChild(offlineChip);
+        }
 
         // Entry text (support multiline and decode URL-encoded newlines)
         const entryText = document.createElement('span');
@@ -1143,6 +1278,15 @@ function renderEntries() {
         // Buttons container
         const btns = document.createElement('div');
         btns.className = "flex gap-2 mt-2 sm:mt-0";
+
+        const offlineBtn = document.createElement('button');
+        offlineBtn.textContent = (isOfflineReady || isOfflinePinned) ? 'Offline ✓' : 'Save offline';
+        offlineBtn.className = (isOfflineReady || isOfflinePinned)
+            ? "px-3 py-1 rounded bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-100 text-xs font-semibold border border-green-200 dark:border-green-700"
+            : "px-3 py-1 rounded bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-100 text-xs font-semibold";
+        offlineBtn.title = (isOfflineReady || isOfflinePinned) ? 'Remove offline copy' : 'Save this entry for offline viewing';
+        offlineBtn.onclick = () => toggleOfflineAvailability(e.id);
+        btns.appendChild(offlineBtn);
         btns.appendChild(starBtn);
         // Edit button
         const editBtn = document.createElement('button');
@@ -1157,8 +1301,8 @@ function renderEntries() {
         btns.appendChild(editBtn);
         btns.appendChild(deleteBtn);
 
-        // Layout: [date] [entry text] [buttons]
-        li.appendChild(dateSpan);
+        // Layout: [meta/date] [entry text] [buttons]
+        li.appendChild(metaWrap);
         li.appendChild(entryText);
         li.appendChild(btns);
         entriesList.appendChild(li);
