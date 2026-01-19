@@ -2214,6 +2214,22 @@ if (editModal && editModal.parentElement !== document.body) {
     document.body.appendChild(editModal);
 }
 
+if (editModal) {
+    editModal.addEventListener('click', (e) => {
+        if (e.target === editModal) {
+            editModal.classList.add('hidden');
+            document.body.classList.remove('modal-open');
+            currentModalEntry = null;
+            editingEntryId = null;
+            // Ensure view mode is restored next open
+            modalViewMode.classList.remove('hidden');
+            modalEditMode.classList.add('hidden');
+            saveEditBtn.classList.add('hidden');
+            cancelEditBtn.textContent = 'Close';
+        }
+    });
+}
+
 function openEntryModal(entry) {
     currentModalEntry = entry;
     editingEntryId = null;
