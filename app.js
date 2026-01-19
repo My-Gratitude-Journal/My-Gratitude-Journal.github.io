@@ -363,6 +363,23 @@ function toggleOfflineAvailability(entryId) {
     setStatus(message, 'success');
 }
 
+function applyFavoriteOfflineLink(entryId, isFavorite) {
+    const pins = new Set(getOfflinePinnedIds());
+    const excludes = new Set(getOfflineExcludedIds());
+    if (isFavorite) {
+        pins.add(entryId);
+        excludes.delete(entryId);
+    } else {
+        pins.delete(entryId);
+        excludes.add(entryId);
+    }
+    window._offlinePinnedIds = pins;
+    window._offlineExcludedIds = excludes;
+    persistOfflinePinnedIds(pins);
+    persistOfflineExcludedIds(excludes);
+    syncOfflineCacheFromMemory();
+}
+
 // Expose for scripts defined before app.js
 window.syncOfflineCacheFromMemory = syncOfflineCacheFromMemory;
 
@@ -1251,8 +1268,8 @@ function renderEntries() {
             if (!entry) return;
             const prevStar = entry.starred;
             entry.starred = newStarValue;
+            applyFavoriteOfflineLink(entryId, newStarValue);
             renderEntries();
-            syncOfflineCacheFromMemory();
 
             const wasTemp = entryId.startsWith('temp_');
             if (wasTemp) {
