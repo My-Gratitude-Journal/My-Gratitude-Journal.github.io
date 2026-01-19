@@ -1199,7 +1199,6 @@ function renderEntries() {
     const dateFilter = document.getElementById('date-filter');
     const keyword = (searchInput && searchInput.value.trim().toLowerCase()) || '';
     const dateVal = dateFilter && dateFilter.value;
-    console.log('Filter values - dateVal:', dateVal, 'keyword:', keyword, 'favorites:', window._showFavoritesOnly);
     if (window._showFavoritesOnly) {
         entries = entries.filter(e => e.starred);
     }
