@@ -69,3 +69,26 @@ img.icon,
 .no-fa .fa-solid {
     display: none;
 }
+
+/* Icon-only buttons with hover expand animation */
+.btn-icon-expand {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.btn-icon-expand .btn-text {
+    display: inline-block;
+    max-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    transition: max-width 0.3s ease, opacity 0.3s ease, margin-left 0.3s ease;
+    margin-left: 0;
+}
+
+.btn-icon-expand:hover .btn-text {
+    max-width: 200px;
+    opacity: 1;
+    margin-left: 0.25rem;
+}
