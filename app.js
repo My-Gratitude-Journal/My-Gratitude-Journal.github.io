@@ -1168,6 +1168,15 @@ async function fetchAllEntries() {
     }
 }
 
+// Toggle favorite flag in Firestore (optimistic UI handled separately)
+async function toggleStarEntry(entryId, star) {
+    await db.collection('users')
+        .doc(auth.currentUser.uid)
+        .collection('gratitude')
+        .doc(entryId)
+        .update({ starred: star });
+}
+
 function renderEntries() {
     let entries = window._allEntries || [];
     const offlineCachedIds = window._offlineCacheIds instanceof Set ? window._offlineCacheIds : new Set();
@@ -1336,15 +1345,6 @@ function renderEntries() {
         li.appendChild(btns);
         entriesList.appendChild(li);
     });
-    // Star/unstar entry
-    async function toggleStarEntry(entryId, star) {
-        await db.collection('users')
-            .doc(auth.currentUser.uid)
-            .collection('gratitude')
-            .doc(entryId)
-            .update({ starred: star });
-        // No need to reload entries here; optimistic UI handles it
-    }
     // Progress info (streaks, total)
     function updateProgressInfo() {
         const entries = window._allEntries || [];
