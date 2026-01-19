@@ -39,6 +39,17 @@
             }
         });
     </script>
+    <script>
+        // Clean up any legacy service workers that might still be registered (avoids sw.js fetch errors)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                registrations.forEach(reg => reg.unregister().catch(() => { }));
+            }).catch(() => { });
+            if (window.caches && caches.keys) {
+                caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).catch(() => { });
+            }
+        }
+    </script>
 </head>
 
 <body class="min-h-screen bg-gray-100 dark:bg-darkbg transition-colors">

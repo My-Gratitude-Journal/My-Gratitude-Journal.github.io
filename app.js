@@ -14,6 +14,7 @@ const db = firebase.firestore();
 const USER_KEY_STORAGE = 'gj_user_key';
 const LEGACY_KEY_STORAGE = 'gj_user_legacy_key';
 const OFFLINE_CACHE_PREFIX = 'gj_offline_entries_';
+const PENDING_OPS_PREFIX = 'gj_pending_ops_';
 let userKey = sessionStorage.getItem(USER_KEY_STORAGE) || '';
 let legacyKey = sessionStorage.getItem(LEGACY_KEY_STORAGE) || '';
 let pendingPassword = '';
@@ -67,6 +68,116 @@ const offlineKeyForUser = () => {
     const user = auth.currentUser;
     return user ? `${OFFLINE_CACHE_PREFIX}${user.uid}` : null;
 };
+
+const pendingOpsKeyForUser = () => {
+    const user = auth.currentUser;
+    return user ? `${PENDING_OPS_PREFIX}${user.uid}` : null;
+};
+
+const isOnline = () => {
+    if (typeof navigator === 'undefined') return true;
+    return navigator.onLine !== false;
+};
+
+function readPendingOps() {
+    const key = pendingOpsKeyForUser();
+    if (!key) return [];
+    try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : [];
+    } catch (err) {
+        console.error('Failed to parse pending ops:', err);
+        return [];
+    }
+}
+
+function persistPendingOps(ops) {
+    const key = pendingOpsKeyForUser();
+    if (!key) return;
+    try {
+        localStorage.setItem(key, JSON.stringify(ops || []));
+    } catch (err) {
+        console.error('Failed to persist pending ops:', err);
+    }
+}
+
+function queuePendingOp(op) {
+    const ops = readPendingOps();
+    ops.push(op);
+    persistPendingOps(ops);
+}
+
+function updatePendingAdd(tempId, updater) {
+    const ops = readPendingOps();
+    const idx = ops.findIndex(o => o.type === 'add' && o.tempId === tempId);
+    if (idx === -1) return;
+    const updated = updater(ops[idx]) || {};
+    ops[idx] = { ...ops[idx], ...updated };
+    persistPendingOps(ops);
+}
+
+function removePendingAdd(tempId) {
+    const ops = readPendingOps().filter(o => !(o.type === 'add' && o.tempId === tempId));
+    persistPendingOps(ops);
+}
+
+function replaceTempIdEverywhere(oldId, newId) {
+    window._allEntries = (window._allEntries || []).map(e => e.id === oldId ? { ...e, id: newId } : e);
+    const ops = readPendingOps().map(op => {
+        const next = { ...op };
+        if (next.tempId === oldId) next.tempId = newId;
+        if (next.id === oldId) next.id = newId;
+        return next;
+    });
+    persistPendingOps(ops);
+    syncOfflineCacheFromMemory();
+}
+
+async function flushPendingOps() {
+    if (!isOnline()) return;
+    const ops = readPendingOps();
+    if (!ops.length) return;
+    const user = auth.currentUser;
+    if (!user) return;
+    const collectionRef = db.collection('users').doc(user.uid).collection('gratitude');
+    const remaining = [];
+    for (const op of ops) {
+        try {
+            if (op.type === 'add') {
+                const docRef = await collectionRef.add({
+                    entry: op.entry,
+                    created: op.created ? new Date(op.created) : new Date(),
+                    starred: !!op.starred
+                });
+                replaceTempIdEverywhere(op.tempId, docRef.id);
+            } else if (op.type === 'edit') {
+                await collectionRef.doc(op.id).update({ entry: op.entry });
+            } else if (op.type === 'delete') {
+                await collectionRef.doc(op.id).delete();
+            } else if (op.type === 'star') {
+                await collectionRef.doc(op.id).update({ starred: !!op.starred });
+            }
+        } catch (err) {
+            console.error('Failed to flush op:', op, err);
+            remaining.push(op);
+        }
+    }
+    persistPendingOps(remaining);
+    try {
+        await db.collection('users').doc(user.uid).set({
+            daysJournaled: window._daysJournaled || 0,
+            totalEntries: window._totalEntries || (window._allEntries ? window._allEntries.length : 0)
+        }, { merge: true });
+    } catch (err) {
+        console.error('Failed to sync counters after flush:', err);
+    }
+    if (!remaining.length) {
+        setStatus('Offline changes synced.', 'success');
+    }
+    updateProgressInfo();
+    renderEntries();
+    syncOfflineCacheFromMemory();
+}
 
 function selectOfflineEntries(entries) {
     // Keep all favorites plus the 20 most recent non-favorites
@@ -218,6 +329,7 @@ window.addEventListener('offline', () => {
 });
 window.addEventListener('online', () => {
     hideOfflineBanner();
+    flushPendingOps().then(() => loadEntries(true)).catch(err => console.error('Pending sync failed:', err));
 });
 
 // Skeleton placeholders for entries list
@@ -572,8 +684,14 @@ auth.onAuthStateChanged(async user => {
             }
         }
 
+        try {
+            await flushPendingOps();
+        } catch (err) {
+            console.error('Failed flushing offline ops on login:', err);
+        }
+
         // Read most recent entries
-        loadEntries(true);
+        await loadEntries(true);
         logoutBtn.style.display = 'inline-block';
         deleteAccountBtn.style.display = 'inline-block';
     } else {
@@ -631,62 +749,73 @@ gratitudeForm.onsubmit = async (e) => {
     const entry = gratitudeInput.value.trim();
     if (!entry) return;
     const encrypted = encrypt(entry, userKey);
+    const created = new Date();
+    created.setMilliseconds(0);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayStr = today.toISOString().slice(0, 10);
+    const entriesSnapshot = window._allEntries || [];
 
     // Check if user already has an entry today
-    const existingTodayEntry = (window._allEntries || []).some(e => {
+    const existingTodayEntry = entriesSnapshot.some(e => {
         const eDate = e.created instanceof Date ? e.created : new Date(e.created);
         eDate.setHours(0, 0, 0, 0);
         return eDate.toISOString().slice(0, 10) === todayStr;
     });
 
-    await db.collection('users')
-        .doc(auth.currentUser.uid)
-        .collection('gratitude')
-        .add({
-            entry: encrypted,
-            created: new Date(),
-            starred: false
-        });
-
-    // Increment days journaled counter if this is the first entry of the day
-    if (!existingTodayEntry) {
-        window._daysJournaled = (window._daysJournaled || 0) + 1;
-    }
-
-    // Always increment total entries counter
-    window._totalEntries = (window._totalEntries || 0) + 1;
-
-    try {
-        // Use set with merge to ensure the document exists and fields are written
-        await db.collection('users').doc(auth.currentUser.uid).set({
-            daysJournaled: window._daysJournaled,
-            totalEntries: window._totalEntries
-        }, { merge: true });
-    } catch (err) {
-        console.error('Error writing counters:', err);
-    }
-
-    gratitudeInput.value = '';
-    // Update cache and UI without re-reading from Firestore
+    // Build local entry with temp id
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const newEntry = {
-        id: Math.random().toString(36).substr(2, 9), // temp id
+        id: tempId,
         text: entry,
-        created: new Date(),
+        created,
         starred: false,
         cipher: encrypted
     };
-    window._allEntries = [newEntry, ...(window._allEntries || [])];
 
-    // Only keep the limit if we haven't loaded all entries yet
+    if (!existingTodayEntry) {
+        window._daysJournaled = (window._daysJournaled || 0) + 1;
+    }
+    window._totalEntries = (window._totalEntries || 0) + 1;
+
+    gratitudeInput.value = '';
+    window._allEntries = [newEntry, ...entriesSnapshot];
     if (!window._allEntriesLoaded) {
         window._allEntries = window._allEntries.slice(0, 20);
     }
     syncOfflineCacheFromMemory();
     updateProgressInfo();
     renderEntries();
+
+    const persistRemote = async () => {
+        const docRef = await db.collection('users')
+            .doc(auth.currentUser.uid)
+            .collection('gratitude')
+            .add({
+                entry: encrypted,
+                created,
+                starred: false
+            });
+
+        replaceTempIdEverywhere(tempId, docRef.id);
+        await db.collection('users').doc(auth.currentUser.uid).set({
+            daysJournaled: window._daysJournaled,
+            totalEntries: window._totalEntries
+        }, { merge: true });
+    };
+
+    if (isOnline()) {
+        try {
+            await persistRemote();
+        } catch (err) {
+            console.error('Failed to save entry online, queuing:', err);
+            queuePendingOp({ type: 'add', tempId, entry: encrypted, created: created.toISOString(), starred: false });
+            setStatus('Entry saved offline. It will sync when you are back online.', 'info');
+        }
+    } else {
+        queuePendingOp({ type: 'add', tempId, entry: encrypted, created: created.toISOString(), starred: false });
+        setStatus('Entry saved offline. It will sync when you are back online.', 'info');
+    }
 };
 
 // Progress info (streaks, total)
@@ -989,9 +1118,21 @@ function renderEntries() {
             entry.starred = newStarValue;
             renderEntries();
             syncOfflineCacheFromMemory();
+
+            const wasTemp = entryId.startsWith('temp_');
+            if (wasTemp) {
+                updatePendingAdd(entryId, () => ({ starred: newStarValue }));
+                return;
+            }
+
+            if (!isOnline()) {
+                queuePendingOp({ type: 'star', id: entryId, starred: newStarValue });
+                setStatus('Favorite change saved offline. It will sync when you are back online.', 'info');
+                return;
+            }
+
             // Update Firestore in background
             toggleStarEntry(entryId, newStarValue).catch(() => {
-                // Revert on error
                 entry.starred = prevStar;
                 renderEntries();
                 syncOfflineCacheFromMemory();
@@ -1819,56 +1960,65 @@ async function exportEntriesCSVAsync() {
 async function deleteEntry(entryId) {
     if (!confirm('Delete this entry?')) return;
 
-    // Find the entry to get its date
     const entryToDelete = (window._allEntries || []).find(e => e.id === entryId);
-    const entryDate = entryToDelete ? new Date(entryToDelete.created) : null;
-    if (entryDate) {
-        entryDate.setHours(0, 0, 0, 0);
-    }
+    if (!entryToDelete) return;
+
+    const wasTemp = entryId.startsWith('temp_');
+    const entryDate = entryToDelete.created ? new Date(entryToDelete.created) : null;
+    if (entryDate) entryDate.setHours(0, 0, 0, 0);
     const entryDateStr = entryDate ? entryDate.toISOString().slice(0, 10) : null;
 
-    await db.collection('users')
-        .doc(auth.currentUser.uid)
-        .collection('gratitude')
-        .doc(entryId)
-        .delete();
-
-    // Decrement total entries counter
     window._totalEntries = Math.max(0, (window._totalEntries || 0) - 1);
-
     let decrementDaysJournaled = false;
 
-    // Check if there are other entries on the same day
     if (entryDateStr) {
-        const otherEntriesSameDay = (window._allEntries || []).filter(e => {
+        const otherEntriesSameDay = (window._allEntries || []).some(e => {
             if (e.id === entryId) return false;
             const eDate = e.created instanceof Date ? e.created : new Date(e.created);
             eDate.setHours(0, 0, 0, 0);
             return eDate.toISOString().slice(0, 10) === entryDateStr;
-        }).length > 0;
-
-        // Decrement days journaled if no other entries on this day
+        });
         if (!otherEntriesSameDay) {
             window._daysJournaled = Math.max(0, (window._daysJournaled || 0) - 1);
             decrementDaysJournaled = true;
         }
     }
 
-    // Update both counters in Firestore
-    try {
-        await db.collection('users').doc(auth.currentUser.uid).update({
-            daysJournaled: firebase.firestore.FieldValue.increment(decrementDaysJournaled ? -1 : 0),
-            totalEntries: firebase.firestore.FieldValue.increment(-1)
-        });
-    } catch (err) {
-        console.error('Error updating counters:', err);
-    }
-
-    // Remove from cache and update UI
     window._allEntries = (window._allEntries || []).filter(e => e.id !== entryId);
     updateProgressInfo();
     renderEntries();
     syncOfflineCacheFromMemory();
+
+    const persistDelete = async () => {
+        await db.collection('users')
+            .doc(auth.currentUser.uid)
+            .collection('gratitude')
+            .doc(entryId)
+            .delete();
+        await db.collection('users').doc(auth.currentUser.uid).set({
+            daysJournaled: window._daysJournaled,
+            totalEntries: window._totalEntries
+        }, { merge: true });
+    };
+
+    if (wasTemp) {
+        removePendingAdd(entryId);
+        setStatus('Deleted offline entry.', 'info');
+        return;
+    }
+
+    if (isOnline()) {
+        try {
+            await persistDelete();
+        } catch (err) {
+            console.error('Delete failed online, queuing:', err);
+            queuePendingOp({ type: 'delete', id: entryId });
+            setStatus('Deletion saved offline. It will sync when you are back online.', 'info');
+        }
+    } else {
+        queuePendingOp({ type: 'delete', id: entryId });
+        setStatus('Deletion saved offline. It will sync when you are back online.', 'info');
+    }
 }
 
 // Edit entry modal logic
@@ -1893,21 +2043,46 @@ cancelEditBtn.onclick = () => {
 saveEditBtn.onclick = async () => {
     const newText = editEntryInput.value.trim();
     if (!newText || !editingEntryId) return;
+    const targetId = editingEntryId;
     const encrypted = encrypt(newText, userKey);
-    await db.collection('users')
-        .doc(auth.currentUser.uid)
-        .collection('gratitude')
-        .doc(editingEntryId)
-        .update({ entry: encrypted });
-    // Update cache and UI
+    const wasTemp = targetId.startsWith('temp_');
+
     window._allEntries = (window._allEntries || []).map(e =>
-        e.id === editingEntryId ? { ...e, text: newText, cipher: encrypted } : e
+        e.id === targetId ? { ...e, text: newText, cipher: encrypted } : e
     );
     editModal.classList.add('hidden');
-    editingEntryId = null;
     updateProgressInfo();
     renderEntries();
     syncOfflineCacheFromMemory();
+
+    editingEntryId = null;
+
+    if (wasTemp) {
+        updatePendingAdd(targetId, () => ({ entry: encrypted }));
+        setStatus('Edit saved offline. It will sync when you are back online.', 'info');
+        return;
+    }
+
+    const persistEdit = async () => {
+        await db.collection('users')
+            .doc(auth.currentUser.uid)
+            .collection('gratitude')
+            .doc(targetId)
+            .update({ entry: encrypted });
+    };
+
+    if (isOnline()) {
+        try {
+            await persistEdit();
+        } catch (err) {
+            console.error('Edit failed online, queuing:', err);
+            queuePendingOp({ type: 'edit', id: targetId, entry: encrypted });
+            setStatus('Edit saved offline. It will sync when you are back online.', 'info');
+        }
+    } else {
+        queuePendingOp({ type: 'edit', id: targetId, entry: encrypted });
+        setStatus('Edit saved offline. It will sync when you are back online.', 'info');
+    }
 };
 
 // Privacy Notice modal logic
