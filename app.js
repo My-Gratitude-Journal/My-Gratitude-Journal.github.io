@@ -2214,6 +2214,15 @@ if (editModal && editModal.parentElement !== document.body) {
     document.body.appendChild(editModal);
 }
 
+// Update a cached entry by id with provided fields
+function updateEntryInCache(entryId, updates) {
+    if (!window._allEntries) return;
+    const idx = window._allEntries.findIndex((e) => e.id === entryId);
+    if (idx >= 0) {
+        window._allEntries[idx] = { ...window._allEntries[idx], ...updates };
+    }
+}
+
 if (editModal) {
     editModal.addEventListener('click', (e) => {
         if (e.target === editModal) {
@@ -2272,9 +2281,23 @@ function renderModalActionButtons(entry) {
         ? "btn-icon-expand px-3 py-2 rounded bg-yellow-400 text-gray-900 hover:bg-yellow-500 text-sm font-semibold"
         : "btn-icon-expand px-3 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-100 dark:hover:bg-gray-600 text-sm font-semibold";
     starBtn.onclick = async () => {
-        await toggleStarEntry(entry.id, !entry.starred);
-        currentModalEntry.starred = !entry.starred;
+        const newStar = !entry.starred;
+        const prevStar = entry.starred;
+        // Optimistic update across modal and list
+        currentModalEntry.starred = newStar;
+        updateEntryInCache(entry.id, { starred: newStar });
+        renderEntries();
         renderModalActionButtons(currentModalEntry);
+        try {
+            await toggleStarEntry(entry.id, newStar);
+        } catch (err) {
+            console.error('Failed to update favorite from modal:', err);
+            currentModalEntry.starred = prevStar;
+            updateEntryInCache(entry.id, { starred: prevStar });
+            renderEntries();
+            renderModalActionButtons(currentModalEntry);
+            alert('Failed to update favorite. Please try again.');
+        }
     };
 
     // Offline button
