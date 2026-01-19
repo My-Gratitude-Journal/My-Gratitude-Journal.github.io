@@ -2334,12 +2334,10 @@ function renderModalActionButtons(entry) {
     const deleteBtn = document.createElement('button');
     deleteBtn.innerHTML = '<i class="fa-solid fa-trash"></i><span class="icon" aria-hidden="true"><svg class="w-4 h-4 inline" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></span><span class="btn-text ml-2">Delete</span>';
     deleteBtn.className = "btn-icon-expand px-3 py-2 rounded bg-red-500 text-white hover:bg-red-700 text-sm font-semibold";
-    deleteBtn.onclick = () => {
-        if (confirm('Are you sure you want to delete this entry?')) {
-            deleteEntry(entry.id);
-            editModal.classList.add('hidden');
-            document.body.classList.remove('modal-open');
-        }
+    deleteBtn.onclick = async () => {
+        await deleteEntry(entry.id);
+        editModal.classList.add('hidden');
+        document.body.classList.remove('modal-open');
     };
 
     modalActionButtons.appendChild(starBtn);
