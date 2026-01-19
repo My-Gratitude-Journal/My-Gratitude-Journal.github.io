@@ -53,3 +53,19 @@ textarea:focus-visible {
         transform: rotate(360deg);
     }
 }
+
+/* Font Awesome offline fallback: show inline SVGs when FA kit isn't available */
+img.icon,
+.icon svg,
+.icon {
+    display: none;
+}
+
+.no-fa .icon {
+    display: inline-flex;
+    align-items: center;
+}
+
+.no-fa .fa-solid {
+    display: none;
+}
