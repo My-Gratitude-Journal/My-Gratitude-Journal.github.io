@@ -113,6 +113,33 @@ function persistPendingOps(ops) {
     }
 }
 
+const countersKeyForUser = () => {
+    const user = auth.currentUser;
+    return user ? `gj_counters_${user.uid}` : null;
+};
+
+function loadLocalCounters() {
+    const key = countersKeyForUser();
+    if (!key) return null;
+    try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : null;
+    } catch (err) {
+        console.warn('Failed to read local counters:', err);
+        return null;
+    }
+}
+
+function persistLocalCounters({ daysJournaled, totalEntries }) {
+    const key = countersKeyForUser();
+    if (!key) return;
+    try {
+        localStorage.setItem(key, JSON.stringify({ daysJournaled, totalEntries }));
+    } catch (err) {
+        console.warn('Failed to persist local counters:', err);
+    }
+}
+
 function queuePendingOp(op) {
     const ops = readPendingOps();
     ops.push(op);
@@ -153,6 +180,17 @@ async function flushPendingOps() {
     if (!user) return;
     const collectionRef = db.collection('users').doc(user.uid).collection('gratitude');
     const remaining = [];
+
+    // Restore counters from local cache before syncing
+    const cachedCounters = loadLocalCounters();
+    if (cachedCounters) {
+        if (typeof cachedCounters.daysJournaled === 'number') {
+            window._daysJournaled = cachedCounters.daysJournaled;
+        }
+        if (typeof cachedCounters.totalEntries === 'number') {
+            window._totalEntries = cachedCounters.totalEntries;
+        }
+    }
     for (const op of ops) {
         try {
             if (op.type === 'add') {
@@ -180,6 +218,7 @@ async function flushPendingOps() {
             daysJournaled: window._daysJournaled || 0,
             totalEntries: window._totalEntries || (window._allEntries ? window._allEntries.length : 0)
         }, { merge: true });
+        persistLocalCounters({ daysJournaled: window._daysJournaled || 0, totalEntries: window._totalEntries || 0 });
     } catch (err) {
         console.error('Failed to sync counters after flush:', err);
     }
@@ -912,6 +951,7 @@ gratitudeForm.onsubmit = async (e) => {
         window._daysJournaled = (window._daysJournaled || 0) + 1;
     }
     window._totalEntries = (window._totalEntries || 0) + 1;
+    persistLocalCounters({ daysJournaled: window._daysJournaled, totalEntries: window._totalEntries });
 
     gratitudeInput.value = '';
     window._allEntries = [newEntry, ...entriesSnapshot];
@@ -961,14 +1001,23 @@ function updateProgressInfo() {
     const daysJournaledEl = document.getElementById('days-journaled');
     const totalEntriesEl = document.getElementById('total-entries');
 
+    const computedCounters = computeCountersFromEntries(entries);
+    if ((window._daysJournaled || 0) < computedCounters.daysJournaled) {
+        window._daysJournaled = computedCounters.daysJournaled;
+    }
+    if ((window._totalEntries || 0) < computedCounters.totalEntries) {
+        window._totalEntries = computedCounters.totalEntries;
+    }
+
     if (daysJournaledEl) {
         daysJournaledEl.textContent = window._daysJournaled || '0';
     }
 
-    // Display the total entries from the Firebase counter
     if (totalEntriesEl) {
         totalEntriesEl.textContent = window._totalEntries || '0';
     }
+
+    persistLocalCounters({ daysJournaled: window._daysJournaled || 0, totalEntries: window._totalEntries || 0 });
 
     if (!entries.length) {
         streakCountEl.textContent = '0';
@@ -1029,6 +1078,7 @@ async function loadEntries() {
         const userDoc = await db.collection('users').doc(auth.currentUser.uid).get();
         window._daysJournaled = userDoc.exists ? (userDoc.data().daysJournaled || 0) : 0;
         window._totalEntries = userDoc.exists ? (userDoc.data().totalEntries || 0) : 0;
+        persistLocalCounters({ daysJournaled: window._daysJournaled, totalEntries: window._totalEntries });
         const snap = await db.collection('users')
             .doc(auth.currentUser.uid)
             .collection('gratitude')
@@ -1072,6 +1122,16 @@ async function loadEntries() {
         } catch (favErr) {
             console.warn('Could not load favorites separately:', favErr);
         }
+
+        const computedCounters = computeCountersFromEntries(window._allEntries);
+        if ((window._daysJournaled || 0) < computedCounters.daysJournaled) {
+            window._daysJournaled = computedCounters.daysJournaled;
+        }
+        if ((window._totalEntries || 0) < computedCounters.totalEntries) {
+            window._totalEntries = computedCounters.totalEntries;
+        }
+        persistLocalCounters({ daysJournaled: window._daysJournaled, totalEntries: window._totalEntries });
+
         syncOfflineCacheFromMemory();
         updateProgressInfo();
         renderEntries();
@@ -1087,6 +1147,10 @@ async function loadEntries() {
             window._allEntries = offline;
             window._allEntriesLoaded = true;
             window._offlineCacheIds = new Set(offline.map(e => e.id));
+            const counters = computeCountersFromEntries(offline);
+            window._daysJournaled = counters.daysJournaled;
+            window._totalEntries = counters.totalEntries;
+            persistLocalCounters({ daysJournaled: window._daysJournaled, totalEntries: window._totalEntries });
             setStatus('You are viewing offline entries.', 'info');
             showOfflineBanner("You're offline. Showing cached entries. Favorites are always available offline.");
             updateProgressInfo();
@@ -1181,7 +1245,6 @@ function renderEntries() {
     let entries = window._allEntries || [];
     const offlineCachedIds = window._offlineCacheIds instanceof Set ? window._offlineCacheIds : new Set();
     const offlinePinnedIds = getOfflinePinnedIds();
-    console.log('renderEntries called, total entries available:', entries.length);
     updateShowAllEntriesBtn();
     // Disable 'Show All Entries' button if all entries are already shown
     function updateShowAllEntriesBtn() {
@@ -2159,6 +2222,8 @@ async function deleteEntry(entryId) {
         }
     }
 
+    persistLocalCounters({ daysJournaled: window._daysJournaled, totalEntries: window._totalEntries });
+
     window._allEntries = (window._allEntries || []).filter(e => e.id !== entryId);
     updateProgressInfo();
     renderEntries();
@@ -2232,6 +2297,17 @@ function getEntryDate(entry) {
     }
     const parsed = new Date(candidate);
     return isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function computeCountersFromEntries(entries) {
+    const dates = new Set();
+    (entries || []).forEach((e) => {
+        const d = getEntryDate(e);
+        if (!d) return;
+        d.setHours(0, 0, 0, 0);
+        dates.add(d.toISOString().slice(0, 10));
+    });
+    return { daysJournaled: dates.size, totalEntries: (entries || []).length };
 }
 
 if (editModal) {
