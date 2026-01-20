@@ -2350,7 +2350,7 @@ function showPdfPreview(blobUrl, filename, onClose) {
     header.appendChild(actions);
 
     const frame = document.createElement('iframe');
-    frame.className = 'w-full h-[70vh]';
+    frame.className = 'w-full h-[80vh]';
     frame.src = blobUrl;
 
     modal.appendChild(header);
