@@ -2484,13 +2484,13 @@ function fallbackJsPdfExport(entries) {
 
 function showPdfPreview(blobUrl, filename, onClose) {
     const overlay = document.createElement('div');
-    overlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    overlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 p-4 pt-6';
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-modal', 'true');
     overlay.setAttribute('aria-labelledby', 'pdf-preview-title');
 
     const modal = document.createElement('div');
-    modal.className = 'bg-white dark:bg-darkcard rounded-2xl shadow-2xl w-full max-w-4xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col';
+    modal.className = 'bg-white dark:bg-darkcard rounded-2xl shadow-2xl w-full max-w-4xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col my-4 max-h-[90vh]';
 
     const header = document.createElement('div');
     header.className = 'flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700';
