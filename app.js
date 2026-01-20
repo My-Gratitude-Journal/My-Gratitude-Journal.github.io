@@ -1695,6 +1695,13 @@ window.addEventListener('DOMContentLoaded', () => {
         cancelBtn.onclick = () => {
             clearPdfError();
             settingsModal.classList.add('hidden');
+
+            // Restore PDF preview if it was open
+            if (window.pdfPreviewData) {
+                const { blobUrl, filename, onClose } = window.pdfPreviewData;
+                showPdfPreview(blobUrl, filename, onClose);
+                window.pdfPreviewData = null;
+            }
         };
         defaultsBtn.onclick = () => {
             const s = DEFAULT_PDF_SETTINGS;
@@ -1718,6 +1725,13 @@ window.addEventListener('DOMContentLoaded', () => {
 
             setPdfSettings(s);
             settingsModal.classList.add('hidden');
+
+            // Restore PDF preview if it was open
+            if (window.pdfPreviewData) {
+                const { blobUrl, filename, onClose } = window.pdfPreviewData;
+                showPdfPreview(blobUrl, filename, onClose);
+                window.pdfPreviewData = null;
+            }
         };
 
         // Toggle two-column option when book mode changes
@@ -2313,6 +2327,14 @@ function showPdfPreview(blobUrl, filename, onClose) {
     h.textContent = 'PDF Preview';
     const actions = document.createElement('div');
     actions.className = 'flex gap-2';
+    const settingsBtn = document.createElement('button');
+    settingsBtn.className = 'px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded hover:bg-gray-200 dark:hover:bg-gray-600 font-medium';
+    settingsBtn.textContent = 'Settings';
+    settingsBtn.onclick = () => {
+        overlay.remove();
+        if (window.openPdfSettings) window.openPdfSettings();
+        window.pdfPreviewData = { blobUrl, filename, onClose };
+    };
     const downloadBtn = document.createElement('a');
     downloadBtn.className = 'px-4 py-2 bg-primary text-white rounded hover:bg-blue-600 font-semibold';
     downloadBtn.href = blobUrl;
@@ -2321,6 +2343,7 @@ function showPdfPreview(blobUrl, filename, onClose) {
     const closeBtn = document.createElement('button');
     closeBtn.className = 'px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded hover:bg-gray-300 dark:hover:bg-gray-600 font-medium';
     closeBtn.textContent = 'Close';
+    actions.appendChild(settingsBtn);
     actions.appendChild(downloadBtn);
     actions.appendChild(closeBtn);
     header.appendChild(h);
