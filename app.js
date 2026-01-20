@@ -2025,7 +2025,7 @@ function exportBookModePDF(entries, settings) {
 
     let pageNum = 1;
     let isLeftPage = true;
-    let y = margin + 20;
+    let y = margin + 15;
 
     // Title page
     doc.setFont('georgia', 'normal');
@@ -2052,13 +2052,13 @@ function exportBookModePDF(entries, settings) {
     doc.addPage();
     pageNum = 2;
     isLeftPage = true;
-    y = margin + 20;
+    y = margin + 15;
 
     // Content pages
     const columnWidth = settings.twoColumn ? (pageWidth - binding * 2 - margin * 3) / 2 : pageWidth - margin * 2 - binding;
-    let yLeft = margin + 20;  // Track y position in left column
-    let yRight = margin + 20; // Track y position in right column
-    const contentHeight = pageHeight - margin * 2 - 20 - 15; // minus header and footer space
+    let yLeft = margin + 15;  // Track y position in left column
+    let yRight = margin + 15; // Track y position in right column
+    const contentHeight = pageHeight - margin * 2 - 15 - 10; // minus header and footer space
 
     entries.forEach((e, entryIdx) => {
         const d = e.created ? (e.created instanceof Date ? e.created : new Date(e.created)) : null;
@@ -2067,10 +2067,10 @@ function exportBookModePDF(entries, settings) {
         try { displayText = decodeURIComponent(displayText); } catch { }
 
         // Calculate entry height
-        const lineHeight = 5.5;
+        const lineHeight = 5;
         const lines = doc.splitTextToSize(displayText, columnWidth - 6);
-        const entryHeight = lineHeight * lines.length + 16; // date + padding
-        const spaceNeeded = entryHeight + 10;
+        const entryHeight = lineHeight * lines.length + 10; // date + padding
+        const spaceNeeded = entryHeight + 3; // minimal spacing between entries
 
         if (settings.twoColumn) {
             // Fill left column first, then right column
@@ -2089,8 +2089,8 @@ function exportBookModePDF(entries, settings) {
                 doc.addPage();
                 pageNum++;
                 isLeftPage = !isLeftPage;
-                yLeft = margin + 20;
-                yRight = margin + 20;
+                yLeft = margin + 15;
+                yRight = margin + 15;
                 currentY = yLeft;
                 isRightColumn = false;
             }
@@ -2115,22 +2115,22 @@ function exportBookModePDF(entries, settings) {
             doc.setFont('georgia', 'normal');
             doc.setFontSize(10);
             doc.setTextColor(40, 40, 40);
-            doc.text(lines, x, currentY + 8, { maxWidth: columnWidth });
+            doc.text(lines, x, currentY + 6, { maxWidth: columnWidth });
 
             // Update the appropriate column's y position
             if (isRightColumn) {
-                yRight = currentY + entryHeight + 10;
+                yRight = currentY + entryHeight + 3;
             } else {
-                yLeft = currentY + entryHeight + 10;
+                yLeft = currentY + entryHeight + 3;
             }
         } else {
             // Single column layout
-            if (y + spaceNeeded > pageHeight - margin - 15) {
+            if (y + spaceNeeded > pageHeight - margin - 10) {
                 addBookPageNumbers(doc, pageNum, pageWidth, pageHeight, margin, isLeftPage);
                 doc.addPage();
                 pageNum++;
                 isLeftPage = !isLeftPage;
-                y = margin + 20;
+                y = margin + 15;
             }
 
             // Calculate x position
@@ -2150,9 +2150,9 @@ function exportBookModePDF(entries, settings) {
             doc.setFont('georgia', 'normal');
             doc.setFontSize(10);
             doc.setTextColor(40, 40, 40);
-            doc.text(lines, x, y + 8, { maxWidth: columnWidth });
+            doc.text(lines, x, y + 6, { maxWidth: columnWidth });
 
-            y += entryHeight + 10;
+            y += entryHeight + 3;
         }
     });
 
