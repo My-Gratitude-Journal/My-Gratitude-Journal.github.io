@@ -928,6 +928,8 @@ auth.onAuthStateChanged(async user => {
         const cancelBtn = document.getElementById('delete-account-cancel');
         const confirmBtn = document.getElementById('delete-account-confirm');
         const reauthBtn = document.getElementById('delete-account-reauth-btn');
+        const sumEntries = document.getElementById('delete-account-summary-entries');
+        const sumFavs = document.getElementById('delete-account-summary-favorites');
 
         if (!modal || !pwGroup || !reauthGroup || !pwInput || !errBox || !cancelBtn || !confirmBtn || !reauthBtn) {
             console.error('Delete account modal not found');
@@ -938,6 +940,14 @@ auth.onAuthStateChanged(async user => {
         errBox.classList.add('hidden');
         errBox.textContent = '';
         pwInput.value = '';
+
+        // Populate summary
+        try {
+            const total = typeof window._totalEntries === 'number' ? window._totalEntries : ((window._allEntries || []).length || 0);
+            const favCount = Array.isArray(window._allEntries) ? window._allEntries.filter(e => e.starred).length : 0;
+            if (sumEntries) sumEntries.textContent = String(total);
+            if (sumFavs) sumFavs.textContent = String(favCount);
+        } catch { }
 
         // Determine provider
         const providers = (user.providerData || []).map(p => p.providerId);
@@ -971,12 +981,22 @@ auth.onAuthStateChanged(async user => {
         const deleteAllUserData = async () => {
             // Delete entries, then user doc, then auth user
             const uid = user.uid;
-            // Delete subcollection entries (single batch; large accounts may require pagination in future)
+            // Delete subcollection entries in batches to avoid limits
+            const deleteCollectionInBatches = async (collectionRef, batchSize = 300) => {
+                while (true) {
+                    const snap = await collectionRef
+                        .orderBy(firebase.firestore.FieldPath.documentId())
+                        .limit(batchSize)
+                        .get();
+                    if (snap.empty) break;
+                    const batch = db.batch();
+                    snap.docs.forEach(d => batch.delete(d.ref));
+                    await batch.commit();
+                    await new Promise(res => setTimeout(res, 10));
+                }
+            };
             try {
-                const entriesSnap = await db.collection('users').doc(uid).collection('gratitude').get();
-                const batch = db.batch();
-                entriesSnap.forEach(doc => batch.delete(doc.ref));
-                await batch.commit();
+                await deleteCollectionInBatches(db.collection('users').doc(uid).collection('gratitude'));
             } catch (e) {
                 console.error('Failed deleting entries:', e);
                 throw e;
