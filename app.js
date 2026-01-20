@@ -837,16 +837,11 @@ auth.onAuthStateChanged(async user => {
         // Derive userKey if missing but password is available
         if (!userKey) {
             if (!pendingPassword) {
-                const pwd = prompt('Enter your password to decrypt your entries:');
-                if (pwd) {
-                    pendingPassword = pwd;
-                    legacyKey = normalizeKey(pwd);
-                    sessionStorage.setItem(LEGACY_KEY_STORAGE, legacyKey);
-                } else {
-                    setStatus('Enter your password to view entries.', 'info');
-                    hideLoading();
-                    return;
-                }
+                // Password not available in session - user needs to log in again
+                setStatus('Session expired. Please log in again to decrypt your entries.', 'error');
+                await auth.signOut();
+                hideLoading();
+                return;
             }
             if (pendingPassword && userSalt) {
                 userKey = deriveKeyFromPassword(pendingPassword, userSalt);
