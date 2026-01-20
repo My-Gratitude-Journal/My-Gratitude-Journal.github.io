@@ -584,6 +584,46 @@
                 </div>
             </div>
         </div>
+        <!-- Delete Account Modal -->
+        <div id="delete-account-modal"
+            class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 hidden" role="dialog"
+            aria-modal="true" aria-labelledby="delete-account-title">
+            <div
+                class="bg-white dark:bg-darkcard rounded-2xl p-6 shadow-2xl w-full max-w-md border border-gray-200 dark:border-gray-700 mx-2">
+                <h2 id="delete-account-title" class="text-xl font-bold mb-2 text-red-600 dark:text-red-400">Delete
+                    Account</h2>
+                <p class="text-sm text-gray-700 dark:text-gray-200 mb-4">This will permanently delete your account and
+                    all journal entries. This action cannot be undone.</p>
+
+                <!-- Email/password reauth -->
+                <div id="delete-account-password-group" class="space-y-2 hidden">
+                    <label for="delete-account-password"
+                        class="block text-sm font-medium text-gray-700 dark:text-gray-200">Confirm your password</label>
+                    <input id="delete-account-password" type="password" autocomplete="current-password"
+                        placeholder="Password"
+                        class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+                </div>
+
+                <!-- Provider reauth (e.g., Google) -->
+                <div id="delete-account-reauth-group" class="space-y-2 hidden">
+                    <p class="text-sm text-gray-700 dark:text-gray-200">You'll need to sign in again to continue.</p>
+                    <button id="delete-account-reauth-btn"
+                        class="w-full px-4 py-2 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 font-semibold">Sign In</button>
+                </div>
+
+                <div id="delete-account-error"
+                    class="hidden mt-3 p-2 rounded border text-sm border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+                </div>
+
+                <div class="flex justify-end gap-3 mt-5">
+                    <button id="delete-account-cancel"
+                        class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600">Cancel</button>
+                    <button id="delete-account-confirm"
+                        class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-semibold">Delete
+                        Account</button>
+                </div>
+            </div>
+        </div>
         <!-- Loading overlay for entry fetches -->
         <div id="loading-overlay" role="status" aria-live="polite"
             class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
