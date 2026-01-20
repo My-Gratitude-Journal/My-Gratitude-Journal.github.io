@@ -2056,7 +2056,9 @@ function exportBookModePDF(entries, settings) {
 
     // Content pages
     const columnWidth = settings.twoColumn ? (pageWidth - binding * 2 - margin * 3) / 2 : pageWidth - margin * 2 - binding;
-    let columnIndex = 0; // 0 for left column, 1 for right column
+    let yLeft = margin + 20;  // Track y position in left column
+    let yRight = margin + 20; // Track y position in right column
+    const contentHeight = pageHeight - margin * 2 - 20 - 15; // minus header and footer space
 
     entries.forEach((e, entryIdx) => {
         const d = e.created ? (e.created instanceof Date ? e.created : new Date(e.created)) : null;
@@ -2070,22 +2072,59 @@ function exportBookModePDF(entries, settings) {
         const entryHeight = lineHeight * lines.length + 16; // date + padding
         const spaceNeeded = entryHeight + 10;
 
-        // Page management for two-column layout
         if (settings.twoColumn) {
-            const contentHeight = pageHeight - margin * 2 - 20 - 15; // minus header and footer space
-            if (columnIndex === 0 && y + spaceNeeded > margin + contentHeight) {
-                columnIndex = 1;
-                y = margin + 20;
+            // Fill left column first, then right column
+            let currentY = yLeft;
+            let isRightColumn = false;
+
+            // If left column is full, use right column
+            if (yLeft + spaceNeeded > margin + contentHeight) {
+                currentY = yRight;
+                isRightColumn = true;
             }
-            if (columnIndex === 1 && y + spaceNeeded > margin + contentHeight) {
+
+            // If right column is also full or we're trying to go to right but it's full, create new page
+            if (currentY + spaceNeeded > margin + contentHeight) {
                 addBookPageNumbers(doc, pageNum, pageWidth, pageHeight, margin, isLeftPage);
                 doc.addPage();
                 pageNum++;
                 isLeftPage = !isLeftPage;
-                columnIndex = 0;
-                y = margin + 20;
+                yLeft = margin + 20;
+                yRight = margin + 20;
+                currentY = yLeft;
+                isRightColumn = false;
+            }
+
+            // Calculate x position
+            let x = margin + binding;
+            if (isRightColumn) {
+                x = margin + binding + columnWidth + margin;
+            }
+
+            // Date
+            doc.setFont('georgia', 'bold');
+            doc.setFontSize(9);
+            if (settings.colorStyle) {
+                doc.setTextColor(40, 100, 180);
+            } else {
+                doc.setTextColor(80, 80, 80);
+            }
+            doc.text(dateStr, x, currentY);
+
+            // Entry text
+            doc.setFont('georgia', 'normal');
+            doc.setFontSize(10);
+            doc.setTextColor(40, 40, 40);
+            doc.text(lines, x, currentY + 8, { maxWidth: columnWidth });
+
+            // Update the appropriate column's y position
+            if (isRightColumn) {
+                yRight = currentY + entryHeight + 10;
+            } else {
+                yLeft = currentY + entryHeight + 10;
             }
         } else {
+            // Single column layout
             if (y + spaceNeeded > pageHeight - margin - 15) {
                 addBookPageNumbers(doc, pageNum, pageWidth, pageHeight, margin, isLeftPage);
                 doc.addPage();
@@ -2093,49 +2132,27 @@ function exportBookModePDF(entries, settings) {
                 isLeftPage = !isLeftPage;
                 y = margin + 20;
             }
-        }
 
-        // Calculate x position
-        let x = margin + binding;
-        if (settings.twoColumn && columnIndex === 1) {
-            x = margin + binding + columnWidth + margin;
-        }
+            // Calculate x position
+            let x = margin + binding;
 
-        // Draw entry box
-        if (settings.colorStyle) {
-            doc.setDrawColor(102, 150, 220);
-            doc.setFillColor(230, 242, 255);
-        } else {
-            doc.setDrawColor(200, 200, 200);
-            doc.setFillColor(252, 252, 252);
-        }
-        const boxWidth = columnWidth;
-        const boxHeight = entryHeight;
-        doc.roundedRect(x, y, boxWidth, boxHeight, 2, 2, 'FD');
-
-        // Date
-        doc.setFont('georgia', 'bold');
-        doc.setFontSize(9);
-        if (settings.colorStyle) {
-            doc.setTextColor(40, 100, 180);
-        } else {
-            doc.setTextColor(80, 80, 80);
-        }
-        doc.text(dateStr, x + 4, y + 7);
-
-        // Entry text
-        doc.setFont('georgia', 'normal');
-        doc.setFontSize(10);
-        doc.setTextColor(40, 40, 40);
-        doc.text(lines, x + 4, y + 14, { maxWidth: columnWidth - 8 });
-
-        y += entryHeight + 10;
-
-        if (settings.twoColumn) {
-            columnIndex = (columnIndex + 1) % 2;
-            if (columnIndex === 0) {
-                y += 8; // Add spacing between rows
+            // Date
+            doc.setFont('georgia', 'bold');
+            doc.setFontSize(9);
+            if (settings.colorStyle) {
+                doc.setTextColor(40, 100, 180);
+            } else {
+                doc.setTextColor(80, 80, 80);
             }
+            doc.text(dateStr, x, y);
+
+            // Entry text
+            doc.setFont('georgia', 'normal');
+            doc.setFontSize(10);
+            doc.setTextColor(40, 40, 40);
+            doc.text(lines, x, y + 8, { maxWidth: columnWidth });
+
+            y += entryHeight + 10;
         }
     });
 
