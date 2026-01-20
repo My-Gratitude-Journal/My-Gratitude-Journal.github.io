@@ -838,7 +838,7 @@ auth.onAuthStateChanged(async user => {
         if (!userKey) {
             if (!pendingPassword) {
                 // Password not available in session - user needs to log in again
-                setStatus('Session expired. Please log in again to decrypt your entries.', 'error');
+                setStatus('Session expired. Please log in again.', 'error');
                 await auth.signOut();
                 hideLoading();
                 return;
@@ -1719,6 +1719,20 @@ window.addEventListener('DOMContentLoaded', () => {
             setPdfSettings(s);
             settingsModal.classList.add('hidden');
         };
+
+        // Toggle two-column option when book mode changes
+        const bookModeCheckbox = document.getElementById('pdf-book-mode');
+        if (bookModeCheckbox) {
+            bookModeCheckbox.addEventListener('change', (e) => {
+                const twoColumnCheckbox = document.getElementById('pdf-two-column');
+                if (twoColumnCheckbox) {
+                    twoColumnCheckbox.disabled = !e.target.checked;
+                    if (!e.target.checked) {
+                        twoColumnCheckbox.checked = false;
+                    }
+                }
+            });
+        }
     }
 });
 
@@ -1733,7 +1747,9 @@ const DEFAULT_PDF_SETTINGS = {
     colorStyle: false,
     favoritesOnly: false,
     dateFrom: '',
-    dateTo: ''
+    dateTo: '',
+    bookMode: false,
+    twoColumn: false
 };
 
 function getPdfSettings() {
@@ -1763,6 +1779,8 @@ function populatePdfSettingsForm(s) {
     const favoritesOnly = f('pdf-favorites-only');
     const dateFrom = f('pdf-date-from');
     const dateTo = f('pdf-date-to');
+    const bookMode = f('pdf-book-mode');
+    const twoColumn = f('pdf-two-column');
     if (pageSize) pageSize.value = s.format;
     if (orientation) orientation.value = s.orientation;
     if (margin) margin.value = String(s.margin);
@@ -1773,6 +1791,10 @@ function populatePdfSettingsForm(s) {
     if (favoritesOnly) favoritesOnly.checked = !!s.favoritesOnly;
     if (dateFrom) dateFrom.value = s.dateFrom || '';
     if (dateTo) dateTo.value = s.dateTo || '';
+    if (bookMode) bookMode.checked = !!s.bookMode;
+    if (twoColumn) twoColumn.checked = !!s.twoColumn;
+    // Disable two-column option if not in book mode
+    if (twoColumn) twoColumn.disabled = !s.bookMode;
 }
 
 function readPdfSettingsForm() {
@@ -1787,6 +1809,8 @@ function readPdfSettingsForm() {
     const favoritesOnly = f('pdf-favorites-only');
     const dateFrom = f('pdf-date-from');
     const dateTo = f('pdf-date-to');
+    const bookMode = f('pdf-book-mode');
+    const twoColumn = f('pdf-two-column');
     return {
         format: pageSize ? pageSize.value : DEFAULT_PDF_SETTINGS.format,
         orientation: orientation ? orientation.value : DEFAULT_PDF_SETTINGS.orientation,
@@ -1797,7 +1821,9 @@ function readPdfSettingsForm() {
         colorStyle: colorStyle ? !!colorStyle.checked : DEFAULT_PDF_SETTINGS.colorStyle,
         favoritesOnly: favoritesOnly ? !!favoritesOnly.checked : DEFAULT_PDF_SETTINGS.favoritesOnly,
         dateFrom: dateFrom ? (dateFrom.value || '').trim() : DEFAULT_PDF_SETTINGS.dateFrom,
-        dateTo: dateTo ? (dateTo.value || '').trim() : DEFAULT_PDF_SETTINGS.dateTo
+        dateTo: dateTo ? (dateTo.value || '').trim() : DEFAULT_PDF_SETTINGS.dateTo,
+        bookMode: bookMode ? !!bookMode.checked : DEFAULT_PDF_SETTINGS.bookMode,
+        twoColumn: (twoColumn && bookMode) ? (!!twoColumn.checked && !!bookMode.checked) : DEFAULT_PDF_SETTINGS.twoColumn
     };
 }
 
@@ -1860,7 +1886,7 @@ async function exportEntriesPDFAsync() {
 
         // Prefer styled HTML → PDF via html2pdf if available
         const canUseHtml2pdf = !!(window.html2pdf);
-        if (canUseHtml2pdf) {
+        if (canUseHtml2pdf && !settings.bookMode) {
             // Build a temporary printable container with Tailwind styles
             const container = document.createElement('div');
             container.id = 'pdf-export-container';
@@ -1977,11 +2003,165 @@ async function exportEntriesPDFAsync() {
         }
 
         // Fallback: original jsPDF export with improved spacing and dividers
-        fallbackJsPdfExport(entries);
+        // Or use book mode if enabled
+        if (settings.bookMode) {
+            exportBookModePDF(entries, settings);
+        } else {
+            fallbackJsPdfExport(entries);
+        }
     } catch (e) {
         console.error('Error exporting PDF:', e);
         alert('Failed to export PDF. Please try again.');
     }
+}
+
+function exportBookModePDF(entries, settings) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: settings.format, orientation: settings.orientation });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = Math.max(10, Number(settings.margin) || 10);
+    const binding = 5; // Extra space for binding (inner margin)
+
+    let pageNum = 1;
+    let isLeftPage = true;
+    let y = margin + 20;
+
+    // Title page
+    doc.setFont('georgia', 'normal');
+    doc.setFontSize(32);
+    doc.setTextColor(40, 40, 40);
+    const title = (settings.customTitle && settings.customTitle.trim()) ? settings.customTitle.trim() : 'My Gratitude Journal';
+    doc.text(title, pageWidth / 2, pageHeight / 2 - 25, { align: 'center' });
+
+    // Decorative line
+    doc.setDrawColor(100, 100, 100);
+    doc.line(pageWidth / 2 - 40, pageHeight / 2 - 10, pageWidth / 2 + 40, pageHeight / 2 - 10);
+
+    doc.setFontSize(11);
+    doc.setTextColor(100, 100, 100);
+    const sorted = [...entries].sort((a, b) => new Date(a.created) - new Date(b.created));
+    const start = sorted[0]?.created ? new Date(sorted[0].created) : null;
+    const end = sorted[sorted.length - 1]?.created ? new Date(sorted[sorted.length - 1].created) : null;
+    const fmt = (d) => d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    if (start && end) {
+        doc.text(`${fmt(start)} — ${fmt(end)}`, pageWidth / 2, pageHeight / 2 + 5, { align: 'center' });
+    }
+    doc.text(`${entries.length} entries`, pageWidth / 2, pageHeight / 2 + 15, { align: 'center' });
+
+    doc.addPage();
+    pageNum = 2;
+    isLeftPage = true;
+    y = margin + 20;
+
+    // Content pages
+    const columnWidth = settings.twoColumn ? (pageWidth - binding * 2 - margin * 3) / 2 : pageWidth - margin * 2 - binding;
+    let columnIndex = 0; // 0 for left column, 1 for right column
+
+    entries.forEach((e, entryIdx) => {
+        const d = e.created ? (e.created instanceof Date ? e.created : new Date(e.created)) : null;
+        const dateStr = d ? fmt(d) : '';
+        let displayText = e.text;
+        try { displayText = decodeURIComponent(displayText); } catch { }
+
+        // Calculate entry height
+        const lineHeight = 5.5;
+        const lines = doc.splitTextToSize(displayText, columnWidth - 6);
+        const entryHeight = lineHeight * lines.length + 16; // date + padding
+        const spaceNeeded = entryHeight + 10;
+
+        // Page management for two-column layout
+        if (settings.twoColumn) {
+            const contentHeight = pageHeight - margin * 2 - 20 - 15; // minus header and footer space
+            if (columnIndex === 0 && y + spaceNeeded > margin + contentHeight) {
+                columnIndex = 1;
+                y = margin + 20;
+            }
+            if (columnIndex === 1 && y + spaceNeeded > margin + contentHeight) {
+                addBookPageNumbers(doc, pageNum, pageWidth, pageHeight, margin, isLeftPage);
+                doc.addPage();
+                pageNum++;
+                isLeftPage = !isLeftPage;
+                columnIndex = 0;
+                y = margin + 20;
+            }
+        } else {
+            if (y + spaceNeeded > pageHeight - margin - 15) {
+                addBookPageNumbers(doc, pageNum, pageWidth, pageHeight, margin, isLeftPage);
+                doc.addPage();
+                pageNum++;
+                isLeftPage = !isLeftPage;
+                y = margin + 20;
+            }
+        }
+
+        // Calculate x position
+        let x = margin + binding;
+        if (settings.twoColumn && columnIndex === 1) {
+            x = margin + binding + columnWidth + margin;
+        }
+
+        // Draw entry box
+        if (settings.colorStyle) {
+            doc.setDrawColor(102, 150, 220);
+            doc.setFillColor(230, 242, 255);
+        } else {
+            doc.setDrawColor(200, 200, 200);
+            doc.setFillColor(252, 252, 252);
+        }
+        const boxWidth = columnWidth;
+        const boxHeight = entryHeight;
+        doc.roundedRect(x, y, boxWidth, boxHeight, 2, 2, 'FD');
+
+        // Date
+        doc.setFont('georgia', 'bold');
+        doc.setFontSize(9);
+        if (settings.colorStyle) {
+            doc.setTextColor(40, 100, 180);
+        } else {
+            doc.setTextColor(80, 80, 80);
+        }
+        doc.text(dateStr, x + 4, y + 7);
+
+        // Entry text
+        doc.setFont('georgia', 'normal');
+        doc.setFontSize(10);
+        doc.setTextColor(40, 40, 40);
+        doc.text(lines, x + 4, y + 14, { maxWidth: columnWidth - 8 });
+
+        y += entryHeight + 10;
+
+        if (settings.twoColumn) {
+            columnIndex = (columnIndex + 1) % 2;
+            if (columnIndex === 0) {
+                y += 8; // Add spacing between rows
+            }
+        }
+    });
+
+    // Add page numbers to last page
+    addBookPageNumbers(doc, pageNum, pageWidth, pageHeight, margin, isLeftPage);
+
+    const blob = doc.output('blob');
+    const url = URL.createObjectURL(blob);
+    showPdfPreview(url, 'gratitude_journal_book.pdf', () => {
+        URL.revokeObjectURL(url);
+    });
+}
+
+function addBookPageNumbers(doc, pageNum, pageWidth, pageHeight, margin, isLeftPage) {
+    doc.setFont('georgia', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(140, 140, 140);
+
+    // Page number at bottom outer edge (like real books)
+    let pageNumX;
+    if (isLeftPage) {
+        pageNumX = margin + 3; // left side for left pages
+    } else {
+        pageNumX = pageWidth - margin - 3; // right side for right pages
+    }
+    doc.text(String(pageNum), pageNumX, pageHeight - 12, { align: isLeftPage ? 'left' : 'right' });
 }
 
 function fallbackJsPdfExport(entries) {
