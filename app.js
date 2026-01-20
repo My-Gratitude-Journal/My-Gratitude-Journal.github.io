@@ -2178,7 +2178,7 @@ function addBookPageNumbers(doc, pageNum, pageWidth, pageHeight, margin, isLeftP
     } else {
         pageNumX = pageWidth - margin - 3; // right side for right pages
     }
-    doc.text(String(pageNum), pageNumX, pageHeight - 2, { align: isLeftPage ? 'left' : 'right' });
+    doc.text(String(pageNum), pageNumX, pageHeight - 8, { align: isLeftPage ? 'left' : 'right' });
 }
 
 function fallbackJsPdfExport(entries) {
