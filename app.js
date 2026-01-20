@@ -2058,7 +2058,7 @@ function exportBookModePDF(entries, settings) {
     const columnWidth = settings.twoColumn ? (pageWidth - binding * 2 - margin * 3) / 2 : pageWidth - margin * 2 - binding;
     let yLeft = margin + 15;  // Track y position in left column
     let yRight = margin + 15; // Track y position in right column
-    const contentHeight = pageHeight - margin * 2 - 15 - 10; // minus header and footer space
+    const contentHeight = pageHeight - margin - 5; // minus just bottom margin and a tiny buffer
 
     entries.forEach((e, entryIdx) => {
         const d = e.created ? (e.created instanceof Date ? e.created : new Date(e.created)) : null;
@@ -2178,7 +2178,7 @@ function addBookPageNumbers(doc, pageNum, pageWidth, pageHeight, margin, isLeftP
     } else {
         pageNumX = pageWidth - margin - 3; // right side for right pages
     }
-    doc.text(String(pageNum), pageNumX, pageHeight - 12, { align: isLeftPage ? 'left' : 'right' });
+    doc.text(String(pageNum), pageNumX, pageHeight - 2, { align: isLeftPage ? 'left' : 'right' });
 }
 
 function fallbackJsPdfExport(entries) {
