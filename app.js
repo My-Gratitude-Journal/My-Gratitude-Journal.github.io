@@ -55,7 +55,6 @@ function decrypt(data, keyLike) {
         const primary = tryDecryptWithKey(data, keyLike);
         if (primary) return primary;
     } catch (e) { /* ignore and fall through */ }
-    // Fallback to legacy key if present (for pre-PBKDF2 entries)
     if (legacyKey) {
         try {
             const legacy = tryDecryptWithKey(data, legacyKey);
@@ -673,6 +672,37 @@ showResetBtn.onclick = () => {
     setStatus('');
 };
 
+// Google Sign-In logic
+const googleLoginBtn = document.getElementById('google-login-btn');
+googleLoginBtn.onclick = async () => {
+    errorMsg.textContent = '';
+    loadingMsg.style.display = 'block';
+    googleLoginBtn.disabled = true;
+    try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        const cred = await auth.signInWithPopup(provider);
+        // For Google users, use UID-based encryption (zero-knowledge, secure)
+        // Note: Entries created with Google login are separate from email/password entries
+        const uid = cred.user.uid;
+        pendingPassword = uid; // Use UID as encryption key
+        legacyKey = normalizeKey(uid);
+        sessionStorage.setItem(LEGACY_KEY_STORAGE, legacyKey);
+        // Clear any stale derived key; will derive once salt is loaded
+        userKey = '';
+        sessionStorage.removeItem(USER_KEY_STORAGE);
+        setStatus('Logged in with Google! Loading your journal...', 'success');
+        showLoading('Loading your entries...');
+        showEntriesSkeleton();
+    } catch (e) {
+        if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
+            errorMsg.textContent = e.message;
+            console.error('Google login error:', e);
+        }
+    }
+    loadingMsg.style.display = 'none';
+    googleLoginBtn.disabled = false;
+};
+
 // Login logic
 loginBtn.onclick = async () => {
     errorMsg.textContent = '';
@@ -680,12 +710,6 @@ loginBtn.onclick = async () => {
     loginBtn.disabled = true;
     const email = emailInput.value;
     const password = passwordInput.value;
-    pendingPassword = password;
-    legacyKey = normalizeKey(password);
-    sessionStorage.setItem(LEGACY_KEY_STORAGE, legacyKey);
-    // Clear any stale derived key; will derive once salt is loaded
-    userKey = '';
-    sessionStorage.removeItem(USER_KEY_STORAGE);
     if (!email || !password) {
         errorMsg.textContent = 'Please enter both email and password.';
         loadingMsg.style.display = 'none';
@@ -698,6 +722,14 @@ loginBtn.onclick = async () => {
             errorMsg.textContent = 'Please verify your email before logging in.';
             await auth.signOut();
         } else {
+            // Use UID as encryption key (same for all auth methods)
+            const uid = cred.user.uid;
+            pendingPassword = uid;
+            legacyKey = normalizeKey(uid);
+            sessionStorage.setItem(LEGACY_KEY_STORAGE, legacyKey);
+            // Clear any stale derived key; will use UID directly
+            userKey = '';
+            sessionStorage.removeItem(USER_KEY_STORAGE);
             setStatus('Logged in! Loading your journal...', 'success');
             showLoading('Loading your entries...');
             showEntriesSkeleton();
@@ -834,19 +866,18 @@ auth.onAuthStateChanged(async user => {
         window._offlinePinnedIds = getOfflinePinnedIds();
         window._offlineExcludedIds = getOfflineExcludedIds();
 
-        // Derive userKey if missing but password is available
+        // Derive userKey from UID (all auth methods use UID as encryption key)
         if (!userKey) {
-            if (!pendingPassword) {
-                // Password not available in session - user needs to log in again
-                setStatus('Session expired. Please log in again.', 'error');
+            const uid = user.uid;
+            if (uid) {
+                userKey = normalizeKey(uid);
+                sessionStorage.setItem(USER_KEY_STORAGE, userKey);
+                pendingPassword = '';
+            } else {
+                setStatus('Unable to determine user ID. Please log in again.', 'error');
                 await auth.signOut();
                 hideLoading();
                 return;
-            }
-            if (pendingPassword && userSalt) {
-                userKey = deriveKeyFromPassword(pendingPassword, userSalt);
-                sessionStorage.setItem(USER_KEY_STORAGE, userKey);
-                pendingPassword = '';
             }
         }
 
