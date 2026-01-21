@@ -9,8 +9,8 @@
 - ✅ **Entry Sort Options** — Implemented default sort order for entries: newest first, oldest first, or alphabetical. Preference stored and applied when rendering entries. Real-time preview updates as you change settings.
 
 ## Privacy & Account Management
-- **Delete Account Feature** — Add secure account deletion with confirmation dialog. Should delete user from Firebase Auth and all associated Firestore documents. Optionally allow backup/export before deletion.
-- **Password Change Feature** — Allow users to securely update their password. Handle re-encryption of existing entries with new password-derived key and update Firebase Auth password.
+- ✅ **Delete Account Feature** — Implemented secure account deletion with confirmation dialog and data summary. Deletes user from Firebase Auth and all associated Firestore documents. Supports both email/password and Google Sign-in users. Offline data is cleared after deletion.
+- ✅ **Password Change Feature** — Implemented secure password change with current password verification. Automatically re-encrypts all existing entries with new password-derived key and updates Firebase Auth password. Only available for email/password users.
 
 ## Journaling Features
 - **Daily Reminder Notifications** — Implement optional browser notifications reminding users to journal. Allow users to set preferred time of day. Requires user permission and Notification API.

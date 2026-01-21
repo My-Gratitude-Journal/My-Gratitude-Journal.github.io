@@ -3498,10 +3498,159 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Handle change password
         const changePasswordBtn = document.getElementById('change-password-btn');
-        changePasswordBtn.onclick = () => {
-            // Placeholder for password change functionality
-            setStatus('Password change feature coming soon.', 'info');
-        };
+        const changePasswordModal = document.getElementById('change-password-modal');
+        const changePasswordCancel = document.getElementById('change-password-cancel');
+        const changePasswordSubmit = document.getElementById('change-password-submit');
+        const changePasswordError = document.getElementById('change-password-error');
+        const changePasswordProcessing = document.getElementById('change-password-processing');
+
+        if (changePasswordBtn && changePasswordModal) {
+            changePasswordBtn.onclick = () => {
+                // Only show to password-based users
+                const user = auth.currentUser;
+                if (!user) return;
+
+                const providers = (user.providerData || []).map(p => p.providerId);
+                const isPasswordProvider = providers.includes('password');
+
+                if (!isPasswordProvider) {
+                    setStatus('Password change is only available for email/password accounts.', 'info');
+                    return;
+                }
+
+                // Clear form
+                document.getElementById('current-password-input').value = '';
+                document.getElementById('new-password-input').value = '';
+                document.getElementById('confirm-password-input').value = '';
+                changePasswordError.classList.add('hidden');
+                changePasswordError.textContent = '';
+                changePasswordProcessing.classList.add('hidden');
+
+                closeSettings();
+                changePasswordModal.classList.remove('hidden');
+                document.body.classList.add('modal-open');
+                document.getElementById('current-password-input').focus();
+            };
+
+            changePasswordCancel.onclick = () => {
+                changePasswordModal.classList.add('hidden');
+                document.body.classList.remove('modal-open');
+            };
+
+            changePasswordSubmit.onclick = async () => {
+                const user = auth.currentUser;
+                if (!user) {
+                    changePasswordError.textContent = 'No user logged in.';
+                    changePasswordError.classList.remove('hidden');
+                    return;
+                }
+
+                const currentPassword = document.getElementById('current-password-input').value;
+                const newPassword = document.getElementById('new-password-input').value;
+                const confirmPassword = document.getElementById('confirm-password-input').value;
+
+                // Validation
+                if (!currentPassword || !newPassword || !confirmPassword) {
+                    changePasswordError.textContent = 'Please fill in all password fields.';
+                    changePasswordError.classList.remove('hidden');
+                    return;
+                }
+
+                if (newPassword !== confirmPassword) {
+                    changePasswordError.textContent = 'New passwords do not match.';
+                    changePasswordError.classList.remove('hidden');
+                    return;
+                }
+
+                if (newPassword.length < 6) {
+                    changePasswordError.textContent = 'New password must be at least 6 characters.';
+                    changePasswordError.classList.remove('hidden');
+                    return;
+                }
+
+                changePasswordProcessing.classList.remove('hidden');
+                changePasswordError.classList.add('hidden');
+                changePasswordSubmit.disabled = true;
+
+                try {
+                    // 1. Reauthenticate with current password
+                    const credential = firebase.auth.EmailAuthProvider.credential(user.email, currentPassword);
+                    await user.reauthenticateWithCredential(credential);
+
+                    // 2. Get all entries before password change
+                    const entries = window._allEntries || [];
+
+                    // 3. Derive the new key from new password
+                    const newKey = deriveKeyFromPassword(newPassword, userSalt);
+
+                    // 4. Re-encrypt all entries with new password
+                    for (const entry of entries) {
+                        try {
+                            // Decrypt with old key
+                            const decrypted = decrypt(entry.text, userKey);
+                            // Encrypt with new key
+                            entry.text = encrypt(decrypted, newKey);
+                        } catch (e) {
+                            console.error('Failed to re-encrypt entry:', e);
+                            throw new Error('Failed to re-encrypt entry: ' + entry.id);
+                        }
+                    }
+
+                    // 5. Update entries in Firestore
+                    const uid = user.uid;
+                    const batch = db.batch();
+                    for (const entry of entries) {
+                        if (!entry.id.startsWith('temp_')) {
+                            const ref = db.collection('users').doc(uid).collection('gratitude').doc(entry.id);
+                            batch.update(ref, { text: entry.text });
+                        }
+                    }
+                    await batch.commit();
+
+                    // 6. Update Firebase Auth password
+                    await user.updatePassword(newPassword);
+
+                    // 7. Update session storage with new key
+                    userKey = newKey;
+                    legacyKey = normalizeKey(newPassword);
+                    sessionStorage.setItem(USER_KEY_STORAGE, userKey);
+                    sessionStorage.setItem(LEGACY_KEY_STORAGE, legacyKey);
+
+                    // Close modal and show success message
+                    changePasswordProcessing.classList.add('hidden');
+                    changePasswordSubmit.disabled = false;
+                    changePasswordModal.classList.add('hidden');
+                    document.body.classList.remove('modal-open');
+
+                    setStatus('Password changed successfully. All entries have been re-encrypted.', 'success');
+                } catch (e) {
+                    console.error('Password change error:', e);
+                    changePasswordProcessing.classList.add('hidden');
+                    changePasswordSubmit.disabled = false;
+
+                    let errorMsg = 'Error changing password.';
+                    if (e.code === 'auth/wrong-password') {
+                        errorMsg = 'Current password is incorrect.';
+                    } else if (e.code === 'auth/weak-password') {
+                        errorMsg = 'New password is too weak.';
+                    } else if (e.code === 'auth/requires-recent-login') {
+                        errorMsg = 'Session expired. Please log in again.';
+                    } else if (e.message) {
+                        errorMsg = e.message;
+                    }
+
+                    changePasswordError.textContent = errorMsg;
+                    changePasswordError.classList.remove('hidden');
+                }
+            };
+
+            // Close modal when clicking outside
+            changePasswordModal.onclick = (e) => {
+                if (e.target === changePasswordModal) {
+                    changePasswordCancel.click();
+                }
+            };
+        }
 
         // Handle clear cache
         const clearCacheBtn = document.getElementById('clear-cache-btn');

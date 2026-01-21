@@ -788,6 +788,68 @@
                 </div>
             </div>
         </div>
+        <!-- Change Password Modal -->
+        <div id="change-password-modal"
+            class="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center z-50 hidden p-4 pt-6"
+            role="dialog" aria-modal="true" aria-labelledby="change-password-title">
+            <div
+                class="bg-white dark:bg-darkcard rounded-2xl p-6 shadow-2xl w-full max-w-md border border-gray-200 dark:border-gray-700 mx-2 my-4 max-h-[90vh] overflow-y-auto">
+                <h2 id="change-password-title" class="text-xl font-bold mb-2 text-gray-800 dark:text-white">Change
+                    Password</h2>
+                <p class="text-sm text-gray-700 dark:text-gray-200 mb-4">Your existing entries will be re-encrypted with
+                    the new password.</p>
+
+                <div class="space-y-3">
+                    <!-- Current Password -->
+                    <div class="space-y-1">
+                        <label for="current-password-input"
+                            class="block text-sm font-medium text-gray-700 dark:text-gray-300">Current Password</label>
+                        <input id="current-password-input" type="password" autocomplete="current-password"
+                            placeholder="Enter current password"
+                            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary" />
+                    </div>
+
+                    <!-- New Password -->
+                    <div class="space-y-1">
+                        <label for="new-password-input"
+                            class="block text-sm font-medium text-gray-700 dark:text-gray-300">New Password</label>
+                        <input id="new-password-input" type="password" autocomplete="new-password"
+                            placeholder="Enter new password"
+                            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary" />
+                    </div>
+
+                    <!-- Confirm Password -->
+                    <div class="space-y-1">
+                        <label for="confirm-password-input"
+                            class="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirm New
+                            Password</label>
+                        <input id="confirm-password-input" type="password" autocomplete="new-password"
+                            placeholder="Confirm new password"
+                            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary" />
+                    </div>
+                </div>
+
+                <!-- Error Message -->
+                <div id="change-password-error"
+                    class="hidden mt-3 p-2 rounded border text-sm border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+                </div>
+
+                <!-- Processing Indicator -->
+                <div id="change-password-processing"
+                    class="hidden mt-3 text-center text-sm text-gray-600 dark:text-gray-400">
+                    <div class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                    Processing...
+                </div>
+
+                <div class="flex justify-end gap-3 mt-5">
+                    <button id="change-password-cancel"
+                        class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 font-medium">Cancel</button>
+                    <button id="change-password-submit"
+                        class="px-4 py-2 rounded-lg bg-primary text-white hover:bg-blue-600 font-semibold transition">Change
+                        Password</button>
+                </div>
+            </div>
+        </div>
         <!-- Delete Account Modal -->
         <div id="delete-account-modal"
             class="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center z-50 hidden p-4 pt-6"
