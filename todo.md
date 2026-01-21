@@ -4,9 +4,9 @@
         - Explains what mode does, cautions against turning it on when using public computers.
 
 ## UX & Personalization
-- **Font Size Settings** — Implement adjustable text size setting for accessibility (small, normal, large). Store preference in localStorage and apply CSS custom properties to scale font sizes throughout the app.
-- **Date Format Options** — Allow users to choose date display format (MM/DD/YYYY, DD/MM/YYYY, or relative dates like '2 days ago'). Store preference and update all entry date displays accordingly.
-- **Entry Sort Options** — Let users set default sort order for entries: newest first, oldest first, or alphabetical. Store preference and apply when loading entries.
+- ✅ **Font Size Settings** — Implemented adjustable text size setting for accessibility (small, normal, large). Preference stored in localStorage and applies CSS custom properties (--base-font-size, --font-scale) to scale fonts throughout the app.
+- ✅ **Date Format Options** — Implemented date display format selection (MM/DD/YYYY, DD/MM/YYYY, or relative dates like '2 days ago'). Preference stored and applied via formatDate() utility function. Modal shows full date format even in relative mode for clarity.
+- ✅ **Entry Sort Options** — Implemented default sort order for entries: newest first, oldest first, or alphabetical. Preference stored and applied when rendering entries. Real-time preview updates as you change settings.
 
 ## Privacy & Account Management
 - **Delete Account Feature** — Add secure account deletion with confirmation dialog. Should delete user from Firebase Auth and all associated Firestore documents. Optionally allow backup/export before deletion.

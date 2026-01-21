@@ -3306,19 +3306,26 @@ document.addEventListener('DOMContentLoaded', function () {
         // Apply font size to document
         function applyFontSize(size) {
             const root = document.documentElement;
+            const body = document.body;
             switch (size) {
                 case 'small':
                     root.style.setProperty('--base-font-size', '14px');
                     root.style.setProperty('--font-scale', '0.875');
+                    root.style.fontSize = '14px';
+                    body.style.fontSize = '14px';
                     break;
                 case 'large':
                     root.style.setProperty('--base-font-size', '18px');
                     root.style.setProperty('--font-scale', '1.125');
+                    root.style.fontSize = '18px';
+                    body.style.fontSize = '18px';
                     break;
                 case 'normal':
                 default:
                     root.style.setProperty('--base-font-size', '16px');
                     root.style.setProperty('--font-scale', '1');
+                    root.style.fontSize = '16px';
+                    body.style.fontSize = '16px';
                     break;
             }
         }
