@@ -3421,6 +3421,16 @@ document.addEventListener('DOMContentLoaded', function () {
         // Open settings modal
         menuSettingsBtn.onclick = () => {
             applySettings(loadSettings());
+
+            // Show/hide change password button based on auth provider
+            const user = auth.currentUser;
+            const changePasswordBtn = document.getElementById('change-password-btn');
+            if (changePasswordBtn && user) {
+                const providers = (user.providerData || []).map(p => p.providerId);
+                const isPasswordProvider = providers.includes('password');
+                changePasswordBtn.style.display = isPasswordProvider ? 'block' : 'none';
+            }
+
             settingsModal.classList.remove('hidden');
             document.body.classList.add('modal-open');
         };
@@ -3503,18 +3513,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (changePasswordBtn && changePasswordModal) {
             changePasswordBtn.onclick = () => {
-                // Only show to password-based users
-                const user = auth.currentUser;
-                if (!user) return;
-
-                const providers = (user.providerData || []).map(p => p.providerId);
-                const isPasswordProvider = providers.includes('password');
-
-                if (!isPasswordProvider) {
-                    setStatus('Password change is only available for email/password accounts.', 'info');
-                    return;
-                }
-
                 // Clear form
                 document.getElementById('current-password-input').value = '';
                 document.getElementById('new-password-input').value = '';
@@ -3664,6 +3662,16 @@ document.addEventListener('DOMContentLoaded', function () {
             if (offlinePinsKey) localStorage.removeItem(offlinePinsKey);
             if (offlineExcludesKey) localStorage.removeItem(offlineExcludesKey);
             if (pendingOpsKey) localStorage.removeItem(pendingOpsKey);
+
+            // Clear in-memory cache tracking and re-render
+            window._offlineCacheIds = new Set();
+            window._offlinePinnedIds = new Set();
+            window._offlineExcludedIds = new Set();
+
+            // Re-render entries to update UI button states
+            if (typeof renderEntries === 'function') {
+                renderEntries();
+            }
 
             setStatus('Local cache cleared. Offline data has been removed.', 'success');
         };
