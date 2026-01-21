@@ -1,7 +1,3 @@
-# PDF Improvements
-- organize pdf by month
-- add table of contents
-
 # Site Settings
 - Add site settings modal
 - Offline mode setting

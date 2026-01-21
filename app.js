@@ -611,22 +611,26 @@ function setStatus(message, type = 'info') {
     }
     const palette = {
         success: '#155724',
-        info: '#0c4a6e'
+        info: '#0c4a6e',
+        error: '#991b1b'
     };
     const bgPalette = {
         success: '#d4edda',
-        info: '#e0f2fe'
+        info: '#e0f2fe',
+        error: '#fee2e2'
     };
     statusMsg.style.color = palette[type] || palette.info;
     statusMsg.style.backgroundColor = bgPalette[type] || bgPalette.info;
     statusMsg.style.border = `1px solid ${(palette[type] || palette.info)}30`;
     statusMsg.textContent = message;
     statusMsg.style.display = 'block';
-    // Auto-clear after a short delay
-    statusTimer = setTimeout(() => {
-        statusMsg.style.display = 'none';
-        statusTimer = null;
-    }, 4000);
+    // Errors don't auto-dismiss; others auto-clear after a short delay
+    if (type !== 'error') {
+        statusTimer = setTimeout(() => {
+            statusMsg.style.display = 'none';
+            statusTimer = null;
+        }, 4000);
+    }
 }
 
 // Favorite filter toggle
@@ -1940,12 +1944,44 @@ window.addEventListener('DOMContentLoaded', () => {
             clearPdfError();
             const s = readPdfSettingsForm();
 
-            // Validate date range
+            // Validate date range format
             if (s.dateFrom && s.dateTo) {
                 const fromDate = new Date(s.dateFrom);
                 const toDate = new Date(s.dateTo);
                 if (fromDate > toDate) {
                     showPdfError('Start date is before end date.');
+                    // Scroll error to top of modal
+                    if (errorMsg) {
+                        errorMsg.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                    return;
+                }
+            }
+
+            // Validate that there are entries in the selected date range
+            if (s.dateFrom || s.dateTo) {
+                const fromDate = s.dateFrom ? new Date(s.dateFrom) : null;
+                const toDate = s.dateTo ? new Date(s.dateTo) : null;
+                const entriesToCheck = window._allEntries || [];
+
+                const entriesInRange = entriesToCheck.filter(e => {
+                    const entryDate = e.created ? new Date(e.created) : null;
+                    if (!entryDate) return true;
+                    if (fromDate && entryDate < fromDate) return false;
+                    if (toDate) {
+                        const endOfDay = new Date(toDate);
+                        endOfDay.setDate(endOfDay.getDate() + 1);
+                        if (entryDate >= endOfDay) return false;
+                    }
+                    return true;
+                });
+
+                if (!entriesInRange.length) {
+                    showPdfError('No entries found in the selected date range.');
+                    // Scroll error to top of modal
+                    if (errorMsg) {
+                        errorMsg.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
                     return;
                 }
             }
@@ -2094,7 +2130,7 @@ async function exportEntriesPDFAsync() {
         // Fetch all entries for export (not just the limited 20)
         const allEntries = await fetchAllEntries();
         if (!allEntries || !allEntries.length) {
-            alert('No entries to export.');
+            setStatus('No entries to export.', 'error');
             return;
         }
 
@@ -2105,7 +2141,7 @@ async function exportEntriesPDFAsync() {
         if (settings.favoritesOnly) {
             entries = allEntries.filter(e => e.starred);
             if (!entries.length) {
-                alert('No starred entries to export.');
+                setStatus('No starred entries to export.', 'error');
                 return;
             }
         }
@@ -2128,7 +2164,7 @@ async function exportEntriesPDFAsync() {
                 return true;
             });
             if (!entries.length) {
-                alert('No entries found in the selected date range.');
+                setStatus('No entries found in the selected date range.', 'error');
                 return;
             }
         }
@@ -2299,10 +2335,27 @@ function exportBookModePDF(entries, settings) {
         doc.text(`${fmt(start)} — ${fmt(end)}`, pageWidth / 2, pageHeight / 2 + 5, { align: 'center' });
     }
     doc.text(`${entries.length} entries`, pageWidth / 2, pageHeight / 2 + 15, { align: 'center' });
+    // Build month groups ahead of content
+    const groups = groupEntriesByMonth(sorted);
 
-    doc.addPage();
-    pageNum = 2;
-    isLeftPage = true;
+    // Pre-allocate Table of Contents pages based on number of months
+    const tocItems = [];
+    const tocHeaderHeight = 18; // header + spacing
+    const tocLineHeight = 6;
+    const tocUsableHeight = pageHeight - margin - 10; // bottom margin buffer
+    const tocItemsPerPage = Math.floor((tocUsableHeight - tocHeaderHeight) / tocLineHeight);
+    const tocPagesNeeded = Math.max(1, Math.ceil(groups.length / Math.max(1, tocItemsPerPage)));
+
+    const tocPageIndices = [];
+    for (let i = 0; i < tocPagesNeeded; i++) {
+        doc.addPage();
+        pageNum++;
+        // page 2 is left in book layout; toggle accordingly
+        isLeftPage = (pageNum % 2 === 0);
+        tocPageIndices.push(pageNum);
+    }
+
+    // Content will start with the first month group's page add
     y = margin + 15;
 
     // Content pages
@@ -2311,104 +2364,134 @@ function exportBookModePDF(entries, settings) {
     let yRight = margin + 15; // Track y position in right column
     const contentHeight = pageHeight - margin - 5; // minus just bottom margin and a tiny buffer
 
-    entries.forEach((e, entryIdx) => {
-        const d = e.created ? (e.created instanceof Date ? e.created : new Date(e.created)) : null;
-        const dateStr = d ? fmt(d) : '';
-        let displayText = e.text;
-        try { displayText = decodeURIComponent(displayText); } catch { }
+    // Helper to render month header
+    function renderMonthHeader(monthLabel) {
+        // Reset positions to top for a clean section start
+        y = margin + 15;
+        yLeft = margin + 15;
+        yRight = margin + 15;
 
-        // Calculate entry height
-        const lineHeight = 5;
-        const lines = doc.splitTextToSize(displayText, columnWidth - 6);
-        const entryHeight = lineHeight * lines.length + 10; // date + padding
-        const spaceNeeded = entryHeight + 3; // minimal spacing between entries
-
-        if (settings.twoColumn) {
-            // Fill left column first, then right column
-            let currentY = yLeft;
-            let isRightColumn = false;
-
-            // If left column is full, use right column
-            if (yLeft + spaceNeeded > margin + contentHeight) {
-                currentY = yRight;
-                isRightColumn = true;
-            }
-
-            // If right column is also full or we're trying to go to right but it's full, create new page
-            if (currentY + spaceNeeded > margin + contentHeight) {
-                addBookPageNumbers(doc, pageNum, pageWidth, pageHeight, margin, isLeftPage);
-                doc.addPage();
-                pageNum++;
-                isLeftPage = !isLeftPage;
-                yLeft = margin + 15;
-                yRight = margin + 15;
-                currentY = yLeft;
-                isRightColumn = false;
-            }
-
-            // Calculate x position
-            let x = margin + binding;
-            if (isRightColumn) {
-                x = margin + binding + columnWidth + margin;
-            }
-
-            // Date
-            doc.setFont('georgia', 'bold');
-            doc.setFontSize(9);
-            if (settings.colorStyle) {
-                doc.setTextColor(40, 100, 180);
-            } else {
-                doc.setTextColor(80, 80, 80);
-            }
-            doc.text(dateStr, x, currentY);
-
-            // Entry text
-            doc.setFont('georgia', 'normal');
-            doc.setFontSize(10);
-            doc.setTextColor(40, 40, 40);
-            doc.text(lines, x, currentY + 6, { maxWidth: columnWidth });
-
-            // Update the appropriate column's y position
-            if (isRightColumn) {
-                yRight = currentY + entryHeight + 3;
-            } else {
-                yLeft = currentY + entryHeight + 3;
-            }
+        doc.setFont('georgia', 'bold');
+        doc.setFontSize(16);
+        if (settings.colorStyle) {
+            doc.setTextColor(30, 80, 160);
         } else {
-            // Single column layout
-            if (y + spaceNeeded > pageHeight - margin - 10) {
-                addBookPageNumbers(doc, pageNum, pageWidth, pageHeight, margin, isLeftPage);
-                doc.addPage();
-                pageNum++;
-                isLeftPage = !isLeftPage;
-                y = margin + 15;
-            }
-
-            // Calculate x position
-            let x = margin + binding;
-
-            // Date
-            doc.setFont('georgia', 'bold');
-            doc.setFontSize(9);
-            if (settings.colorStyle) {
-                doc.setTextColor(40, 100, 180);
-            } else {
-                doc.setTextColor(80, 80, 80);
-            }
-            doc.text(dateStr, x, y);
-
-            // Entry text
-            doc.setFont('georgia', 'normal');
-            doc.setFontSize(10);
-            doc.setTextColor(40, 40, 40);
-            doc.text(lines, x, y + 6, { maxWidth: columnWidth });
-
-            y += entryHeight + 3;
+            doc.setTextColor(50, 50, 50);
         }
-    });
+        // Draw header centered across page
+        doc.text(monthLabel, pageWidth / 2, y, { align: 'center' });
+        doc.setDrawColor(180);
+        doc.line(margin + binding, y + 4, pageWidth - margin - binding, y + 4);
+        y += 12; yLeft += 12; yRight += 12;
+    }
 
-    // Add page numbers to last page
+    // Iterate months
+    for (const group of groups) {
+        // Close previous page footer if not first content page
+        if (pageNum >= (tocPageIndices[tocPageIndices.length - 1] + 1)) {
+            addBookPageNumbers(doc, pageNum, pageWidth, pageHeight, margin, isLeftPage);
+        }
+        // New page for month start
+        doc.addPage();
+        pageNum++;
+        isLeftPage = (pageNum % 2 === 0);
+        // Record TOC item for this month -> first page of the section
+        tocItems.push({ label: group.label, page: pageNum });
+        renderMonthHeader(group.label);
+
+        for (let idx = 0; idx < group.entries.length; idx++) {
+            const e = group.entries[idx];
+            const d = e.created ? (e.created instanceof Date ? e.created : new Date(e.created)) : null;
+            const dateStr = d ? fmt(d) : '';
+            let displayText = e.text;
+            try { displayText = decodeURIComponent(displayText); } catch { }
+
+            // Calculate entry height
+            const lineHeight = 5;
+            const lines = doc.splitTextToSize(displayText, columnWidth - 6);
+            const entryHeight = lineHeight * lines.length + 10; // date + padding
+            const spaceNeeded = entryHeight + 3; // minimal spacing between entries
+
+            if (settings.twoColumn) {
+                // Choose column with space; prefer left then right
+                let currentY = yLeft;
+                let isRightColumn = false;
+                if (yLeft + spaceNeeded > margin + contentHeight) {
+                    currentY = yRight;
+                    isRightColumn = true;
+                }
+                // If both columns full, add page and repeat header
+                if (currentY + spaceNeeded > margin + contentHeight) {
+                    addBookPageNumbers(doc, pageNum, pageWidth, pageHeight, margin, isLeftPage);
+                    doc.addPage();
+                    pageNum++;
+                    isLeftPage = (pageNum % 2 === 0);
+                    renderMonthHeader(group.label);
+                }
+                // Recompute currentY after possible page add
+                currentY = isRightColumn ? yRight : yLeft;
+
+                // x position
+                let x = margin + binding;
+                if (isRightColumn) x = margin + binding + columnWidth + margin;
+
+                // Date
+                doc.setFont('georgia', 'bold');
+                doc.setFontSize(9);
+                if (settings.colorStyle) {
+                    doc.setTextColor(40, 100, 180);
+                } else {
+                    doc.setTextColor(80, 80, 80);
+                }
+                doc.text(dateStr, x, currentY);
+
+                // Entry text
+                doc.setFont('georgia', 'normal');
+                doc.setFontSize(10);
+                doc.setTextColor(40, 40, 40);
+                doc.text(lines, x, currentY + 6, { maxWidth: columnWidth });
+
+                // Update appropriate column position
+                if (isRightColumn) {
+                    yRight = currentY + entryHeight + 3;
+                } else {
+                    yLeft = currentY + entryHeight + 3;
+                }
+            } else {
+                // Single column
+                if (y + spaceNeeded > pageHeight - margin - 10) {
+                    addBookPageNumbers(doc, pageNum, pageWidth, pageHeight, margin, isLeftPage);
+                    doc.addPage();
+                    pageNum++;
+                    isLeftPage = (pageNum % 2 === 0);
+                    renderMonthHeader(group.label);
+                }
+                let x = margin + binding;
+
+                doc.setFont('georgia', 'bold');
+                doc.setFontSize(9);
+                if (settings.colorStyle) {
+                    doc.setTextColor(40, 100, 180);
+                } else {
+                    doc.setTextColor(80, 80, 80);
+                }
+                doc.text(dateStr, x, y);
+
+                doc.setFont('georgia', 'normal');
+                doc.setFontSize(10);
+                doc.setTextColor(40, 40, 40);
+                doc.text(lines, x, y + 6, { maxWidth: columnWidth });
+                y += entryHeight + 3;
+            }
+        }
+        // Footer for last page of this month section will be handled either here or when next page added
+    }
+
+    // Add page numbers to last content page
     addBookPageNumbers(doc, pageNum, pageWidth, pageHeight, margin, isLeftPage);
+
+    // Render Table of Contents on pre-allocated pages
+    renderTableOfContents(doc, tocPageIndices, tocItems, pageWidth, pageHeight, margin, binding, settings);
 
     const blob = doc.output('blob');
     const url = URL.createObjectURL(blob);
@@ -2432,6 +2515,66 @@ function addBookPageNumbers(doc, pageNum, pageWidth, pageHeight, margin, isLeftP
         pageNumX = pageWidth - margin - 3; // right side for right pages
     }
     doc.text(String(pageNum), pageNumX, pageHeight - 8, { align: isLeftPage ? 'left' : 'right' });
+}
+
+// Group entries by calendar month (ascending)
+function groupEntriesByMonth(sortedEntries) {
+    const groupsMap = new Map();
+    (sortedEntries || []).forEach(e => {
+        const d = e.created ? (e.created instanceof Date ? e.created : new Date(e.created)) : null;
+        if (!d) return;
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const label = d.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+        if (!groupsMap.has(key)) groupsMap.set(key, { label, entries: [] });
+        groupsMap.get(key).entries.push(e);
+    });
+    const groups = Array.from(groupsMap.entries()).sort((a, b) => a[0].localeCompare(b[0])).map(([, v]) => v);
+    return groups;
+}
+
+// Render Table of Contents using pre-allocated pages
+function renderTableOfContents(doc, tocPageIndices, tocItems, pageWidth, pageHeight, margin, binding, settings) {
+    const headerTitle = 'Table of Contents';
+    const lineHeight = 6;
+    const startY = margin + 15;
+    const usableHeight = pageHeight - margin - 10;
+    const itemsPerPage = Math.max(1, Math.floor((usableHeight - 18) / lineHeight));
+
+    let itemIdx = 0;
+    for (let p = 0; p < tocPageIndices.length; p++) {
+        const pageIndex = tocPageIndices[p];
+        doc.setPage(pageIndex);
+
+        // Header
+        doc.setFont('georgia', 'bold');
+        doc.setFontSize(16);
+        if (settings.colorStyle) {
+            doc.setTextColor(30, 80, 160);
+        } else {
+            doc.setTextColor(50, 50, 50);
+        }
+        doc.text(headerTitle, pageWidth / 2, startY, { align: 'center' });
+        doc.setDrawColor(180);
+        doc.line(margin + binding, startY + 4, pageWidth - margin - binding, startY + 4);
+
+        // Items
+        let y = startY + 12;
+        doc.setFont('georgia', 'normal');
+        doc.setFontSize(11);
+        doc.setTextColor(40, 40, 40);
+        for (let i = 0; i < itemsPerPage && itemIdx < tocItems.length; i++, itemIdx++) {
+            const item = tocItems[itemIdx];
+            // Month label left
+            doc.text(item.label, margin + binding, y);
+            // Page number right
+            doc.text(String(item.page), pageWidth - margin - binding, y, { align: 'right' });
+            y += lineHeight;
+        }
+
+        // Footer page number for TOC page
+        const isLeftPage = (pageIndex % 2 === 0);
+        addBookPageNumbers(doc, pageIndex, pageWidth, pageHeight, margin, isLeftPage);
+    }
 }
 
 function fallbackJsPdfExport(entries) {
@@ -2624,11 +2767,11 @@ async function exportEntriesCSVAsync() {
         if (settings.favoritesOnly) {
             entries = entries.filter(e => e.starred);
             if (!entries.length) {
-                alert('No starred entries to export.');
+                setStatus('No starred entries to export.', 'error');
                 return;
             }
         } else if (!entries.length) {
-            alert('No entries to export.');
+            setStatus('No entries to export.', 'error');
             return;
         }
 
