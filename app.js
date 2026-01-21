@@ -2600,6 +2600,7 @@ async function exportEntriesPDFAsync() {
                 try { displayText = decodeURIComponent(displayText); } catch { }
                 const d = e.created ? (e.created instanceof Date ? e.created : new Date(e.created)) : null;
                 const dateStr = d ? d.toLocaleDateString() : '';
+                const tags = Array.isArray(e.tags) ? e.tags.map(t => normalizeTag(t)).filter(Boolean) : [];
 
                 const card = document.createElement('div');
                 if (settings.layout === 'compact') {
@@ -2627,8 +2628,22 @@ async function exportEntriesPDFAsync() {
                 textEl.className = settings.layout === 'compact' ? 'prose prose-xs max-w-none whitespace-pre-line' : 'prose prose-sm max-w-none whitespace-pre-line';
                 textEl.textContent = displayText;
 
+                // Tags row
+                let tagsEl = null;
+                if (tags.length) {
+                    tagsEl = document.createElement('div');
+                    tagsEl.className = 'flex flex-wrap gap-2 mt-2';
+                    tags.forEach(tag => {
+                        const chip = document.createElement('span');
+                        chip.className = 'inline-flex items-center px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-[11px] font-semibold';
+                        chip.textContent = tag;
+                        tagsEl.appendChild(chip);
+                    });
+                }
+
                 card.appendChild(dateEl);
                 card.appendChild(textEl);
+                if (tagsEl) card.appendChild(tagsEl);
                 list.appendChild(card);
             });
             container.appendChild(list);
@@ -2802,11 +2817,14 @@ function exportBookModePDF(entries, settings) {
             const dateStr = d ? fmt(d) : '';
             let displayText = e.text;
             try { displayText = decodeURIComponent(displayText); } catch { }
+            const tags = Array.isArray(e.tags) ? e.tags.map(t => normalizeTag(t)).filter(Boolean) : [];
 
             // Calculate entry height
             const lineHeight = 5;
             const lines = doc.splitTextToSize(displayText, columnWidth - 6);
-            const entryHeight = lineHeight * lines.length + 10; // date + padding
+            const tagLineHeight = tags.length ? lineHeight : 0;
+            const tagLines = tags.length ? doc.splitTextToSize(`Tags: ${tags.join(', ')}`, columnWidth - 6) : [];
+            const entryHeight = lineHeight * lines.length + (tagLineHeight * (tagLines.length || 0)) + (tags.length ? 6 : 0) + 10; // date + padding + tags
             const spaceNeeded = entryHeight + 3; // minimal spacing between entries
 
             if (settings.twoColumn) {
@@ -2847,6 +2865,13 @@ function exportBookModePDF(entries, settings) {
                 doc.setFontSize(10);
                 doc.setTextColor(40, 40, 40);
                 doc.text(lines, x, currentY + 6, { maxWidth: columnWidth });
+
+                if (tags.length) {
+                    doc.setFont('georgia', 'italic');
+                    doc.setFontSize(9);
+                    doc.setTextColor(90, 90, 90);
+                    doc.text(tagLines, x, currentY + 6 + lineHeight * lines.length + 4, { maxWidth: columnWidth });
+                }
 
                 // Update appropriate column position
                 if (isRightColumn) {
@@ -2904,8 +2929,14 @@ function addBookPageNumbers(doc, pageNum, pageWidth, pageHeight, margin, isLeftP
     doc.setFontSize(9);
     doc.setTextColor(140, 140, 140);
 
-    // Page number at bottom outer edge (like real books)
-    let pageNumX;
+    if (tags.length) {
+        doc.setFont('georgia', 'italic');
+        doc.setFontSize(9);
+        doc.setTextColor(90, 90, 90);
+        doc.text(tagLines, margin + binding, y + 6 + lineHeight * lines.length + 4, { maxWidth: columnWidth });
+    }
+
+    y += entryHeight + 3;
     if (isLeftPage) {
         pageNumX = margin + 3; // left side for left pages
     } else {
@@ -3016,8 +3047,11 @@ function fallbackJsPdfExport(entries) {
         try { displayText = decodeURIComponent(displayText); } catch { }
         const textWidth = pageWidth - margin * 2 - 10; // padding inside card
         const lines = doc.splitTextToSize(displayText, textWidth);
+        const tags = Array.isArray(e.tags) ? e.tags.map(t => normalizeTag(t)).filter(Boolean) : [];
+        const tagLines = tags.length ? doc.splitTextToSize(`Tags: ${tags.join(', ')}`, textWidth) : [];
         const cardPadding = 5;
-        const cardHeight = (lineHeight * lines.length) + cardPadding * 2 + 6; // 6 for date
+        const tagsHeight = tags.length ? (lineHeight * (tagLines.length || 1) + 4) : 0;
+        const cardHeight = (lineHeight * lines.length) + tagsHeight + cardPadding * 2 + 6; // 6 for date
 
         // Add page if needed
         if (y + cardHeight + 6 > pageHeight - margin) {
@@ -3068,6 +3102,13 @@ function fallbackJsPdfExport(entries) {
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(30);
         doc.text(lines, margin + cardPadding, y + cardPadding + 10, { maxWidth: textWidth });
+
+        if (tags.length) {
+            doc.setFont('helvetica', 'italic');
+            doc.setFontSize(10);
+            doc.setTextColor(90);
+            doc.text(tagLines, margin + cardPadding, y + cardPadding + 10 + lineHeight * lines.length + 4, { maxWidth: textWidth });
+        }
 
         y += cardHeight + 6;
     });
