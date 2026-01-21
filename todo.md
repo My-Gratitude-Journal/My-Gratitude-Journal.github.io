@@ -13,7 +13,7 @@
 - ✅ **Password Change Feature** — Implemented secure password change with current password verification. Automatically re-encrypts all existing entries with new password-derived key and updates Firebase Auth password. Only available for email/password users.
 
 ## Journaling Features
+- ✅ **Entry Templates Feature** — Implemented 6 pre-made entry templates: "3 Things I'm Grateful For", "Gratitude from a Challenge", "People I'm Grateful For", "Favorite Moments", "Health & Wellness", and "Daily Reflection". Template selector dropdown in entry form with insert button. Templates display in Settings → Journaling tab showing all available options.
 - **Daily Reminder Notifications** — Implement optional browser notifications reminding users to journal. Allow users to set preferred time of day. Requires user permission and Notification API.
 - **Gratitude Prompts Feature** — Provide daily toggle-able prompts or custom prompts to inspire entries. Store library of prompts and rotate daily. Allow users to submit/create custom prompts.
 - **Tags/Categories System** — Enable users to add tags to entries and filter/search by them. Store tags with entries in Firestore (encrypted). Add tag management UI and display in entries list.
-- **Entry Templates Feature** — Create pre-made entry formats (e.g., '3 things grateful for', gratitude metrics, reflection prompts). Let users select a template when creating new entry. Store template preferences.

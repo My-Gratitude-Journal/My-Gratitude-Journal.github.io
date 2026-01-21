@@ -1135,6 +1135,86 @@ function showAccountDeletedModal() {
     }
 }
 
+// Entry Templates System
+const TEMPLATES = {
+    'three-things': {
+        name: '3 Things I\'m Grateful For',
+        text: `1. 
+2. 
+3. `
+    },
+    'challenge-gratitude': {
+        name: 'Gratitude from a Challenge',
+        text: `Challenge I faced:
+
+What I'm grateful for despite this:
+
+How this made me stronger:`
+    },
+    'people': {
+        name: 'People I\'m Grateful For',
+        text: `Person: 
+Why I'm grateful: 
+
+Person: 
+Why I'm grateful: 
+
+Person: 
+Why I'm grateful: `
+    },
+    'moments': {
+        name: 'Favorite Moments',
+        text: `Moment 1: 
+
+Moment 2: 
+
+Moment 3: `
+    },
+    'health': {
+        name: 'Health & Wellness',
+        text: `Physical health I'm grateful for:
+
+Mental/emotional wellness I appreciate:
+
+People who support my health:
+
+Habits I'm grateful for:`
+    },
+    'reflection': {
+        name: 'Daily Reflection',
+        text: `Today's highlight:
+
+Someone who made me smile:
+
+Something small I appreciate:
+
+Tomorrow I'm excited about:`
+    }
+};
+
+const templateSelector = document.getElementById('template-selector');
+const insertTemplateBtn = document.getElementById('insert-template-btn');
+
+insertTemplateBtn.onclick = () => {
+    const selectedTemplate = templateSelector.value;
+    if (!selectedTemplate || !TEMPLATES[selectedTemplate]) return;
+
+    const templateText = TEMPLATES[selectedTemplate].text;
+    const currentText = gratitudeInput.value.trim();
+
+    if (currentText) {
+        // If there's existing text, ask if user wants to replace it
+        if (!confirm('Replace existing text with template?')) {
+            return;
+        }
+    }
+
+    gratitudeInput.value = templateText;
+    gratitudeInput.focus();
+    // Reset selector
+    templateSelector.value = '';
+};
+
 gratitudeForm.onsubmit = async (e) => {
     e.preventDefault();
     const entry = gratitudeInput.value.trim();
@@ -3287,7 +3367,6 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('sort-order-select').value = settings.sortOrder || 'newest';
             document.getElementById('reminder-toggle').checked = settings.remindersEnabled || false;
             document.getElementById('prompts-toggle').checked = settings.promptsEnabled !== false;
-            document.getElementById('template-select').value = settings.defaultTemplate || 'none';
             document.getElementById('tags-toggle').checked = settings.tagsEnabled !== false;
             document.getElementById('browser-notifications-toggle').checked = settings.browserNotificationsEnabled || false;
             document.getElementById('reminder-time-select').value = settings.reminderTime || '18:00';
@@ -3335,7 +3414,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 sortOrder: document.getElementById('sort-order-select').value,
                 remindersEnabled: document.getElementById('reminder-toggle').checked,
                 promptsEnabled: document.getElementById('prompts-toggle').checked,
-                defaultTemplate: document.getElementById('template-select').value,
                 tagsEnabled: document.getElementById('tags-toggle').checked,
                 browserNotificationsEnabled: document.getElementById('browser-notifications-toggle').checked,
                 reminderTime: document.getElementById('reminder-time-select').value

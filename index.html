@@ -282,6 +282,21 @@
             </div>
             <form id="gratitude-form"
                 class="mb-6 bg-white/80 dark:bg-darkcard/80 rounded-2xl shadow p-6 flex flex-col gap-4">
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <select id="template-selector"
+                        class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white text-sm shadow-sm">
+                        <option value="">— Select a template —</option>
+                        <option value="three-things">3 Things I'm Grateful For</option>
+                        <option value="challenge-gratitude">Gratitude from a Challenge</option>
+                        <option value="people">People I'm Grateful For</option>
+                        <option value="moments">Favorite Moments</option>
+                        <option value="health">Health & Wellness</option>
+                        <option value="reflection">Daily Reflection</option>
+                    </select>
+                    <button type="button" id="insert-template-btn"
+                        class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 font-medium text-sm transition">Insert
+                        Template</button>
+                </div>
                 <textarea id="gratitude-input" placeholder="What are you grateful for today?" required
                     class="w-full min-h-[80px] px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white text-base shadow-sm resize-vertical placeholder:text-gray-400 dark:placeholder:text-gray-500"></textarea>
                 <button type="submit"
@@ -692,16 +707,43 @@
                         </div>
                         <!-- Entry Templates -->
                         <div class="space-y-2 mt-4">
-                            <label for="template-select"
-                                class="block text-sm font-medium text-gray-700 dark:text-gray-300">Entry
-                                Template</label>
-                            <select id="template-select"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white">
-                                <option value="none">No Template</option>
-                                <option value="three-things">3 Things I'm Grateful For</option>
-                                <option value="metrics">Gratitude Metrics</option>
-                                <option value="reflection">Reflection Prompt</option>
-                            </select>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Entry
+                                Templates</label>
+                            <p class="text-xs text-gray-600 dark:text-gray-400 mb-3">Pre-made formats to inspire your
+                                entries. Select one above the text box when creating an entry.</p>
+                            <div
+                                class="space-y-2 max-h-48 overflow-y-auto bg-gray-50 dark:bg-gray-800/30 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <div class="flex items-center justify-between py-1">
+                                    <span class="text-xs font-medium text-gray-700 dark:text-gray-300">3 Things I'm
+                                        Grateful For</span>
+                                    <span class="text-xs text-primary dark:text-blue-300">✓</span>
+                                </div>
+                                <div class="flex items-center justify-between py-1">
+                                    <span class="text-xs font-medium text-gray-700 dark:text-gray-300">Gratitude from a
+                                        Challenge</span>
+                                    <span class="text-xs text-primary dark:text-blue-300">✓</span>
+                                </div>
+                                <div class="flex items-center justify-between py-1">
+                                    <span class="text-xs font-medium text-gray-700 dark:text-gray-300">People I'm
+                                        Grateful For</span>
+                                    <span class="text-xs text-primary dark:text-blue-300">✓</span>
+                                </div>
+                                <div class="flex items-center justify-between py-1">
+                                    <span class="text-xs font-medium text-gray-700 dark:text-gray-300">Favorite
+                                        Moments</span>
+                                    <span class="text-xs text-primary dark:text-blue-300">✓</span>
+                                </div>
+                                <div class="flex items-center justify-between py-1">
+                                    <span class="text-xs font-medium text-gray-700 dark:text-gray-300">Health &
+                                        Wellness</span>
+                                    <span class="text-xs text-primary dark:text-blue-300">✓</span>
+                                </div>
+                                <div class="flex items-center justify-between py-1">
+                                    <span class="text-xs font-medium text-gray-700 dark:text-gray-300">Daily
+                                        Reflection</span>
+                                    <span class="text-xs text-primary dark:text-blue-300">✓</span>
+                                </div>
+                            </div>
                         </div>
                         <!-- Tags -->
                         <div class="space-y-2 mt-4">
