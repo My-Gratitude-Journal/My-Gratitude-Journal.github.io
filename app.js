@@ -1031,8 +1031,8 @@ auth.onAuthStateChanged(async user => {
             pendingPassword = '';
             legacyKey = '';
             userSalt = null;
-            setStatus('Account and all data deleted.', 'success');
             closeModal();
+            showAccountDeletedModal();
         };
 
         const handlePasswordFlow = async () => {
@@ -1111,6 +1111,28 @@ auth.onAuthStateChanged(async user => {
         modal.addEventListener('click', onBackdropClick);
     };
 });
+
+// Account Deleted Modal Handler
+function showAccountDeletedModal() {
+    const deletedModal = document.getElementById('account-deleted-modal');
+    const closeBtn = document.getElementById('account-deleted-close');
+
+    if (deletedModal) {
+        deletedModal.classList.remove('hidden');
+
+        const handleClose = () => {
+            deletedModal.classList.add('hidden');
+            // Redirect or refresh to show login screen
+            window.location.reload();
+        };
+
+        closeBtn.addEventListener('click', handleClose);
+        // Also allow clicking the modal to close (for accessibility)
+        deletedModal.addEventListener('click', (e) => {
+            if (e.target === deletedModal) handleClose();
+        });
+    }
+}
 
 gratitudeForm.onsubmit = async (e) => {
     e.preventDefault();
