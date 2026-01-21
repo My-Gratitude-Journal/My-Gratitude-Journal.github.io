@@ -2903,6 +2903,13 @@ function exportBookModePDF(entries, settings) {
                 doc.setFontSize(10);
                 doc.setTextColor(40, 40, 40);
                 doc.text(lines, x, y + 6, { maxWidth: columnWidth });
+                if (tags.length) {
+                    doc.setFont('georgia', 'italic');
+                    doc.setFontSize(9);
+                    doc.setTextColor(90, 90, 90);
+                    doc.text(tagLines, x, y + 6 + lineHeight * lines.length + 4, { maxWidth: columnWidth });
+                }
+
                 y += entryHeight + 3;
             }
         }
@@ -2929,19 +2936,7 @@ function addBookPageNumbers(doc, pageNum, pageWidth, pageHeight, margin, isLeftP
     doc.setFontSize(9);
     doc.setTextColor(140, 140, 140);
 
-    if (tags.length) {
-        doc.setFont('georgia', 'italic');
-        doc.setFontSize(9);
-        doc.setTextColor(90, 90, 90);
-        doc.text(tagLines, margin + binding, y + 6 + lineHeight * lines.length + 4, { maxWidth: columnWidth });
-    }
-
-    y += entryHeight + 3;
-    if (isLeftPage) {
-        pageNumX = margin + 3; // left side for left pages
-    } else {
-        pageNumX = pageWidth - margin - 3; // right side for right pages
-    }
+    const pageNumX = isLeftPage ? (margin + 3) : (pageWidth - margin - 3);
     doc.text(String(pageNum), pageNumX, pageHeight - 8, { align: isLeftPage ? 'left' : 'right' });
 }
 
