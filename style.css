@@ -99,3 +99,36 @@ img.icon,
 body.modal-open {
     overflow: hidden;
 }
+
+/* Settings Modal Tabs */
+.settings-tab {
+    transition: border-color var(--transition-fast), color var(--transition-fast);
+}
+
+.settings-tab[aria-selected="true"] {
+    border-color: #4299e1;
+    color: #4299e1;
+}
+
+.settings-tab[aria-selected="true"]:dark {
+    color: #63b3ed;
+}
+
+.settings-tab-content {
+    display: block;
+}
+
+.settings-tab-content.hidden {
+    display: none;
+}
+
+/* Scrollable tabs container - hide scrollbar but keep scrolling */
+.settings-tabs-container {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    scroll-behavior: smooth;
+}
+
+.settings-tabs-container::-webkit-scrollbar {
+    display: none;
+}

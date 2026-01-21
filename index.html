@@ -152,6 +152,19 @@
                             </svg>
                         </span>
                         PDF Settings</button>
+                    <div class="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+                    <button id="menu-settings"
+                        class="w-full text-left px-4 py-3 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition font-medium"><i
+                            class="fa-solid fa-gear mr-2"></i><span class="icon mr-2" aria-hidden="true">
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path
+                                    d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0-2c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6 2.69-6 6-6z" />
+                                <path
+                                    d="M11 1h2v3h-2V1zm0 18h2v3h-2v-3zM3.515 4.929l2.121 2.121l-2.121 2.121l-2.121-2.121 2.121-2.121zm14.07 14.07l2.121 2.121l-2.121 2.121l-2.121-2.121 2.121-2.121zM1 11v2h3v-2H1zm18 0v2h3v-2h-3zM4.929 20.485l2.121 2.121l-2.121 2.121l-2.121-2.121 2.121-2.121zm14.07-14.07l2.121 2.121l-2.121 2.121l-2.121-2.121 2.121-2.121z" />
+                            </svg>
+                        </span>
+                        Settings</button>
                 </nav>
             </div>
         </div>
@@ -600,6 +613,196 @@
                     <button id="pdf-settings-cancel"
                         class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600">Cancel</button>
                     <button id="pdf-settings-save"
+                        class="px-4 py-2 rounded-lg bg-primary text-white hover:bg-blue-600 font-semibold">Save</button>
+                </div>
+            </div>
+        </div>
+        <!-- Settings Modal -->
+        <div id="settings-modal"
+            class="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center z-50 hidden p-4 pt-6"
+            role="dialog" aria-modal="true" aria-labelledby="settings-title">
+            <div
+                class="bg-white dark:bg-darkcard rounded-2xl shadow-2xl w-full max-w-2xl border border-gray-200 dark:border-gray-700 mx-2 my-4 max-h-[90vh] overflow-hidden flex flex-col">
+                <!-- Header -->
+                <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+                    <h2 id="settings-title" class="text-xl font-bold text-gray-800 dark:text-white">Settings</h2>
+                    <button id="settings-close" class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-800 transition">
+                        <svg class="w-6 h-6 text-gray-800 dark:text-white" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <!-- Tabs Container with Scroll Support -->
+                <div class="settings-tabs-container border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 overflow-x-auto"
+                    role="tablist">
+                    <div class="flex flex-nowrap">
+                        <button
+                            class="settings-tab flex-shrink-0 min-w-max px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 border-b-2 border-transparent hover:border-primary transition snap-center"
+                            data-tab-name="general" aria-selected="true" role="tab">
+                            General
+                        </button>
+                        <button
+                            class="settings-tab flex-shrink-0 min-w-max px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 border-b-2 border-transparent hover:border-primary transition snap-center"
+                            data-tab-name="journaling" aria-selected="false" role="tab">
+                            Journaling
+                        </button>
+                        <button
+                            class="settings-tab flex-shrink-0 min-w-max px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 border-b-2 border-transparent hover:border-primary transition snap-center"
+                            data-tab-name="privacy" aria-selected="false" role="tab">
+                            Privacy
+                        </button>
+                        <button
+                            class="settings-tab flex-shrink-0 min-w-max px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 border-b-2 border-transparent hover:border-primary transition snap-center"
+                            data-tab-name="notifications" aria-selected="false" role="tab">
+                            Notifications
+                        </button>
+                    </div>
+                </div>
+                <!-- Tab Content -->
+                <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                    <!-- General Tab -->
+                    <div class="settings-tab-content" data-tab-name="general">
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">General Settings</h3>
+                        <!-- Font Size -->
+                        <div class="space-y-2">
+                            <label for="font-size-select"
+                                class="block text-sm font-medium text-gray-700 dark:text-gray-300">Font Size</label>
+                            <select id="font-size-select"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white">
+                                <option value="small">Small</option>
+                                <option value="normal" selected>Normal</option>
+                                <option value="large">Large</option>
+                            </select>
+                        </div>
+                        <!-- Date Format -->
+                        <div class="space-y-2 mt-4">
+                            <label for="date-format-select"
+                                class="block text-sm font-medium text-gray-700 dark:text-gray-300">Date Format</label>
+                            <select id="date-format-select"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white">
+                                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                                <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                                <option value="relative" selected>Relative (2 days ago)</option>
+                            </select>
+                        </div>
+                        <!-- Sort Order -->
+                        <div class="space-y-2 mt-4">
+                            <label for="sort-order-select"
+                                class="block text-sm font-medium text-gray-700 dark:text-gray-300">Sort Entries</label>
+                            <select id="sort-order-select"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white">
+                                <option value="newest">Newest First</option>
+                                <option value="oldest">Oldest First</option>
+                                <option value="alphabetical">Alphabetical</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Journaling Tab -->
+                    <div class="settings-tab-content hidden" data-tab-name="journaling">
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Journaling Features</h3>
+                        <!-- Daily Reminders -->
+                        <div class="space-y-2">
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="reminder-toggle"
+                                    class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary">
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Enable Daily
+                                    Reminders</span>
+                            </label>
+                        </div>
+                        <!-- Gratitude Prompts -->
+                        <div class="space-y-2 mt-4">
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="prompts-toggle" checked
+                                    class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary">
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Show Gratitude
+                                    Prompts</span>
+                            </label>
+                        </div>
+                        <!-- Entry Templates -->
+                        <div class="space-y-2 mt-4">
+                            <label for="template-select"
+                                class="block text-sm font-medium text-gray-700 dark:text-gray-300">Entry
+                                Template</label>
+                            <select id="template-select"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white">
+                                <option value="none">No Template</option>
+                                <option value="three-things">3 Things I'm Grateful For</option>
+                                <option value="metrics">Gratitude Metrics</option>
+                                <option value="reflection">Reflection Prompt</option>
+                            </select>
+                        </div>
+                        <!-- Tags -->
+                        <div class="space-y-2 mt-4">
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="tags-toggle" checked
+                                    class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary">
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Enable Tags for
+                                    Entries</span>
+                            </label>
+                        </div>
+                    </div>
+                    <!-- Privacy Tab -->
+                    <div class="settings-tab-content hidden" data-tab-name="privacy">
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Privacy & Account</h3>
+                        <!-- Change Password -->
+                        <button id="change-password-btn"
+                            class="w-full text-left px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition border border-gray-300 dark:border-gray-700">
+                            <span class="font-medium text-gray-800 dark:text-white">Change Password</span>
+                            <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Update your account password</p>
+                        </button>
+                        <!-- Clear Cache -->
+                        <button id="clear-cache-btn"
+                            class="w-full text-left px-4 py-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/30 hover:bg-yellow-100 dark:hover:bg-yellow-900/50 transition border border-yellow-300 dark:border-yellow-700 mt-4">
+                            <span class="font-medium text-yellow-800 dark:text-yellow-200">Clear Local Cache</span>
+                            <p class="text-xs text-yellow-700 dark:text-yellow-300 mt-1">Remove offline entries from
+                                this device</p>
+                        </button>
+                        <!-- Delete Account -->
+                        <button id="delete-account-from-settings"
+                            class="w-full text-left px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 transition border border-red-300 dark:border-red-700 mt-4">
+                            <span class="font-medium text-red-700 dark:text-red-300">Delete Account</span>
+                            <p class="text-xs text-red-600 dark:text-red-400 mt-1">Permanently delete your account and
+                                all data</p>
+                        </button>
+                    </div>
+                    <!-- Notifications Tab -->
+                    <div class="settings-tab-content hidden" data-tab-name="notifications">
+                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Notification Preferences
+                        </h3>
+                        <!-- Browser Notifications Permission -->
+                        <div class="space-y-2">
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="browser-notifications-toggle"
+                                    class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary">
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Browser
+                                    Notifications</span>
+                            </label>
+                            <p class="text-xs text-gray-600 dark:text-gray-400 ml-7">Receive browser push notifications
+                                for reminders</p>
+                        </div>
+                        <!-- Reminder Time -->
+                        <div class="space-y-2 mt-4">
+                            <label for="reminder-time-select"
+                                class="block text-sm font-medium text-gray-700 dark:text-gray-300">Reminder Time</label>
+                            <select id="reminder-time-select"
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white"
+                                disabled>
+                                <option value="8:00">8:00 AM</option>
+                                <option value="12:00">12:00 PM</option>
+                                <option value="18:00" selected>6:00 PM</option>
+                                <option value="21:00">9:00 PM</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <!-- Footer -->
+                <div
+                    class="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                    <button id="settings-cancel"
+                        class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600">Cancel</button>
+                    <button id="settings-save"
                         class="px-4 py-2 rounded-lg bg-primary text-white hover:bg-blue-600 font-semibold">Save</button>
                 </div>
             </div>

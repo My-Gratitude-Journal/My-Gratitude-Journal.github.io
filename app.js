@@ -3158,4 +3158,250 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         };
     }
+
+    // Settings Modal logic
+    const settingsModal = document.getElementById('settings-modal');
+    const menuSettingsBtn = document.getElementById('menu-settings');
+    const settingsCloseBtn = document.getElementById('settings-close');
+    const settingsCancelBtn = document.getElementById('settings-cancel');
+    const settingsSaveBtn = document.getElementById('settings-save');
+    const settingsTabs = document.querySelectorAll('.settings-tab');
+    const settingsTabContents = document.querySelectorAll('.settings-tab-content');
+
+    // Only initialize settings modal if all elements exist
+    if (settingsModal && menuSettingsBtn && settingsCloseBtn && settingsCancelBtn && settingsSaveBtn) {
+        // Settings keys for localStorage
+        const SETTINGS_STORAGE_KEY = 'gj_user_settings';
+
+        // Load settings from localStorage
+        function loadSettings() {
+            try {
+                const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
+                return stored ? JSON.parse(stored) : {};
+            } catch (err) {
+                console.error('Failed to load settings:', err);
+                return {};
+            }
+        }
+
+        // Save settings to localStorage
+        function saveSettings(settings) {
+            try {
+                localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+            } catch (err) {
+                console.error('Failed to save settings:', err);
+            }
+        }
+
+        // Apply settings to UI
+        function applySettings(settings) {
+            document.getElementById('font-size-select').value = settings.fontSize || 'normal';
+            document.getElementById('date-format-select').value = settings.dateFormat || 'relative';
+            document.getElementById('sort-order-select').value = settings.sortOrder || 'newest';
+            document.getElementById('reminder-toggle').checked = settings.remindersEnabled || false;
+            document.getElementById('prompts-toggle').checked = settings.promptsEnabled !== false;
+            document.getElementById('template-select').value = settings.defaultTemplate || 'none';
+            document.getElementById('tags-toggle').checked = settings.tagsEnabled !== false;
+            document.getElementById('browser-notifications-toggle').checked = settings.browserNotificationsEnabled || false;
+            document.getElementById('reminder-time-select').value = settings.reminderTime || '18:00';
+
+            // Enable/disable reminder time select based on reminders toggle
+            const reminderTimeSelect = document.getElementById('reminder-time-select');
+            reminderTimeSelect.disabled = !settings.remindersEnabled;
+
+            // Apply font size
+            applyFontSize(settings.fontSize || 'normal');
+        }
+
+        // Apply font size to document
+        function applyFontSize(size) {
+            const root = document.documentElement;
+            switch (size) {
+                case 'small':
+                    root.style.fontSize = '13px';
+                    break;
+                case 'large':
+                    root.style.fontSize = '18px';
+                    break;
+                case 'normal':
+                default:
+                    root.style.fontSize = '16px';
+                    break;
+            }
+        }
+
+        // Gather current settings from form
+        function getCurrentSettings() {
+            return {
+                fontSize: document.getElementById('font-size-select').value,
+                dateFormat: document.getElementById('date-format-select').value,
+                sortOrder: document.getElementById('sort-order-select').value,
+                remindersEnabled: document.getElementById('reminder-toggle').checked,
+                promptsEnabled: document.getElementById('prompts-toggle').checked,
+                defaultTemplate: document.getElementById('template-select').value,
+                tagsEnabled: document.getElementById('tags-toggle').checked,
+                browserNotificationsEnabled: document.getElementById('browser-notifications-toggle').checked,
+                reminderTime: document.getElementById('reminder-time-select').value
+            };
+        }
+
+        // Tab switching
+        settingsTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.getAttribute('data-tab-name');
+
+                // Update tab active state
+                settingsTabs.forEach(t => {
+                    t.setAttribute('aria-selected', t.getAttribute('data-tab-name') === tabName);
+                    if (t.getAttribute('data-tab-name') === tabName) {
+                        t.classList.add('border-primary', 'text-primary');
+                        t.classList.remove('text-gray-700', 'dark:text-gray-300');
+                    } else {
+                        t.classList.remove('border-primary', 'text-primary');
+                        t.classList.add('text-gray-700', 'dark:text-gray-300');
+                    }
+                });
+
+                // Update content visibility
+                settingsTabContents.forEach(content => {
+                    if (content.getAttribute('data-tab-name') === tabName) {
+                        content.classList.remove('hidden');
+                    } else {
+                        content.classList.add('hidden');
+                    }
+                });
+
+                // Scroll the tab into view
+                const activeTab = tab;
+                activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            });
+        });
+
+        // Touch swipe handler for tab navigation
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const tabsContainer = document.querySelector('.settings-tabs-container');
+
+        if (tabsContainer) {
+            tabsContainer.addEventListener('touchstart', (e) => {
+                touchStartX = e.changedTouches[0].screenX;
+            }, false);
+
+            tabsContainer.addEventListener('touchend', (e) => {
+                touchEndX = e.changedTouches[0].screenX;
+                handleTabSwipe();
+            }, false);
+        }
+
+        function handleTabSwipe() {
+            const swipeThreshold = 50;
+            const diff = touchStartX - touchEndX;
+
+            if (Math.abs(diff) < swipeThreshold) return;
+
+            // Find currently visible tab
+            let currentTabIndex = -1;
+            settingsTabs.forEach((tab, index) => {
+                if (tab.getAttribute('aria-selected') === 'true') {
+                    currentTabIndex = index;
+                }
+            });
+
+            let nextTabIndex = currentTabIndex;
+            if (diff > swipeThreshold && currentTabIndex < settingsTabs.length - 1) {
+                // Swipe left - move to next tab
+                nextTabIndex = currentTabIndex + 1;
+            } else if (diff < -swipeThreshold && currentTabIndex > 0) {
+                // Swipe right - move to previous tab
+                nextTabIndex = currentTabIndex - 1;
+            }
+
+            if (nextTabIndex !== currentTabIndex) {
+                settingsTabs[nextTabIndex].click();
+            }
+        }
+
+        // Open settings modal
+        menuSettingsBtn.onclick = () => {
+            applySettings(loadSettings());
+            settingsModal.classList.remove('hidden');
+            document.body.classList.add('modal-open');
+        };
+
+        // Close settings modal
+        const closeSettings = () => {
+            settingsModal.classList.add('hidden');
+            document.body.classList.remove('modal-open');
+        };
+
+        settingsCloseBtn.onclick = closeSettings;
+        settingsCancelBtn.onclick = closeSettings;
+
+        // Handle reminder toggle
+        document.getElementById('reminder-toggle').addEventListener('change', (e) => {
+            document.getElementById('reminder-time-select').disabled = !e.target.checked;
+        });
+
+        // Save settings
+        settingsSaveBtn.onclick = async () => {
+            const settings = getCurrentSettings();
+            saveSettings(settings);
+            applySettings(settings);
+
+            // Request notification permission if enabled
+            if (settings.browserNotificationsEnabled && 'Notification' in window) {
+                if (Notification.permission === 'default') {
+                    Notification.requestPermission();
+                }
+            }
+
+            setStatus('Settings saved successfully.', 'success');
+            closeSettings();
+        };
+
+        // Close modal when clicking outside
+        settingsModal.onclick = (e) => {
+            if (e.target === settingsModal) {
+                closeSettings();
+            }
+        };
+
+        // Handle delete account from settings
+        const deleteAccountFromSettings = document.getElementById('delete-account-from-settings');
+        deleteAccountFromSettings.onclick = () => {
+            closeSettings();
+            document.getElementById('delete-account-btn').click();
+        };
+
+        // Handle change password
+        const changePasswordBtn = document.getElementById('change-password-btn');
+        changePasswordBtn.onclick = () => {
+            // Placeholder for password change functionality
+            setStatus('Password change feature coming soon.', 'info');
+        };
+
+        // Handle clear cache
+        const clearCacheBtn = document.getElementById('clear-cache-btn');
+        clearCacheBtn.onclick = () => {
+            const user = auth.currentUser;
+            if (!user) return;
+
+            const offlineKey = offlineKeyForUser();
+            const offlinePinsKey = offlinePinsKeyForUser();
+            const offlineExcludesKey = offlineExcludesKeyForUser();
+            const pendingOpsKey = pendingOpsKeyForUser();
+
+            if (offlineKey) localStorage.removeItem(offlineKey);
+            if (offlinePinsKey) localStorage.removeItem(offlinePinsKey);
+            if (offlineExcludesKey) localStorage.removeItem(offlineExcludesKey);
+            if (pendingOpsKey) localStorage.removeItem(pendingOpsKey);
+
+            setStatus('Local cache cleared. Offline data has been removed.', 'success');
+        };
+
+        // Load and apply settings on page load
+        applySettings(loadSettings());
+    } else {
+        console.warn('Settings modal elements not fully found in DOM');
+    }
 });
