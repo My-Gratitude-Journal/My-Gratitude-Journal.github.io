@@ -913,6 +913,11 @@ auth.onAuthStateChanged(async user => {
         if (exportPdfBtn) exportPdfBtn.style.display = 'none';
     }
 
+    // Bind backdrop-close for simple modals (no custom handler needed)
+    bindModalBackdropClose(document.getElementById('edit-modal'));
+    bindModalBackdropClose(document.getElementById('delete-account-modal'));
+    bindModalBackdropClose(document.getElementById('privacy-modal'));
+
     // Delete Account logic (modal-based, no browser prompts)
     deleteAccountBtn.onclick = () => {
         const user = auth.currentUser;
@@ -1674,6 +1679,11 @@ function renderEntries() {
             calendarModal.classList.add('hidden');
             window._currentView = 'list';
         };
+        // Close calendar modal when clicking outside
+        bindModalBackdropClose(calendarModal, () => {
+            calendarModal.classList.add('hidden');
+            window._currentView = 'list';
+        });
     }
 
     // Show/hide Load More button
@@ -1808,6 +1818,24 @@ function renderEntries() {
     }
 }
 
+// Reusable helper to bind backdrop-click-to-close for modals
+function bindModalBackdropClose(modalEl, onClose) {
+    if (!modalEl || modalEl.dataset.backdropBound) return;
+    modalEl.addEventListener('click', (e) => {
+        if (e.target === modalEl) {
+            if (typeof onClose === 'function') {
+                onClose();
+            } else {
+                modalEl.classList.add('hidden');
+                if (document.body.classList.contains('modal-open')) {
+                    document.body.classList.remove('modal-open');
+                }
+            }
+        }
+    });
+    modalEl.dataset.backdropBound = '1';
+}
+
 // Attach search and date filter listeners
 window.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('search-input');
@@ -1842,6 +1870,10 @@ window.addEventListener('DOMContentLoaded', () => {
             calendarModal.classList.add('hidden');
             window._currentView = 'list';
         };
+        bindModalBackdropClose(calendarModal, () => {
+            calendarModal.classList.add('hidden');
+            window._currentView = 'list';
+        });
     }
 
     // Wire PDF Settings modal controls
@@ -1920,6 +1952,9 @@ window.addEventListener('DOMContentLoaded', () => {
                 }
             });
         }
+
+        // Close PDF settings when clicking outside
+        bindModalBackdropClose(settingsModal, () => cancelBtn?.click());
     }
 });
 
