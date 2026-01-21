@@ -282,7 +282,7 @@
             </div>
             <form id="gratitude-form"
                 class="mb-6 bg-white/80 dark:bg-darkcard/80 rounded-2xl shadow p-6 flex flex-col gap-4">
-                <div class="flex flex-col sm:flex-row gap-3">
+                <div id="template-controls" class="flex flex-col sm:flex-row gap-3">
                     <select id="template-selector"
                         class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white text-sm shadow-sm">
                         <option value="">— Select a template —</option>
@@ -620,9 +620,9 @@
                     </button>
                 </div>
                 <!-- Tabs Container with Scroll Support -->
-                <div class="settings-tabs-container border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 overflow-x-auto"
+                <div class="settings-tabs-container border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 overflow-x-auto px-4 py-2"
                     role="tablist">
-                    <div class="flex flex-nowrap">
+                    <div class="flex flex-nowrap gap-3">
                         <button
                             class="settings-tab flex-shrink-0 min-w-max px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 border-b-2 border-transparent hover:border-primary transition snap-center"
                             data-tab-name="general" aria-selected="true" role="tab">
@@ -707,6 +707,12 @@
                         </div>
                         <!-- Entry Templates -->
                         <div class="space-y-2 mt-4">
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="templates-toggle" checked
+                                    class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary">
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Show Entry
+                                    Templates in composer</span>
+                            </label>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Entry
                                 Templates</label>
                             <p class="text-xs text-gray-600 dark:text-gray-400 mb-3">Pre-made formats to inspire your

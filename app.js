@@ -3360,6 +3360,12 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
+        function applyTemplateVisibility(enabled) {
+            const controls = document.getElementById('template-controls');
+            if (!controls) return;
+            controls.style.display = enabled ? '' : 'none';
+        }
+
         // Apply settings to UI
         function applySettings(settings) {
             document.getElementById('font-size-select').value = settings.fontSize || 'normal';
@@ -3367,9 +3373,12 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('sort-order-select').value = settings.sortOrder || 'newest';
             document.getElementById('reminder-toggle').checked = settings.remindersEnabled || false;
             document.getElementById('prompts-toggle').checked = settings.promptsEnabled !== false;
+            document.getElementById('templates-toggle').checked = settings.templatesEnabled !== false;
             document.getElementById('tags-toggle').checked = settings.tagsEnabled !== false;
             document.getElementById('browser-notifications-toggle').checked = settings.browserNotificationsEnabled || false;
             document.getElementById('reminder-time-select').value = settings.reminderTime || '18:00';
+
+            applyTemplateVisibility(settings.templatesEnabled !== false);
 
             // Enable/disable reminder time select based on reminders toggle
             const reminderTimeSelect = document.getElementById('reminder-time-select');
@@ -3414,6 +3423,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 sortOrder: document.getElementById('sort-order-select').value,
                 remindersEnabled: document.getElementById('reminder-toggle').checked,
                 promptsEnabled: document.getElementById('prompts-toggle').checked,
+                templatesEnabled: document.getElementById('templates-toggle').checked,
                 tagsEnabled: document.getElementById('tags-toggle').checked,
                 browserNotificationsEnabled: document.getElementById('browser-notifications-toggle').checked,
                 reminderTime: document.getElementById('reminder-time-select').value

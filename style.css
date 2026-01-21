@@ -106,6 +106,7 @@ body.modal-open {
 /* Settings Modal Tabs */
 .settings-tab {
     transition: border-color var(--transition-fast), color var(--transition-fast);
+    white-space: nowrap;
 }
 
 .settings-tab[aria-selected="true"] {
@@ -130,6 +131,12 @@ body.modal-open {
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     scroll-behavior: smooth;
+    padding: 0.5rem 1rem;
+}
+
+.settings-tabs-container .flex {
+    gap: 0.75rem;
+    align-items: center;
 }
 
 .settings-tabs-container::-webkit-scrollbar {
