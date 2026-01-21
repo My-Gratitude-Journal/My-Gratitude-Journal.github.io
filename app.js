@@ -545,7 +545,199 @@ const journalSection = document.getElementById('journal-section');
 const gratitudeForm = document.getElementById('gratitude-form');
 const gratitudeInput = document.getElementById('gratitude-input');
 const entriesList = document.getElementById('entries-list');
-const deleteAccountBtn = document.getElementById('delete-account-btn');
+
+// Function to handle delete account (called from menu or settings)
+function openDeleteAccountModal() {
+    const user = auth.currentUser;
+    if (!user) {
+        setStatus('No user logged in.', 'info');
+        return;
+    }
+    const modal = document.getElementById('delete-account-modal');
+    const pwGroup = document.getElementById('delete-account-password-group');
+    const reauthGroup = document.getElementById('delete-account-reauth-group');
+    const pwInput = document.getElementById('delete-account-password');
+    const errBox = document.getElementById('delete-account-error');
+    const cancelBtn = document.getElementById('delete-account-cancel');
+    const confirmBtn = document.getElementById('delete-account-confirm');
+    const reauthBtn = document.getElementById('delete-account-reauth-btn');
+    const sumEntries = document.getElementById('delete-account-summary-entries');
+    const sumFavs = document.getElementById('delete-account-summary-favorites');
+
+    if (!modal || !pwGroup || !reauthGroup || !pwInput || !errBox || !cancelBtn || !confirmBtn || !reauthBtn) {
+        console.error('Delete account modal not found');
+        return;
+    }
+
+    // Reset UI
+    errBox.classList.add('hidden');
+    errBox.textContent = '';
+    pwInput.value = '';
+
+    // Populate summary
+    try {
+        const total = typeof window._totalEntries === 'number' ? window._totalEntries : ((window._allEntries || []).length || 0);
+        const favCount = Array.isArray(window._allEntries) ? window._allEntries.filter(e => e.starred).length : 0;
+        if (sumEntries) sumEntries.textContent = String(total);
+        if (sumFavs) sumFavs.textContent = String(favCount);
+    } catch { }
+
+    // Determine provider
+    const providers = (user.providerData || []).map(p => p.providerId);
+    const isPasswordProvider = providers.includes('password');
+
+    pwGroup.classList.toggle('hidden', !isPasswordProvider);
+    reauthGroup.classList.toggle('hidden', isPasswordProvider);
+
+    // Open modal
+    modal.classList.remove('hidden');
+    document.body.classList.add('modal-open');
+    if (isPasswordProvider) {
+        setTimeout(() => pwInput.focus(), 0);
+    }
+
+    const closeModal = () => {
+        modal.classList.add('hidden');
+        document.body.classList.remove('modal-open');
+    };
+
+    const showError = (msg) => {
+        errBox.textContent = msg || 'Something went wrong.';
+        errBox.classList.remove('hidden');
+    };
+
+    const clearError = () => {
+        errBox.textContent = '';
+        errBox.classList.add('hidden');
+    };
+
+    const deleteAllUserData = async () => {
+        // Delete entries, then user doc, then auth user
+        const uid = user.uid;
+        // Delete subcollection entries in batches to avoid limits
+        const deleteCollectionInBatches = async (collectionRef, batchSize = 300) => {
+            while (true) {
+                const snap = await collectionRef
+                    .orderBy(firebase.firestore.FieldPath.documentId())
+                    .limit(batchSize)
+                    .get();
+                if (snap.empty) break;
+                const batch = db.batch();
+                snap.docs.forEach(d => batch.delete(d.ref));
+                await batch.commit();
+                await new Promise(res => setTimeout(res, 10));
+            }
+        };
+        try {
+            await deleteCollectionInBatches(db.collection('users').doc(uid).collection('gratitude'));
+        } catch (e) {
+            console.error('Failed deleting entries:', e);
+            throw e;
+        }
+        try {
+            await db.collection('users').doc(uid).delete();
+        } catch (e) {
+            console.error('Failed deleting user doc:', e);
+            // Continue; user doc might not exist
+        }
+
+        // Clear local caches for this user
+        try {
+            const offlineKey = `${OFFLINE_CACHE_PREFIX}${uid}`;
+            const pinsKey = `${OFFLINE_PINS_PREFIX}${uid}`;
+            const excludesKey = `${OFFLINE_EXCLUDES_PREFIX}${uid}`;
+            const countersKey = `gj_counters_${uid}`;
+            const saltKey = `gj_salt_${uid}`;
+            const opsKey = `${PENDING_OPS_PREFIX}${uid}`;
+            [offlineKey, pinsKey, excludesKey, countersKey, saltKey, opsKey].forEach(k => localStorage.removeItem(k));
+        } catch { }
+
+        await user.delete();
+
+        sessionStorage.removeItem(USER_KEY_STORAGE);
+        sessionStorage.removeItem(LEGACY_KEY_STORAGE);
+        pendingPassword = '';
+        legacyKey = '';
+        userSalt = null;
+        closeModal();
+        showAccountDeletedModal();
+    };
+
+    const handlePasswordFlow = async () => {
+        clearError();
+        const pwd = pwInput.value;
+        if (!pwd) {
+            showError('Please enter your password to continue.');
+            return;
+        }
+        try {
+            const credential = firebase.auth.EmailAuthProvider.credential(user.email, pwd);
+            await user.reauthenticateWithCredential(credential);
+            await deleteAllUserData();
+        } catch (e) {
+            console.error('Reauth/delete error:', e);
+            if (e.code === 'auth/wrong-password') {
+                showError('Incorrect password.');
+            } else if (e.code === 'auth/user-mismatch' || e.code === 'auth/invalid-credential') {
+                showError('Authentication failed. Please try again.');
+            } else if (e.code === 'auth/requires-recent-login') {
+                showError('Session is too old. Please log in again.');
+            } else {
+                showError(e.message || 'Error deleting account.');
+            }
+        }
+    };
+
+    const handleProviderFlow = async () => {
+        clearError();
+        try {
+            // Attempt reauth with Google if present, otherwise default to popup with first provider
+            let provider = null;
+            if (providers.includes('google.com')) {
+                provider = new firebase.auth.GoogleAuthProvider();
+            }
+            if (!provider) {
+                // Fallback: try with the first provider by id if supported
+                const pid = providers[0];
+                if (pid === 'google.com') provider = new firebase.auth.GoogleAuthProvider();
+            }
+            if (!provider) {
+                showError('Unsupported provider for reauthentication. Please log out and log in again, then retry.');
+                return;
+            }
+            await user.reauthenticateWithPopup(provider);
+            await deleteAllUserData();
+        } catch (e) {
+            console.error('Provider reauth/delete error:', e);
+            if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') {
+                showError('Reauthentication cancelled.');
+            } else if (e.code === 'auth/requires-recent-login') {
+                showError('Session is too old. Please log in again.');
+            } else {
+                showError(e.message || 'Error deleting account.');
+            }
+        }
+    };
+
+    // Wire buttons (one-off handlers per open)
+    const onCancel = () => {
+        closeModal();
+        cancelBtn.removeEventListener('click', onCancel);
+        confirmBtn.removeEventListener('click', onConfirm);
+        reauthBtn.removeEventListener('click', onReauth);
+        modal.removeEventListener('click', onBackdropClick);
+    };
+    const onConfirm = () => {
+        if (isPasswordProvider) handlePasswordFlow(); else handleProviderFlow();
+    };
+    const onReauth = () => handleProviderFlow();
+    const onBackdropClick = (e) => { if (e.target === modal) onCancel(); };
+
+    cancelBtn.addEventListener('click', onCancel);
+    confirmBtn.addEventListener('click', onConfirm);
+    reauthBtn.addEventListener('click', onReauth);
+    modal.addEventListener('click', onBackdropClick);
+}
 
 // Add manual refresh button for entries
 const refreshBtn = document.createElement('button');
@@ -894,13 +1086,11 @@ auth.onAuthStateChanged(async user => {
         // Read most recent entries
         await loadEntries(true);
         logoutBtn.style.display = 'inline-block';
-        deleteAccountBtn.style.display = 'inline-block';
     } else {
         authSection.style.display = 'block';
         journalSection.style.display = 'none';
         entriesList.innerHTML = '';
         logoutBtn.style.display = 'none';
-        deleteAccountBtn.style.display = 'none';
         // Clear cached entries
         window._allEntries = [];
         window._offlinePinnedIds = new Set();
@@ -921,199 +1111,6 @@ auth.onAuthStateChanged(async user => {
     bindModalBackdropClose(document.getElementById('edit-modal'));
     bindModalBackdropClose(document.getElementById('delete-account-modal'));
     bindModalBackdropClose(document.getElementById('privacy-modal'));
-
-    // Delete Account logic (modal-based, no browser prompts)
-    deleteAccountBtn.onclick = () => {
-        const user = auth.currentUser;
-        if (!user) {
-            setStatus('No user logged in.', 'info');
-            return;
-        }
-        const modal = document.getElementById('delete-account-modal');
-        const pwGroup = document.getElementById('delete-account-password-group');
-        const reauthGroup = document.getElementById('delete-account-reauth-group');
-        const pwInput = document.getElementById('delete-account-password');
-        const errBox = document.getElementById('delete-account-error');
-        const cancelBtn = document.getElementById('delete-account-cancel');
-        const confirmBtn = document.getElementById('delete-account-confirm');
-        const reauthBtn = document.getElementById('delete-account-reauth-btn');
-        const sumEntries = document.getElementById('delete-account-summary-entries');
-        const sumFavs = document.getElementById('delete-account-summary-favorites');
-
-        if (!modal || !pwGroup || !reauthGroup || !pwInput || !errBox || !cancelBtn || !confirmBtn || !reauthBtn) {
-            console.error('Delete account modal not found');
-            return;
-        }
-
-        // Reset UI
-        errBox.classList.add('hidden');
-        errBox.textContent = '';
-        pwInput.value = '';
-
-        // Populate summary
-        try {
-            const total = typeof window._totalEntries === 'number' ? window._totalEntries : ((window._allEntries || []).length || 0);
-            const favCount = Array.isArray(window._allEntries) ? window._allEntries.filter(e => e.starred).length : 0;
-            if (sumEntries) sumEntries.textContent = String(total);
-            if (sumFavs) sumFavs.textContent = String(favCount);
-        } catch { }
-
-        // Determine provider
-        const providers = (user.providerData || []).map(p => p.providerId);
-        const isPasswordProvider = providers.includes('password');
-
-        pwGroup.classList.toggle('hidden', !isPasswordProvider);
-        reauthGroup.classList.toggle('hidden', isPasswordProvider);
-
-        // Open modal
-        modal.classList.remove('hidden');
-        document.body.classList.add('modal-open');
-        if (isPasswordProvider) {
-            setTimeout(() => pwInput.focus(), 0);
-        }
-
-        const closeModal = () => {
-            modal.classList.add('hidden');
-            document.body.classList.remove('modal-open');
-        };
-
-        const showError = (msg) => {
-            errBox.textContent = msg || 'Something went wrong.';
-            errBox.classList.remove('hidden');
-        };
-
-        const clearError = () => {
-            errBox.textContent = '';
-            errBox.classList.add('hidden');
-        };
-
-        const deleteAllUserData = async () => {
-            // Delete entries, then user doc, then auth user
-            const uid = user.uid;
-            // Delete subcollection entries in batches to avoid limits
-            const deleteCollectionInBatches = async (collectionRef, batchSize = 300) => {
-                while (true) {
-                    const snap = await collectionRef
-                        .orderBy(firebase.firestore.FieldPath.documentId())
-                        .limit(batchSize)
-                        .get();
-                    if (snap.empty) break;
-                    const batch = db.batch();
-                    snap.docs.forEach(d => batch.delete(d.ref));
-                    await batch.commit();
-                    await new Promise(res => setTimeout(res, 10));
-                }
-            };
-            try {
-                await deleteCollectionInBatches(db.collection('users').doc(uid).collection('gratitude'));
-            } catch (e) {
-                console.error('Failed deleting entries:', e);
-                throw e;
-            }
-            try {
-                await db.collection('users').doc(uid).delete();
-            } catch (e) {
-                console.error('Failed deleting user doc:', e);
-                // Continue; user doc might not exist
-            }
-
-            // Clear local caches for this user
-            try {
-                const offlineKey = `${OFFLINE_CACHE_PREFIX}${uid}`;
-                const pinsKey = `${OFFLINE_PINS_PREFIX}${uid}`;
-                const excludesKey = `${OFFLINE_EXCLUDES_PREFIX}${uid}`;
-                const countersKey = `gj_counters_${uid}`;
-                const saltKey = `gj_salt_${uid}`;
-                const opsKey = `${PENDING_OPS_PREFIX}${uid}`;
-                [offlineKey, pinsKey, excludesKey, countersKey, saltKey, opsKey].forEach(k => localStorage.removeItem(k));
-            } catch { }
-
-            await user.delete();
-
-            sessionStorage.removeItem(USER_KEY_STORAGE);
-            sessionStorage.removeItem(LEGACY_KEY_STORAGE);
-            pendingPassword = '';
-            legacyKey = '';
-            userSalt = null;
-            closeModal();
-            showAccountDeletedModal();
-        };
-
-        const handlePasswordFlow = async () => {
-            clearError();
-            const pwd = pwInput.value;
-            if (!pwd) {
-                showError('Please enter your password to continue.');
-                return;
-            }
-            try {
-                const credential = firebase.auth.EmailAuthProvider.credential(user.email, pwd);
-                await user.reauthenticateWithCredential(credential);
-                await deleteAllUserData();
-            } catch (e) {
-                console.error('Reauth/delete error:', e);
-                if (e.code === 'auth/wrong-password') {
-                    showError('Incorrect password.');
-                } else if (e.code === 'auth/user-mismatch' || e.code === 'auth/invalid-credential') {
-                    showError('Authentication failed. Please try again.');
-                } else if (e.code === 'auth/requires-recent-login') {
-                    showError('Session is too old. Please log in again.');
-                } else {
-                    showError(e.message || 'Error deleting account.');
-                }
-            }
-        };
-
-        const handleProviderFlow = async () => {
-            clearError();
-            try {
-                // Attempt reauth with Google if present, otherwise default to popup with first provider
-                let provider = null;
-                if (providers.includes('google.com')) {
-                    provider = new firebase.auth.GoogleAuthProvider();
-                }
-                if (!provider) {
-                    // Fallback: try with the first provider by id if supported
-                    const pid = providers[0];
-                    if (pid === 'google.com') provider = new firebase.auth.GoogleAuthProvider();
-                }
-                if (!provider) {
-                    showError('Unsupported provider for reauthentication. Please log out and log in again, then retry.');
-                    return;
-                }
-                await user.reauthenticateWithPopup(provider);
-                await deleteAllUserData();
-            } catch (e) {
-                console.error('Provider reauth/delete error:', e);
-                if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') {
-                    showError('Reauthentication cancelled.');
-                } else if (e.code === 'auth/requires-recent-login') {
-                    showError('Session is too old. Please log in again.');
-                } else {
-                    showError(e.message || 'Error deleting account.');
-                }
-            }
-        };
-
-        // Wire buttons (one-off handlers per open)
-        const onCancel = () => {
-            closeModal();
-            cancelBtn.removeEventListener('click', onCancel);
-            confirmBtn.removeEventListener('click', onConfirm);
-            reauthBtn.removeEventListener('click', onReauth);
-            modal.removeEventListener('click', onBackdropClick);
-        };
-        const onConfirm = () => {
-            if (isPasswordProvider) handlePasswordFlow(); else handleProviderFlow();
-        };
-        const onReauth = () => handleProviderFlow();
-        const onBackdropClick = (e) => { if (e.target === modal) onCancel(); };
-
-        cancelBtn.addEventListener('click', onCancel);
-        confirmBtn.addEventListener('click', onConfirm);
-        reauthBtn.addEventListener('click', onReauth);
-        modal.addEventListener('click', onBackdropClick);
-    };
 });
 
 // Account Deleted Modal Handler
@@ -3493,7 +3490,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const deleteAccountFromSettings = document.getElementById('delete-account-from-settings');
         deleteAccountFromSettings.onclick = () => {
             closeSettings();
-            document.getElementById('delete-account-btn').click();
+            openDeleteAccountModal();
         };
 
         // Handle change password
