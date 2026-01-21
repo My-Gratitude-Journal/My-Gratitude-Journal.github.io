@@ -183,6 +183,7 @@ function addTagToEntry(tag) {
         window._currentEntryTags.push(normalized);
     }
     renderCurrentTags();
+    updateTagSuggestionList(document.getElementById('tag-input'), 'tag-suggestion-list', window._currentEntryTags);
 }
 
 // Remove a tag from the current entry being composed
@@ -190,6 +191,7 @@ function removeTagFromEntry(tag) {
     if (!window._currentEntryTags) return;
     window._currentEntryTags = window._currentEntryTags.filter(t => t !== tag.toLowerCase());
     renderCurrentTags();
+    updateTagSuggestionList(document.getElementById('tag-input'), 'tag-suggestion-list', window._currentEntryTags);
 }
 
 // Render current tags in the form
@@ -227,12 +229,14 @@ function addEditingTag(tag) {
         window._editingEntryTags.push(normalized);
     }
     renderEditingTags();
+    updateTagSuggestionList(document.getElementById('edit-tag-input'), 'edit-tag-suggestion-list', window._editingEntryTags);
 }
 
 function removeEditingTag(tag) {
     if (!window._editingEntryTags) return;
     window._editingEntryTags = window._editingEntryTags.filter(t => t !== normalizeTag(tag));
     renderEditingTags();
+    updateTagSuggestionList(document.getElementById('edit-tag-input'), 'edit-tag-suggestion-list', window._editingEntryTags);
 }
 
 function renderEditingTags() {
@@ -265,6 +269,27 @@ function renderModalViewTags(tags) {
         chip.className = 'inline-flex items-center px-3 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full text-xs font-semibold';
         chip.textContent = tag;
         container.appendChild(chip);
+    });
+}
+
+function getTagSuggestions(query, exclude) {
+    const needle = (query || '').trim().toLowerCase();
+    const excludeSet = new Set((exclude || []).map(normalizeTag));
+    return getAllTags()
+        .map(normalizeTag)
+        .filter(tag => (!needle || tag.includes(needle)) && !excludeSet.has(tag));
+}
+
+function updateTagSuggestionList(inputEl, datalistId, excludeTags) {
+    if (!inputEl) return;
+    const list = document.getElementById(datalistId);
+    if (!list) return;
+    const suggestions = getTagSuggestions(inputEl.value, excludeTags);
+    list.innerHTML = '';
+    suggestions.forEach(tag => {
+        const option = document.createElement('option');
+        option.value = tag;
+        list.appendChild(option);
     });
 }
 
@@ -3428,6 +3453,7 @@ function switchToEditMode() {
         ? currentModalEntry.tags.map(t => normalizeTag(t)).filter(Boolean)
         : [];
     renderEditingTags();
+    updateTagSuggestionList(editTagInput, 'edit-tag-suggestion-list', window._editingEntryTags);
 
     modalViewMode.classList.add('hidden');
     modalEditMode.classList.remove('hidden');
@@ -4101,6 +4127,8 @@ document.addEventListener('DOMContentLoaded', function () {
         // Initialize tag UI handlers
         const addTagBtn = document.getElementById('add-tag-btn');
         const tagInput = document.getElementById('tag-input');
+        const tagSuggestionList = document.getElementById('tag-suggestion-list');
+        const editTagSuggestionList = document.getElementById('edit-tag-suggestion-list');
         const tagsFilterBtn = document.getElementById('tags-filter-btn');
         const tagsFilterModal = document.getElementById('tags-filter-modal');
         const closeTagsFilterModalBtn = document.getElementById('close-tags-filter-modal');
@@ -4113,6 +4141,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     addTagToEntry(tag);
                     tagInput.value = '';
                     tagInput.focus();
+                    updateTagSuggestionList(tagInput, 'tag-suggestion-list', window._currentEntryTags || []);
                 }
             };
             addTagBtn.onclick = addTagHandler;
@@ -4122,6 +4151,27 @@ document.addEventListener('DOMContentLoaded', function () {
                     addTagHandler();
                 }
             });
+            tagInput.addEventListener('input', () => {
+                updateTagSuggestionList(tagInput, 'tag-suggestion-list', window._currentEntryTags || []);
+            });
+            tagInput.addEventListener('focus', () => {
+                updateTagSuggestionList(tagInput, 'tag-suggestion-list', window._currentEntryTags || []);
+            });
+            if (tagSuggestionList) {
+                updateTagSuggestionList(tagInput, 'tag-suggestion-list', window._currentEntryTags || []);
+            }
+        }
+
+        if (editTagInput) {
+            editTagInput.addEventListener('input', () => {
+                updateTagSuggestionList(editTagInput, 'edit-tag-suggestion-list', window._editingEntryTags || []);
+            });
+            editTagInput.addEventListener('focus', () => {
+                updateTagSuggestionList(editTagInput, 'edit-tag-suggestion-list', window._editingEntryTags || []);
+            });
+            if (editTagSuggestionList) {
+                updateTagSuggestionList(editTagInput, 'edit-tag-suggestion-list', window._editingEntryTags || []);
+            }
         }
 
         if (tagsFilterBtn && tagsFilterModal) {

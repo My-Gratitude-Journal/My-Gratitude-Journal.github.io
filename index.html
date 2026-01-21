@@ -304,12 +304,13 @@
                     <label for="tag-input" class="text-sm font-medium text-gray-700 dark:text-gray-300">Tags
                         (optional)</label>
                     <div class="flex gap-2">
-                        <input id="tag-input" type="text" placeholder="Add a tag..."
+                        <input id="tag-input" type="text" placeholder="Add a tag..." list="tag-suggestion-list"
                             class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white text-sm shadow-sm" />
                         <button type="button" id="add-tag-btn"
                             class="px-4 py-2 rounded-lg bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100 hover:bg-gray-400 dark:hover:bg-gray-500 font-medium text-sm transition">Add</button>
                     </div>
                     <div id="tags-display" class="flex flex-wrap gap-2"></div>
+                    <datalist id="tag-suggestion-list"></datalist>
                 </div>
                 <button type="submit"
                     class="w-full bg-gradient-to-r from-primary to-blue-400 hover:from-blue-500 hover:to-blue-600 text-white font-bold py-2 px-4 rounded-xl transition text-base shadow">Save
@@ -419,11 +420,13 @@
                                 class="text-sm font-medium text-gray-700 dark:text-gray-300">Tags</label>
                             <div class="flex gap-2">
                                 <input id="edit-tag-input" type="text" placeholder="Add a tag..."
+                                    list="edit-tag-suggestion-list"
                                     class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white text-sm shadow-sm" />
                                 <button type="button" id="edit-add-tag-btn"
                                     class="px-4 py-2 rounded-lg bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100 hover:bg-gray-400 dark:hover:bg-gray-500 font-medium text-sm transition">Add</button>
                             </div>
                             <div id="edit-tags-display" class="flex flex-wrap gap-2"></div>
+                            <datalist id="edit-tag-suggestion-list"></datalist>
                         </div>
                     </div>
                     <div class="flex justify-end gap-3">
