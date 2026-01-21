@@ -36,4 +36,4 @@ This project is a web-based Gratitude Journal app using HTML, CSS, and JavaScrip
 - Project instructions: `.github/instructions/Project_Instructions.instructions.md`
 
 ---
-*Last updated: 2026-01-15. Please update as the project grows.*
+*Last updated: 2026-01-15. AI Please update as the project grows.*
