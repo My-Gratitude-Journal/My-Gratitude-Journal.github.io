@@ -1459,6 +1459,14 @@ gratitudeForm.onsubmit = async (e) => {
     e.preventDefault();
     const entry = gratitudeInput.value.trim();
     if (!entry) return;
+    const tagInputEl = document.getElementById('tag-input');
+    if (tagInputEl) {
+        const pendingTag = tagInputEl.value.trim();
+        if (pendingTag) {
+            addTagToEntry(pendingTag);
+            tagInputEl.value = '';
+        }
+    }
     const encrypted = encrypt(entry, userKey);
     const created = new Date();
     created.setMilliseconds(0);
@@ -3511,6 +3519,13 @@ if (editTagInput) {
 saveEditBtn.onclick = async () => {
     const newText = editEntryInput.value.trim();
     if (!newText || !editingEntryId) return;
+    if (editTagInput) {
+        const pendingTag = editTagInput.value.trim();
+        if (pendingTag) {
+            addEditingTag(pendingTag);
+            editTagInput.value = '';
+        }
+    }
     const targetId = editingEntryId;
     const encrypted = encrypt(newText, userKey);
     const wasTemp = targetId.startsWith('temp_');
