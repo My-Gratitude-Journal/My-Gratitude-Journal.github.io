@@ -142,16 +142,6 @@
                             </svg>
                         </span>
                         Export PDF</button>
-                    <button id="menu-pdf-settings"
-                        class="w-full text-left px-4 py-3 rounded-lg text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-gray-800 transition font-medium"><i
-                            class="fa-solid fa-sliders mr-2"></i><span class="icon mr-2" aria-hidden="true">
-                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"
-                                xmlns="http://www.w3.org/2000/svg">
-                                <path
-                                    d="M3 6h2v12H3V6zm4 0h2v12H7V6zm4 0h2v12h-2V6zm4 0h2v12h-2V6zm4 0h6v2h-6V6zm0 5h6v2h-6v-2zm0 5h6v2h-6v-2z" />
-                            </svg>
-                        </span>
-                        PDF Settings</button>
                     <div class="border-t border-gray-200 dark:border-gray-700 my-2"></div>
                     <button id="menu-settings"
                         class="w-full text-left px-4 py-3 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition font-medium"><i
@@ -427,15 +417,6 @@
                 if (menuExportPDF && exportPDFBtn) {
                     menuExportPDF.onclick = () => {
                         exportPDFBtn.click();
-                        closeMenu();
-                    };
-                }
-
-                // PDF Settings button
-                const menuPdfSettings = document.getElementById('menu-pdf-settings');
-                if (menuPdfSettings) {
-                    menuPdfSettings.onclick = () => {
-                        if (window.openPdfSettings) window.openPdfSettings();
                         closeMenu();
                     };
                 }
