@@ -1836,7 +1836,8 @@ function renderEntries() {
         const viewListBtn = document.getElementById('view-list-btn');
         const dateFilter = document.getElementById('date-filter');
         const searchInput = document.getElementById('search-input');
-        const isFiltered = (dateFilter && dateFilter.value) || (searchInput && searchInput.value.trim()) || window._showFavoritesOnly;
+        const activeTagFilters = getActiveTagFilters();
+        const isFiltered = (dateFilter && dateFilter.value) || (searchInput && searchInput.value.trim()) || window._showFavoritesOnly || (activeTagFilters && activeTagFilters.size > 0);
         if (viewListBtn) {
             viewListBtn.disabled = !isFiltered;
             viewListBtn.classList.toggle('opacity-50', !isFiltered);
@@ -2085,6 +2086,7 @@ function renderEntries() {
             const searchInput = document.getElementById('search-input');
             if (dateFilter) dateFilter.value = '';
             if (searchInput) searchInput.value = '';
+            clearTagFilters();
             window._showFavoritesOnly = false;
             const favoritesToggle = document.getElementById('favorites-toggle');
             if (favoritesToggle) favoritesToggle.textContent = '★ Show Favorites Only';
@@ -2117,7 +2119,8 @@ function renderEntries() {
         // 2. We're not filtering (no search, date filter, or favorites only)
         // 3. We haven't loaded all entries yet
         const allEntriesCount = window._allEntries ? window._allEntries.length : 0;
-        const isFiltered = (dateVal) || (keyword) || (window._showFavoritesOnly);
+        const activeTagFilters = getActiveTagFilters();
+        const isFiltered = (dateVal) || (keyword) || (window._showFavoritesOnly) || (activeTagFilters && activeTagFilters.size > 0);
         const shouldShow = allEntriesCount >= 20 && !isFiltered && !window._allEntriesLoaded;
 
         if (shouldShow) {
@@ -4249,6 +4252,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (clearTagsFilterBtn) {
             clearTagsFilterBtn.onclick = () => {
                 clearTagFilters();
+                if (tagsFilterModal) tagsFilterModal.classList.add('hidden');
             };
         }
     } else {
