@@ -139,6 +139,166 @@ function persistLocalCounters({ daysJournaled, totalEntries }) {
     }
 }
 
+// ========== TAG MANAGEMENT FUNCTIONS ==========
+
+const TAGS_PREFIX = 'gj_tags_';
+const ACTIVE_TAG_FILTER_PREFIX = 'gj_active_tag_filter_';
+
+// Get the storage key for tags for the current user
+const tagsKeyForUser = () => {
+    const user = auth.currentUser;
+    return user ? `${TAGS_PREFIX}${user.uid}` : null;
+};
+
+// Get the storage key for active tag filters
+const activeTagFilterKeyForUser = () => {
+    const user = auth.currentUser;
+    return user ? `${ACTIVE_TAG_FILTER_PREFIX}${user.uid}` : null;
+};
+
+// Get all tags used across all entries (from memory cache)
+function getAllTags() {
+    if (window._allTags instanceof Set) return Array.from(window._allTags).sort();
+    const tags = new Set();
+    const entries = window._allEntries || [];
+    entries.forEach(entry => {
+        if (entry.tags && Array.isArray(entry.tags)) {
+            entry.tags.forEach(tag => tags.add(tag.toLowerCase()));
+        }
+    });
+    window._allTags = tags;
+    return Array.from(tags).sort();
+}
+
+// Add a tag to an entry
+function addTagToEntry(tag) {
+    if (!tag || typeof tag !== 'string') return;
+    const normalized = tag.trim().toLowerCase();
+    if (!normalized) return;
+
+    if (!window._currentEntryTags) {
+        window._currentEntryTags = [];
+    }
+    if (!window._currentEntryTags.includes(normalized)) {
+        window._currentEntryTags.push(normalized);
+    }
+    renderCurrentTags();
+}
+
+// Remove a tag from the current entry being composed
+function removeTagFromEntry(tag) {
+    if (!window._currentEntryTags) return;
+    window._currentEntryTags = window._currentEntryTags.filter(t => t !== tag.toLowerCase());
+    renderCurrentTags();
+}
+
+// Render current tags in the form
+function renderCurrentTags() {
+    const tagsDisplay = document.getElementById('tags-display');
+    if (!tagsDisplay) return;
+
+    const tags = window._currentEntryTags || [];
+    tagsDisplay.innerHTML = '';
+
+    tags.forEach(tag => {
+        const chip = document.createElement('span');
+        chip.className = 'inline-flex items-center gap-1 px-3 py-1 bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full text-sm font-medium';
+        chip.innerHTML = `
+            ${tag}
+            <button type="button" class="ml-1 text-purple-600 dark:text-purple-300 hover:text-purple-900 dark:hover:text-purple-100" 
+                onclick="removeTagFromEntry('${tag}')" aria-label="Remove tag">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/>
+                </svg>
+            </button>
+        `;
+        tagsDisplay.appendChild(chip);
+    });
+}
+
+// Get active tag filters
+function getActiveTagFilters() {
+    if (window._activeTagFilters instanceof Set) return window._activeTagFilters;
+    const key = activeTagFilterKeyForUser();
+    if (!key) {
+        window._activeTagFilters = new Set();
+        return window._activeTagFilters;
+    }
+    try {
+        const raw = localStorage.getItem(key);
+        const parsed = raw ? JSON.parse(raw) : [];
+        window._activeTagFilters = new Set(parsed.map(t => t.toLowerCase()));
+        return window._activeTagFilters;
+    } catch (err) {
+        console.error('Failed to read active tag filters:', err);
+        window._activeTagFilters = new Set();
+        return window._activeTagFilters;
+    }
+}
+
+// Persist active tag filters
+function persistActiveTagFilters(filters) {
+    const key = activeTagFilterKeyForUser();
+    if (!key) return;
+    try {
+        const array = Array.from(filters || []);
+        localStorage.setItem(key, JSON.stringify(array));
+    } catch (err) {
+        console.error('Failed to persist active tag filters:', err);
+    }
+}
+
+// Toggle a tag filter on/off
+function toggleTagFilter(tag) {
+    const filters = new Set(getActiveTagFilters());
+    const normalized = tag.toLowerCase();
+    if (filters.has(normalized)) {
+        filters.delete(normalized);
+    } else {
+        filters.add(normalized);
+    }
+    window._activeTagFilters = filters;
+    persistActiveTagFilters(filters);
+    renderTagFilterOptions();
+    renderEntries();
+}
+
+// Clear all tag filters
+function clearTagFilters() {
+    window._activeTagFilters = new Set();
+    persistActiveTagFilters(new Set());
+    renderTagFilterOptions();
+    renderEntries();
+}
+
+// Render tag filter options in the modal
+function renderTagFilterOptions() {
+    const container = document.getElementById('tags-filter-options');
+    if (!container) return;
+
+    const allTags = getAllTags();
+    const activeFilters = getActiveTagFilters();
+
+    container.innerHTML = '';
+    if (allTags.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-sm col-span-full">No tags yet. Add tags to entries to filter.</p>';
+        return;
+    }
+
+    allTags.forEach(tag => {
+        const isActive = activeFilters.has(tag.toLowerCase());
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `px-3 py-2 rounded-lg font-medium text-sm transition ${isActive
+            ? 'bg-purple-500 text-white dark:bg-purple-600'
+            : 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
+            }`;
+        btn.textContent = tag;
+        btn.onclick = () => toggleTagFilter(tag);
+        container.appendChild(btn);
+    });
+}
+
 function queuePendingOp(op) {
     const ops = readPendingOps();
     ops.push(op);
@@ -1234,13 +1394,15 @@ gratitudeForm.onsubmit = async (e) => {
         return eDate.toISOString().slice(0, 10) === todayStr;
     });
 
-    // Build local entry with temp id
+    // Build local entry with temp id, including tags
     const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const tags = window._currentEntryTags || [];
     const newEntry = {
         id: tempId,
         text: entry,
         created,
         starred: false,
+        tags: tags,
         cipher: encrypted
     };
 
@@ -1251,10 +1413,13 @@ gratitudeForm.onsubmit = async (e) => {
     persistLocalCounters({ daysJournaled: window._daysJournaled, totalEntries: window._totalEntries });
 
     gratitudeInput.value = '';
+    window._currentEntryTags = [];
+    renderCurrentTags();
     window._allEntries = [newEntry, ...entriesSnapshot];
     if (!window._allEntriesLoaded) {
         window._allEntries = window._allEntries.slice(0, 20);
     }
+    window._allTags = null; // Clear cache so tags will be recalculated
     syncOfflineCacheFromMemory();
     updateProgressInfo();
     renderEntries();
@@ -1266,7 +1431,8 @@ gratitudeForm.onsubmit = async (e) => {
             .add({
                 entry: encrypted,
                 created,
-                starred: false
+                starred: false,
+                tags: tags
             });
 
         replaceTempIdEverywhere(tempId, docRef.id);
@@ -1281,11 +1447,11 @@ gratitudeForm.onsubmit = async (e) => {
             await persistRemote();
         } catch (err) {
             console.error('Failed to save entry online, queuing:', err);
-            queuePendingOp({ type: 'add', tempId, entry: encrypted, created: created.toISOString(), starred: false });
+            queuePendingOp({ type: 'add', tempId, entry: encrypted, created: created.toISOString(), starred: false, tags: tags });
             setStatus('Entry saved offline. It will sync when you are back online.', 'info');
         }
     } else {
-        queuePendingOp({ type: 'add', tempId, entry: encrypted, created: created.toISOString(), starred: false });
+        queuePendingOp({ type: 'add', tempId, entry: encrypted, created: created.toISOString(), starred: false, tags: tags });
         setStatus('Entry saved offline. It will sync when you are back online.', 'info');
     }
 };
@@ -1392,6 +1558,7 @@ async function loadEntries() {
                 text: decrypt(data.entry, activeKey),
                 created: data.created && data.created.toDate ? data.created.toDate() : (data.created instanceof Date ? data.created : new Date(data.created)),
                 starred: !!data.starred,
+                tags: data.tags || [],
                 cipher: data.entry
             });
         });
@@ -1489,7 +1656,8 @@ async function fetchEntriesBatch(startAt = 0, limit = 20) {
                     id: doc.id,
                     text: decrypt(data.entry, activeKey),
                     created: data.created && data.created.toDate ? data.created.toDate() : (data.created instanceof Date ? data.created : new Date(data.created)),
-                    starred: !!data.starred
+                    starred: !!data.starred,
+                    tags: data.tags || []
                 });
             }
             index++;
@@ -1519,7 +1687,8 @@ async function fetchAllEntries() {
                 id: doc.id,
                 text: decrypt(data.entry, activeKey),
                 created: data.created && data.created.toDate ? data.created.toDate() : (data.created instanceof Date ? data.created : new Date(data.created)),
-                starred: !!data.starred
+                starred: !!data.starred,
+                tags: data.tags || []
             });
         });
         return allEntries;
@@ -1613,6 +1782,14 @@ function renderEntries() {
         });
         console.log('After date filter, entries count:', entries.length);
     }
+    // Apply tag filtering
+    const activeTagFilters = getActiveTagFilters();
+    if (activeTagFilters.size > 0) {
+        entries = entries.filter(e => {
+            const entryTags = (e.tags || []).map(t => t.toLowerCase());
+            return Array.from(activeTagFilters).some(filter => entryTags.includes(filter));
+        });
+    }
     entriesList.innerHTML = '';
     entries.forEach(e => {
         const li = document.createElement('li');
@@ -1656,6 +1833,31 @@ function renderEntries() {
             displayText = decodeURIComponent(displayText);
         } catch { }
         entryText.innerText = displayText;
+
+        // Create a wrapper for text and tags
+        const textWrapper = document.createElement('div');
+        textWrapper.className = "flex-1 flex flex-col gap-2";
+        textWrapper.appendChild(entryText);
+
+        // Add tags display if entry has tags
+        if (e.tags && e.tags.length > 0) {
+            const tagsContainer = document.createElement('div');
+            tagsContainer.className = "flex flex-wrap gap-1";
+            e.tags.forEach(tag => {
+                const tagChip = document.createElement('span');
+                tagChip.className = "inline-block px-2 py-1 bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded text-xs font-medium cursor-pointer hover:bg-purple-300 dark:hover:bg-purple-800 transition";
+                tagChip.textContent = tag;
+                tagChip.title = `Filter by tag: ${tag}`;
+                tagChip.onclick = (e) => {
+                    e.stopPropagation();
+                    toggleTagFilter(tag);
+                    const modal = document.getElementById('tags-filter-modal');
+                    if (modal) modal.classList.remove('hidden');
+                };
+                tagsContainer.appendChild(tagChip);
+            });
+            textWrapper.appendChild(tagsContainer);
+        }
 
         // Star button
         const starBtn = document.createElement('button');
@@ -1728,9 +1930,9 @@ function renderEntries() {
         btns.appendChild(editBtn);
         btns.appendChild(deleteBtn);
 
-        // Layout: [meta/date] [entry text] [buttons]
+        // Layout: [meta/date] [entry text and tags] [buttons]
         li.appendChild(metaWrap);
-        li.appendChild(entryText);
+        li.appendChild(textWrapper);
         li.appendChild(btns);
         entriesList.appendChild(li);
     });
@@ -3519,6 +3721,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 changePasswordBtn.style.display = isPasswordProvider ? 'block' : 'none';
             }
 
+            // Render tag management list when settings open
+            renderTagManagementList();
+
             settingsModal.classList.remove('hidden');
             document.body.classList.add('modal-open');
         };
@@ -3766,6 +3971,98 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Load and apply settings on page load
         applySettings(loadSettings());
+
+        // Render tag management list for settings tab
+        function renderTagManagementList() {
+            const container = document.getElementById('tags-management-list');
+            if (!container) return;
+
+            const allTags = getAllTags();
+            const activeFilters = getActiveTagFilters();
+
+            if (allTags.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-sm">No tags yet. Add tags to entries to manage them here.</p>';
+                return;
+            }
+
+            let html = '<div class="space-y-2">';
+            allTags.forEach(tag => {
+                const entriesWithTag = (window._allEntries || []).filter(e => {
+                    return (e.tags || []).map(t => t.toLowerCase()).includes(tag.toLowerCase());
+                });
+                const count = entriesWithTag.length;
+                const isFiltered = activeFilters.has(tag.toLowerCase());
+
+                html += `
+                    <div class="flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                        <div class="flex-1">
+                            <div class="font-medium text-gray-800 dark:text-white">${tag}</div>
+                            <div class="text-xs text-gray-600 dark:text-gray-400">${count} ${count === 1 ? 'entry' : 'entries'}</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="button" class="px-2 py-1 text-xs rounded ${isFiltered ? 'bg-purple-500 text-white' : 'bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100'} hover:opacity-80 transition" onclick="toggleTagFilter('${tag}'); document.getElementById('tags-management-list').parentElement.querySelector('button').click();">
+                                ${isFiltered ? 'Filtered' : 'Filter'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // Initialize tag UI handlers
+        const addTagBtn = document.getElementById('add-tag-btn');
+        const tagInput = document.getElementById('tag-input');
+        const tagsFilterBtn = document.getElementById('tags-filter-btn');
+        const tagsFilterModal = document.getElementById('tags-filter-modal');
+        const closeTagsFilterModalBtn = document.getElementById('close-tags-filter-modal');
+        const clearTagsFilterBtn = document.getElementById('clear-tags-filter-btn');
+
+        if (addTagBtn && tagInput) {
+            const addTagHandler = () => {
+                const tag = tagInput.value.trim();
+                if (tag) {
+                    addTagToEntry(tag);
+                    tagInput.value = '';
+                    tagInput.focus();
+                }
+            };
+            addTagBtn.onclick = addTagHandler;
+            tagInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addTagHandler();
+                }
+            });
+        }
+
+        if (tagsFilterBtn && tagsFilterModal) {
+            tagsFilterBtn.onclick = () => {
+                renderTagFilterOptions();
+                tagsFilterModal.classList.remove('hidden');
+            };
+        }
+
+        if (closeTagsFilterModalBtn && tagsFilterModal) {
+            closeTagsFilterModalBtn.onclick = () => {
+                tagsFilterModal.classList.add('hidden');
+            };
+        }
+
+        if (tagsFilterModal) {
+            tagsFilterModal.addEventListener('click', (e) => {
+                if (e.target === tagsFilterModal) {
+                    tagsFilterModal.classList.add('hidden');
+                }
+            });
+        }
+
+        if (clearTagsFilterBtn) {
+            clearTagsFilterBtn.onclick = () => {
+                clearTagFilters();
+            };
+        }
     } else {
         console.warn('Settings modal elements not fully found in DOM');
     }
