@@ -216,6 +216,58 @@ function renderCurrentTags() {
     });
 }
 
+// Tag helpers for editing existing entries
+const normalizeTag = (tag) => (tag || '').trim().toLowerCase();
+
+function addEditingTag(tag) {
+    const normalized = normalizeTag(tag);
+    if (!normalized) return;
+    if (!window._editingEntryTags) window._editingEntryTags = [];
+    if (!window._editingEntryTags.includes(normalized)) {
+        window._editingEntryTags.push(normalized);
+    }
+    renderEditingTags();
+}
+
+function removeEditingTag(tag) {
+    if (!window._editingEntryTags) return;
+    window._editingEntryTags = window._editingEntryTags.filter(t => t !== normalizeTag(tag));
+    renderEditingTags();
+}
+
+function renderEditingTags() {
+    const tagsDisplay = document.getElementById('edit-tags-display');
+    if (!tagsDisplay) return;
+    const tags = window._editingEntryTags || [];
+    tagsDisplay.innerHTML = '';
+    tags.forEach(tag => {
+        const chip = document.createElement('span');
+        chip.className = 'inline-flex items-center gap-1 px-3 py-1 bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full text-sm font-medium';
+        chip.innerHTML = `
+            ${tag}
+            <button type="button" class="ml-1 text-purple-600 dark:text-purple-300 hover:text-purple-900 dark:hover:bg-transparent" aria-label="Remove tag"
+                onclick="removeEditingTag('${tag}')">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/>
+                </svg>
+            </button>
+        `;
+        tagsDisplay.appendChild(chip);
+    });
+}
+
+function renderModalViewTags(tags) {
+    const container = document.getElementById('modal-entry-tags');
+    if (!container) return;
+    container.innerHTML = '';
+    (tags || []).forEach(tag => {
+        const chip = document.createElement('span');
+        chip.className = 'inline-flex items-center px-3 py-1 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full text-xs font-semibold';
+        chip.textContent = tag;
+        container.appendChild(chip);
+    });
+}
+
 // Get active tag filters
 function getActiveTagFilters() {
     if (window._activeTagFilters instanceof Set) return window._activeTagFilters;
@@ -356,11 +408,12 @@ async function flushPendingOps() {
                 const docRef = await collectionRef.add({
                     entry: op.entry,
                     created: op.created ? new Date(op.created) : new Date(),
-                    starred: !!op.starred
+                    starred: !!op.starred,
+                    tags: Array.isArray(op.tags) ? op.tags : []
                 });
                 replaceTempIdEverywhere(op.tempId, docRef.id);
             } else if (op.type === 'edit') {
-                await collectionRef.doc(op.id).update({ entry: op.entry });
+                await collectionRef.doc(op.id).update({ entry: op.entry, tags: Array.isArray(op.tags) ? op.tags : [] });
             } else if (op.type === 'delete') {
                 await collectionRef.doc(op.id).delete();
             } else if (op.type === 'star') {
@@ -436,7 +489,8 @@ function persistOfflineEntries(entries) {
                 id: e.id,
                 entry: cipher,
                 created: createdVal.toISOString(),
-                starred: !!e.starred
+                starred: !!e.starred,
+                tags: Array.isArray(e.tags) ? e.tags : []
             };
         });
         localStorage.setItem(key, JSON.stringify(payload));
@@ -459,6 +513,7 @@ function loadOfflineEntriesFromStorage() {
             text: decrypt(item.entry, activeKey),
             created: new Date(item.created),
             starred: !!item.starred,
+            tags: Array.isArray(item.tags) ? item.tags : [],
             cipher: item.entry
         }));
         window._offlineCacheIds = new Set(parsed.map(item => item.id));
@@ -3202,6 +3257,8 @@ const modalActionButtons = document.getElementById('modal-action-buttons');
 const editEntryInput = document.getElementById('edit-entry-input');
 const saveEditBtn = document.getElementById('save-edit-btn');
 const cancelEditBtn = document.getElementById('cancel-edit-btn');
+const editTagInput = document.getElementById('edit-tag-input');
+const editAddTagBtn = document.getElementById('edit-add-tag-btn');
 
 if (editModal && editModal.parentElement !== document.body) {
     document.body.appendChild(editModal);
@@ -3267,6 +3324,7 @@ function openEntryModal(entry) {
 
     // Set content
     modalEntryText.textContent = decodeURIComponent(entry.text);
+    renderModalViewTags(entry.tags || []);
     const entryDate = getEntryDate(entry);
     if (entryDate && window._formatDate) {
         // Use formatDate if available, otherwise fall back to long format
@@ -3365,6 +3423,11 @@ function renderModalActionButtons(entry) {
 function switchToEditMode() {
     editingEntryId = currentModalEntry.id;
     editEntryInput.value = decodeURIComponent(currentModalEntry.text);
+    if (editTagInput) editTagInput.value = '';
+    window._editingEntryTags = Array.isArray(currentModalEntry.tags)
+        ? currentModalEntry.tags.map(t => normalizeTag(t)).filter(Boolean)
+        : [];
+    renderEditingTags();
 
     modalViewMode.classList.add('hidden');
     modalEditMode.classList.remove('hidden');
@@ -3398,15 +3461,37 @@ cancelEditBtn.onclick = () => {
     }
 };
 
+if (editAddTagBtn) {
+    editAddTagBtn.addEventListener('click', () => {
+        if (!editTagInput) return;
+        const value = editTagInput.value.trim();
+        addEditingTag(value);
+        editTagInput.value = '';
+        editTagInput.focus();
+    });
+}
+
+if (editTagInput) {
+    editTagInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const value = editTagInput.value.trim();
+            addEditingTag(value);
+            editTagInput.value = '';
+        }
+    });
+}
+
 saveEditBtn.onclick = async () => {
     const newText = editEntryInput.value.trim();
     if (!newText || !editingEntryId) return;
     const targetId = editingEntryId;
     const encrypted = encrypt(newText, userKey);
     const wasTemp = targetId.startsWith('temp_');
+    const tags = Array.isArray(window._editingEntryTags) ? [...window._editingEntryTags] : [];
 
     window._allEntries = (window._allEntries || []).map(e =>
-        e.id === targetId ? { ...e, text: newText, cipher: encrypted } : e
+        e.id === targetId ? { ...e, text: newText, cipher: encrypted, tags } : e
     );
 
     // Update current modal entry
@@ -3415,11 +3500,13 @@ saveEditBtn.onclick = async () => {
     // Return to view mode
     editingEntryId = null;
     modalEntryText.textContent = newText;
+    renderModalViewTags(tags);
     modalViewMode.classList.remove('hidden');
     modalEditMode.classList.add('hidden');
     saveEditBtn.classList.add('hidden');
     cancelEditBtn.textContent = 'Close';
 
+    window._allTags = null; // force tag list refresh
     updateProgressInfo();
     renderEntries();
     syncOfflineCacheFromMemory();
@@ -3427,7 +3514,7 @@ saveEditBtn.onclick = async () => {
     editingEntryId = null;
 
     if (wasTemp) {
-        updatePendingAdd(targetId, () => ({ entry: encrypted }));
+        updatePendingAdd(targetId, () => ({ entry: encrypted, tags }));
         setStatus('Edit saved offline. It will sync when you are back online.', 'info');
         return;
     }
@@ -3437,7 +3524,7 @@ saveEditBtn.onclick = async () => {
             .doc(auth.currentUser.uid)
             .collection('gratitude')
             .doc(targetId)
-            .update({ entry: encrypted });
+            .update({ entry: encrypted, tags });
     };
 
     if (isOnline()) {
@@ -3445,7 +3532,7 @@ saveEditBtn.onclick = async () => {
             await persistEdit();
         } catch (err) {
             console.error('Edit failed online, queuing:', err);
-            queuePendingOp({ type: 'edit', id: targetId, entry: encrypted });
+            queuePendingOp({ type: 'edit', id: targetId, entry: encrypted, tags });
             setStatus('Edit saved offline. It will sync when you are back online.', 'info');
         }
     } else {
