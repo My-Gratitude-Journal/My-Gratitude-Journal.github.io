@@ -1926,8 +1926,8 @@ window.addEventListener('DOMContentLoaded', () => {
             // Restore PDF preview if it was open
             if (window.pdfPreviewData) {
                 const { blobUrl, filename, onClose } = window.pdfPreviewData;
-                showPdfPreview(blobUrl, filename, onClose);
                 window.pdfPreviewData = null;
+                showPdfPreview(blobUrl, filename, onClose);
             }
         };
         defaultsBtn.onclick = () => {
@@ -1953,11 +1953,16 @@ window.addEventListener('DOMContentLoaded', () => {
             setPdfSettings(s);
             settingsModal.classList.add('hidden');
 
-            // Restore PDF preview if it was open
+            // Refresh PDF preview with the new settings if it was open
             if (window.pdfPreviewData) {
-                const { blobUrl, filename, onClose } = window.pdfPreviewData;
-                showPdfPreview(blobUrl, filename, onClose);
+                const { blobUrl, filename, onClose, refreshPreview } = window.pdfPreviewData;
                 window.pdfPreviewData = null;
+                if (typeof refreshPreview === 'function') {
+                    if (typeof onClose === 'function') onClose();
+                    refreshPreview();
+                } else {
+                    showPdfPreview(blobUrl, filename, onClose);
+                }
             }
         };
 
@@ -2236,6 +2241,8 @@ async function exportEntriesPDFAsync() {
                 const url = URL.createObjectURL(blob);
                 showPdfPreview(url, opt.filename, () => {
                     URL.revokeObjectURL(url);
+                }, () => {
+                    exportEntriesPDFAsync();
                 });
                 container.remove();
             }).catch(() => {
@@ -2407,6 +2414,8 @@ function exportBookModePDF(entries, settings) {
     const url = URL.createObjectURL(blob);
     showPdfPreview(url, 'gratitude_journal_book.pdf', () => {
         URL.revokeObjectURL(url);
+    }, () => {
+        exportEntriesPDFAsync();
     });
 }
 
@@ -2536,10 +2545,12 @@ function fallbackJsPdfExport(entries) {
     const url = URL.createObjectURL(blob);
     showPdfPreview(url, 'gratitude_entries.pdf', () => {
         URL.revokeObjectURL(url);
+    }, () => {
+        exportEntriesPDFAsync();
     });
 }
 
-function showPdfPreview(blobUrl, filename, onClose) {
+function showPdfPreview(blobUrl, filename, onClose, refreshPreview) {
     const overlay = document.createElement('div');
     overlay.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 p-4 pt-6';
     overlay.setAttribute('role', 'dialog');
@@ -2563,7 +2574,7 @@ function showPdfPreview(blobUrl, filename, onClose) {
     settingsBtn.onclick = () => {
         overlay.remove();
         if (window.openPdfSettings) window.openPdfSettings();
-        window.pdfPreviewData = { blobUrl, filename, onClose };
+        window.pdfPreviewData = { blobUrl, filename, onClose, refreshPreview };
     };
     const downloadBtn = document.createElement('a');
     downloadBtn.className = 'px-4 py-2 bg-primary text-white rounded hover:bg-blue-600 font-semibold';
