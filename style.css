@@ -1,6 +1,9 @@
 :root {
     --shadow-strong: 0 10px 30px rgba(0, 0, 0, 0.18);
     --transition-fast: 160ms ease;
+    /* Font size variables for accessibility */
+    --base-font-size: 16px;
+    --font-scale: 1;
 }
 
 .sr-only {

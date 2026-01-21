@@ -1466,6 +1466,37 @@ function renderEntries() {
     const offlineCachedIds = window._offlineCacheIds instanceof Set ? window._offlineCacheIds : new Set();
     const offlinePinnedIds = getOfflinePinnedIds();
     updateShowAllEntriesBtn();
+
+    // Apply sorting based on user preference
+    const SETTINGS_STORAGE_KEY = 'gj_user_settings';
+    let sortOrder = 'newest';
+    try {
+        const settings = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || '{}');
+        sortOrder = settings.sortOrder || 'newest';
+    } catch (e) {
+        console.error('Error loading sort preference:', e);
+    }
+
+    // Sort entries based on preference
+    if (sortOrder === 'oldest') {
+        entries = [...entries].sort((a, b) => {
+            const dateA = a.created instanceof Date ? a.created : new Date(a.created);
+            const dateB = b.created instanceof Date ? b.created : new Date(b.created);
+            return dateA - dateB;
+        });
+    } else if (sortOrder === 'alphabetical') {
+        entries = [...entries].sort((a, b) => {
+            return a.text.localeCompare(b.text);
+        });
+    } else {
+        // Default: newest first
+        entries = [...entries].sort((a, b) => {
+            const dateA = a.created instanceof Date ? a.created : new Date(a.created);
+            const dateB = b.created instanceof Date ? b.created : new Date(b.created);
+            return dateB - dateA;
+        });
+    }
+
     // Disable 'Show All Entries' button if all entries are already shown
     function updateShowAllEntriesBtn() {
         const viewListBtn = document.getElementById('view-list-btn');
@@ -1520,11 +1551,10 @@ function renderEntries() {
         const isOfflineReady = offlineCachedIds.has(e.id);
         const isOfflinePinned = offlinePinnedIds.has(e.id);
 
-        // Date stamp
+        // Date stamp - use formatDate utility
         const dateSpan = document.createElement('span');
         if (e.created) {
-            const d = e.created instanceof Date ? e.created : new Date(e.created);
-            dateSpan.textContent = d.toLocaleDateString();
+            dateSpan.textContent = window._formatDate ? window._formatDate(e.created) : new Date(e.created).toLocaleDateString();
         } else {
             dateSpan.textContent = '';
         }
@@ -2959,9 +2989,21 @@ function openEntryModal(entry) {
     // Set content
     modalEntryText.textContent = decodeURIComponent(entry.text);
     const entryDate = getEntryDate(entry);
-    modalEntryDate.textContent = entryDate
-        ? entryDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-        : '';
+    if (entryDate && window._formatDate) {
+        // Use formatDate if available, otherwise fall back to long format
+        const settings = JSON.parse(localStorage.getItem('gj_user_settings') || '{}');
+        const dateFormat = settings.dateFormat || 'relative';
+        if (dateFormat === 'relative') {
+            // For modal, show a more detailed format even in relative mode
+            modalEntryDate.textContent = entryDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+        } else {
+            modalEntryDate.textContent = window._formatDate(entryDate);
+        }
+    } else if (entryDate) {
+        modalEntryDate.textContent = entryDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    } else {
+        modalEntryDate.textContent = '';
+    }
 
     // Render action buttons
     renderModalActionButtons(entry);
@@ -3173,6 +3215,54 @@ document.addEventListener('DOMContentLoaded', function () {
         // Settings keys for localStorage
         const SETTINGS_STORAGE_KEY = 'gj_user_settings';
 
+        // Format date based on user preference
+        function formatDate(date, format) {
+            if (!date) return '';
+            const d = date instanceof Date ? date : new Date(date);
+            if (isNaN(d.getTime())) return '';
+
+            const settings = loadSettings();
+            const dateFormat = format || settings.dateFormat || 'relative';
+
+            switch (dateFormat) {
+                case 'MM/DD/YYYY':
+                    const mm = String(d.getMonth() + 1).padStart(2, '0');
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    const yyyy = d.getFullYear();
+                    return `${mm}/${dd}/${yyyy}`;
+                case 'DD/MM/YYYY':
+                    const dd2 = String(d.getDate()).padStart(2, '0');
+                    const mm2 = String(d.getMonth() + 1).padStart(2, '0');
+                    const yyyy2 = d.getFullYear();
+                    return `${dd2}/${mm2}/${yyyy2}`;
+                case 'relative':
+                default:
+                    const now = new Date();
+                    const diffTime = Math.abs(now - d);
+                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+                    if (diffDays === 0) {
+                        return 'Today';
+                    } else if (diffDays === 1) {
+                        return 'Yesterday';
+                    } else if (diffDays < 7) {
+                        return `${diffDays} days ago`;
+                    } else if (diffDays < 30) {
+                        const weeks = Math.floor(diffDays / 7);
+                        return weeks === 1 ? '1 week ago' : `${weeks} weeks ago`;
+                    } else if (diffDays < 365) {
+                        const months = Math.floor(diffDays / 30);
+                        return months === 1 ? '1 month ago' : `${months} months ago`;
+                    } else {
+                        const years = Math.floor(diffDays / 365);
+                        return years === 1 ? '1 year ago' : `${years} years ago`;
+                    }
+            }
+        }
+
+        // Make formatDate available globally for use in renderEntries
+        window._formatDate = formatDate;
+
         // Load settings from localStorage
         function loadSettings() {
             try {
@@ -3218,14 +3308,17 @@ document.addEventListener('DOMContentLoaded', function () {
             const root = document.documentElement;
             switch (size) {
                 case 'small':
-                    root.style.fontSize = '13px';
+                    root.style.setProperty('--base-font-size', '14px');
+                    root.style.setProperty('--font-scale', '0.875');
                     break;
                 case 'large':
-                    root.style.fontSize = '18px';
+                    root.style.setProperty('--base-font-size', '18px');
+                    root.style.setProperty('--font-scale', '1.125');
                     break;
                 case 'normal':
                 default:
-                    root.style.fontSize = '16px';
+                    root.style.setProperty('--base-font-size', '16px');
+                    root.style.setProperty('--font-scale', '1');
                     break;
             }
         }
@@ -3342,6 +3435,24 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('reminder-time-select').disabled = !e.target.checked;
         });
 
+        // Add real-time preview for font size changes
+        document.getElementById('font-size-select').addEventListener('change', (e) => {
+            applyFontSize(e.target.value);
+        });
+
+        // Add real-time preview for date format and sort order
+        document.getElementById('date-format-select').addEventListener('change', () => {
+            if (typeof renderEntries === 'function') {
+                renderEntries();
+            }
+        });
+
+        document.getElementById('sort-order-select').addEventListener('change', () => {
+            if (typeof renderEntries === 'function') {
+                renderEntries();
+            }
+        });
+
         // Save settings
         settingsSaveBtn.onclick = async () => {
             const settings = getCurrentSettings();
@@ -3353,6 +3464,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (Notification.permission === 'default') {
                     Notification.requestPermission();
                 }
+            }
+
+            // Re-render entries to apply new date format and sort order
+            if (typeof renderEntries === 'function') {
+                renderEntries();
             }
 
             setStatus('Settings saved successfully.', 'success');
