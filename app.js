@@ -3985,6 +3985,14 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('reminder-time-select').disabled = !e.target.checked;
         });
 
+        // Handle tags toggle - show/hide management section immediately
+        document.getElementById('tags-toggle').addEventListener('change', (e) => {
+            const tagsManagementSection = document.getElementById('tags-management-section');
+            if (tagsManagementSection) {
+                tagsManagementSection.style.display = e.target.checked ? '' : 'none';
+            }
+        });
+
         // Add real-time preview for font size changes
         document.getElementById('font-size-select').addEventListener('change', (e) => {
             applyFontSize(e.target.value);
