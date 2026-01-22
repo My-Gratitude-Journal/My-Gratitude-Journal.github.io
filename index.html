@@ -317,49 +317,52 @@
                     Entry</button>
             </form>
             <h2 class="text-xl font-bold text-gray-700 dark:text-gray-200 mb-4">Your Entries</h2>
-            <div class="md:sticky md:top-0 md:z-40 md:bg-white md:dark:bg-gray-900 pb-3 space-y-3">
+            <div class="md:sticky md:top-0 md:z-40 md:bg-white md:dark:bg-gray-900 md:pt-3 pb-3 space-y-3">
                 <input id="search-input" type="text" placeholder="Search entries..."
                     class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm text-base" />
                 <div class="flex flex-wrap gap-3 items-center justify-start w-full">
-                <button id="view-calendar-btn"
-                    class="px-3 py-2 rounded-lg bg-blue-200 dark:bg-blue-900 text-primary dark:text-blue-300 font-medium shadow hover:bg-blue-300 dark:hover:bg-blue-800 transition"><i
-                        class="fa-solid fa-calendar-days mr-2"></i><span class="icon mr-2" aria-hidden="true">
-                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                            <rect x="3" y="4" width="18" height="17" rx="2" ry="2" />
-                            <rect x="7" y="2" width="2" height="4" />
-                            <rect x="15" y="2" width="2" height="4" />
-                            <path d="M3 8h18" stroke="currentColor" stroke-width="2" fill="none" />
-                        </svg>
-                    </span>Filter
-                    Entries by Date</button>
-                <input id="date-filter" type="date" class="hidden" />
-                <button id="favorites-toggle" type="button"
-                    class="px-4 py-2 rounded-lg bg-yellow-400 dark:bg-yellow-600 text-yellow-900 dark:text-yellow-100 font-semibold shadow hover:bg-yellow-500 dark:hover:bg-yellow-500 transition"><i
-                        class="fa-solid fa-star mr-2"></i><span class="icon mr-2" aria-hidden="true">
-                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                            <path
-                                d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.56 5.82 22 7 14.14 2 9.27l6.91-1.01L12 2z" />
-                        </svg>
-                    </span>
-                    Show Favorites Only</button>
-                <button id="tags-filter-btn" type="button"
-                    class="px-4 py-2 rounded-lg bg-purple-400 dark:bg-purple-600 text-purple-900 dark:text-purple-100 font-semibold shadow hover:bg-purple-500 dark:hover:bg-purple-500 transition"><i
-                        class="fa-solid fa-tags mr-2"></i><span class="icon mr-2" aria-hidden="true">
-                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                            <path
-                                d="M3 6c0-1.1.9-2 2-2h3l2-3h4l2 3h3c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V6z" />
-                        </svg>
-                    </span>
-                    Filter by Tags</button>
-                <button id="view-list-btn"
-                    class="px-3 py-2 rounded-lg bg-primary text-white font-medium shadow hover:bg-blue-600 transition"><i
-                        class="fa-solid fa-xmark mr-2"></i><span class="icon mr-2" aria-hidden="true">
-                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M6 6l12 12M18 6l-12 12" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round" />
-                        </svg>
-                    </span>Clear
-                    Filters</button>
+                    <button id="view-calendar-btn"
+                        class="px-3 py-2 rounded-lg bg-blue-200 dark:bg-blue-900 text-primary dark:text-blue-300 font-medium shadow hover:bg-blue-300 dark:hover:bg-blue-800 transition"><i
+                            class="fa-solid fa-calendar-days mr-2"></i><span class="icon mr-2" aria-hidden="true">
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <rect x="3" y="4" width="18" height="17" rx="2" ry="2" />
+                                <rect x="7" y="2" width="2" height="4" />
+                                <rect x="15" y="2" width="2" height="4" />
+                                <path d="M3 8h18" stroke="currentColor" stroke-width="2" fill="none" />
+                            </svg>
+                        </span>Filter
+                        Entries by Date</button>
+                    <input id="date-filter" type="date" class="hidden" />
+                    <button id="favorites-toggle" type="button"
+                        class="px-4 py-2 rounded-lg bg-yellow-400 dark:bg-yellow-600 text-yellow-900 dark:text-yellow-100 font-semibold shadow hover:bg-yellow-500 dark:hover:bg-yellow-500 transition"><i
+                            class="fa-solid fa-star mr-2"></i><span class="icon mr-2" aria-hidden="true">
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path
+                                    d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.56 5.82 22 7 14.14 2 9.27l6.91-1.01L12 2z" />
+                            </svg>
+                        </span>
+                        Show Favorites Only</button>
+                    <button id="tags-filter-btn" type="button"
+                        class="px-4 py-2 rounded-lg bg-purple-400 dark:bg-purple-600 text-purple-900 dark:text-purple-100 font-semibold shadow hover:bg-purple-500 dark:hover:bg-purple-500 transition"><i
+                            class="fa-solid fa-tags mr-2"></i><span class="icon mr-2" aria-hidden="true">
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"
+                                xmlns="http://www.w3.org/2000/svg">
+                                <path
+                                    d="M3 6c0-1.1.9-2 2-2h3l2-3h4l2 3h3c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2V6z" />
+                            </svg>
+                        </span>
+                        Filter by Tags</button>
+                    <button id="view-list-btn"
+                        class="px-3 py-2 rounded-lg bg-primary text-white font-medium shadow hover:bg-blue-600 transition"><i
+                            class="fa-solid fa-xmark mr-2"></i><span class="icon mr-2" aria-hidden="true">
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M6 6l12 12M18 6l-12 12" stroke="currentColor" stroke-width="2"
+                                    stroke-linecap="round" />
+                            </svg>
+                        </span>Clear
+                        Filters</button>
                     <!-- Hidden export buttons triggered by menu -->
                     <button id="export-csv-btn" type="button" class="hidden">Export CSV</button>
                     <button id="export-pdf-btn" type="button" class="hidden">Export PDF</button>
