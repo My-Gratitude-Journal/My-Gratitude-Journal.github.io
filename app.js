@@ -4229,7 +4229,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (tagsFilterBtn && tagsFilterModal) {
-            tagsFilterBtn.onclick = () => {
+            tagsFilterBtn.onclick = async () => {
+                // Fetch all entries to ensure we get tags from all entries, not just loaded 20
+                if (!window._allEntriesLoaded) {
+                    await fetchAllEntries();
+                }
+                // Clear tag cache to ensure fresh calculation from current entries
+                window._allTags = null;
                 renderTagFilterOptions();
                 tagsFilterModal.classList.remove('hidden');
             };
