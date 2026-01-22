@@ -4821,6 +4821,10 @@ document.addEventListener('DOMContentLoaded', function () {
             viewAllPromptsBtn.onclick = () => {
                 renderAllPrompts();
                 allPromptsModal.classList.remove('hidden');
+                // Scroll modal into view on mobile
+                setTimeout(() => {
+                    allPromptsModal.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 0);
             };
 
             closeAllPromptsBtn.onclick = () => {
