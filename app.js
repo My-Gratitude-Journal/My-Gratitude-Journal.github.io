@@ -2606,6 +2606,8 @@ async function exportEntriesPDFAsync() {
         }
 
         const settings = getPdfSettings();
+        const userSettings = JSON.parse(localStorage.getItem('gj_user_settings') || '{}');
+        const tagsEnabled = userSettings.tagsEnabled !== false;
 
         // Filter by favorites if enabled
         let entries = allEntries;
@@ -2702,9 +2704,9 @@ async function exportEntriesPDFAsync() {
                 textEl.className = settings.layout === 'compact' ? 'prose prose-xs max-w-none whitespace-pre-line' : 'prose prose-sm max-w-none whitespace-pre-line';
                 textEl.textContent = displayText;
 
-                // Tags row
+                // Tags row (only if tags are enabled)
                 let tagsEl = null;
-                if (tags.length) {
+                if (tagsEnabled && tags.length) {
                     tagsEl = document.createElement('div');
                     tagsEl.className = 'flex flex-wrap gap-2 mt-2';
                     tags.forEach(tag => {
@@ -2778,9 +2780,9 @@ async function exportEntriesPDFAsync() {
         // Fallback: original jsPDF export with improved spacing and dividers
         // Or use book mode if enabled
         if (settings.bookMode) {
-            exportBookModePDF(entries, settings);
+            exportBookModePDF(entries, settings, tagsEnabled);
         } else {
-            fallbackJsPdfExport(entries);
+            fallbackJsPdfExport(entries, tagsEnabled);
         }
     } catch (e) {
         console.error('Error exporting PDF:', e);
@@ -2788,7 +2790,7 @@ async function exportEntriesPDFAsync() {
     }
 }
 
-function exportBookModePDF(entries, settings) {
+function exportBookModePDF(entries, settings, tagsEnabled) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'mm', format: settings.format, orientation: settings.orientation });
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -2896,9 +2898,9 @@ function exportBookModePDF(entries, settings) {
             // Calculate entry height
             const lineHeight = 5;
             const lines = doc.splitTextToSize(displayText, columnWidth - 6);
-            const tagLineHeight = tags.length ? lineHeight : 0;
-            const tagLines = tags.length ? doc.splitTextToSize(`Tags: ${tags.join(', ')}`, columnWidth - 6) : [];
-            const entryHeight = lineHeight * lines.length + (tagLineHeight * (tagLines.length || 0)) + (tags.length ? 6 : 0) + 10; // date + padding + tags
+            const tagLineHeight = (tagsEnabled && tags.length) ? lineHeight : 0;
+            const tagLines = (tagsEnabled && tags.length) ? doc.splitTextToSize(`Tags: ${tags.join(', ')}`, columnWidth - 6) : [];
+            const entryHeight = lineHeight * lines.length + (tagLineHeight * (tagLines.length || 0)) + (tagsEnabled && tags.length ? 6 : 0) + 10; // date + padding + tags
             const spaceNeeded = entryHeight + 3; // minimal spacing between entries
 
             if (settings.twoColumn) {
@@ -2940,7 +2942,7 @@ function exportBookModePDF(entries, settings) {
                 doc.setTextColor(40, 40, 40);
                 doc.text(lines, x, currentY + 6, { maxWidth: columnWidth });
 
-                if (tags.length) {
+                if (tagsEnabled && tags.length) {
                     doc.setFont('georgia', 'italic');
                     doc.setFontSize(9);
                     doc.setTextColor(90, 90, 90);
@@ -3074,7 +3076,7 @@ function renderTableOfContents(doc, tocPageIndices, tocItems, pageWidth, pageHei
     }
 }
 
-function fallbackJsPdfExport(entries) {
+function fallbackJsPdfExport(entries, tagsEnabled) {
     const settings = getPdfSettings();
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: 'mm', format: settings.format, orientation: settings.orientation });
@@ -3117,9 +3119,9 @@ function fallbackJsPdfExport(entries) {
         const textWidth = pageWidth - margin * 2 - 10; // padding inside card
         const lines = doc.splitTextToSize(displayText, textWidth);
         const tags = Array.isArray(e.tags) ? e.tags.map(t => normalizeTag(t)).filter(Boolean) : [];
-        const tagLines = tags.length ? doc.splitTextToSize(`Tags: ${tags.join(', ')}`, textWidth) : [];
+        const tagLines = (tagsEnabled && tags.length) ? doc.splitTextToSize(`Tags: ${tags.join(', ')}`, textWidth) : [];
         const cardPadding = 5;
-        const tagsHeight = tags.length ? (lineHeight * (tagLines.length || 1) + 4) : 0;
+        const tagsHeight = (tagsEnabled && tags.length) ? (lineHeight * (tagLines.length || 1) + 4) : 0;
         const cardHeight = (lineHeight * lines.length) + tagsHeight + cardPadding * 2 + 6; // 6 for date
 
         // Add page if needed
@@ -3172,7 +3174,7 @@ function fallbackJsPdfExport(entries) {
         doc.setTextColor(30);
         doc.text(lines, margin + cardPadding, y + cardPadding + 10, { maxWidth: textWidth });
 
-        if (tags.length) {
+        if (tagsEnabled && tags.length) {
             doc.setFont('helvetica', 'italic');
             doc.setFontSize(10);
             doc.setTextColor(90);
