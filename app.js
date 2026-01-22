@@ -1621,7 +1621,7 @@ function updateProgressInfo() {
     const entries = window._allEntries || [];
     const streakCountEl = document.getElementById('streak-count');
     const longestStreakEl = document.getElementById('longest-streak');
-    const daysJournaledEl = document.getElementById('days-journaled');
+    const daysJournaledEl = document.getElementById('total-days-journaled');
     const totalEntriesEl = document.getElementById('total-entries');
 
     const computedCounters = computeCountersFromEntries(entries);
