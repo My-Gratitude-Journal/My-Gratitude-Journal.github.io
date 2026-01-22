@@ -1940,8 +1940,6 @@ function renderEntries() {
                 tagChip.onclick = (e) => {
                     e.stopPropagation();
                     toggleTagFilter(tag);
-                    const modal = document.getElementById('tags-filter-modal');
-                    if (modal) modal.classList.remove('hidden');
                 };
                 tagsContainer.appendChild(tagChip);
             });
