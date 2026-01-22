@@ -4020,6 +4020,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 renderEntries();
             }
 
+            // Wait a brief moment for DOM to update, then show success and close
+            await new Promise(resolve => setTimeout(resolve, 100));
+
             setStatus('Settings saved successfully.', 'success');
             closeSettings();
         };
@@ -4305,6 +4308,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (tagsFilterBtn && tagsFilterModal) {
             tagsFilterBtn.onclick = async () => {
+                // Check if tags are enabled before allowing filter
+                const settings = JSON.parse(localStorage.getItem('gj_user_settings') || '{}');
+                if (settings.tagsEnabled === false) {
+                    return;
+                }
+
                 // Fetch all entries to ensure we get tags from all entries, not just loaded 20
                 if (!window._allEntriesLoaded) {
                     await fetchAllEntries();
@@ -4318,6 +4327,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     tagsFilterModal.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }, 0);
             };
+
+            // Ensure button visibility is set based on tags setting on page load
+            const settings = JSON.parse(localStorage.getItem('gj_user_settings') || '{}');
+            if (settings.tagsEnabled === false) {
+                tagsFilterBtn.style.display = 'none';
+            }
         }
 
         if (closeTagsFilterModalBtn && tagsFilterModal) {
