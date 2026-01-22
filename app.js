@@ -17,6 +17,7 @@ const OFFLINE_CACHE_PREFIX = 'gj_offline_entries_';
 const PENDING_OPS_PREFIX = 'gj_pending_ops_';
 const OFFLINE_PINS_PREFIX = 'gj_offline_pins_';
 const OFFLINE_EXCLUDES_PREFIX = 'gj_offline_excludes_';
+const PENDING_SETTINGS_PREFIX = 'gj_pending_settings_';
 let userKey = sessionStorage.getItem(USER_KEY_STORAGE) || '';
 let legacyKey = sessionStorage.getItem(LEGACY_KEY_STORAGE) || '';
 let pendingPassword = '';
@@ -44,6 +45,151 @@ function saveStoredSettings(nextSettings) {
     }
     return settings;
 }
+
+// Settings that should be stored in Firebase (excludes notification-related settings)
+function getFirebaseSettings(settings) {
+    return {
+        fontSize: settings.fontSize || 'normal',
+        dateFormat: settings.dateFormat || 'relative',
+        sortOrder: settings.sortOrder || 'newest',
+        promptsEnabled: settings.promptsEnabled !== false,
+        templatesEnabled: settings.templatesEnabled !== false,
+        tagsEnabled: settings.tagsEnabled !== false,
+        simpleView: settings.simpleView || false
+    };
+}
+
+// Settings that should remain local only (notification-related)
+function getLocalOnlySettings(settings) {
+    return {
+        remindersEnabled: settings.remindersEnabled || false,
+        reminderTime: settings.reminderTime || '18:00'
+    };
+}
+
+// Load settings from Firebase; merge with local notification settings
+async function loadFirebaseSettings() {
+    const user = auth.currentUser;
+    if (!user) {
+        console.warn('No user logged in; cannot load Firebase settings');
+        return loadStoredSettings();
+    }
+
+    try {
+        const docSnapshot = await db.collection('users').doc(user.uid).get();
+        if (docSnapshot.exists && docSnapshot.data().settings) {
+            const firebaseSettings = docSnapshot.data().settings;
+            const localSettings = loadStoredSettings();
+            // Merge: Firebase settings + local notification settings
+            const merged = {
+                ...firebaseSettings,
+                ...getLocalOnlySettings(localSettings)
+            };
+            // Update local storage with merged settings
+            saveStoredSettings(merged);
+            return merged;
+        } else {
+            // No Firebase settings yet; return local settings
+            return loadStoredSettings();
+        }
+    } catch (err) {
+        console.warn('Failed to load Firebase settings:', err);
+        // Fall back to local settings on error
+        return loadStoredSettings();
+    }
+}
+
+// Get the key for pending settings storage for this user
+function pendingSettingsKeyForUser() {
+    const user = auth.currentUser;
+    return user ? PENDING_SETTINGS_PREFIX + user.uid : null;
+}
+
+// Queue settings to be saved when online
+function queuePendingSettings(settings) {
+    const key = pendingSettingsKeyForUser();
+    if (!key) return;
+    try {
+        localStorage.setItem(key, JSON.stringify(settings));
+    } catch (err) {
+        console.error('Failed to queue settings:', err);
+    }
+}
+
+// Get queued settings
+function getPendingSettings() {
+    const key = pendingSettingsKeyForUser();
+    if (!key) return null;
+    try {
+        const data = localStorage.getItem(key);
+        return data ? JSON.parse(data) : null;
+    } catch (err) {
+        console.error('Failed to get pending settings:', err);
+        return null;
+    }
+}
+
+// Clear queued settings
+function clearPendingSettings() {
+    const key = pendingSettingsKeyForUser();
+    if (key) {
+        try {
+            localStorage.removeItem(key);
+        } catch (err) {
+            console.error('Failed to clear pending settings:', err);
+        }
+    }
+}
+
+// Flush pending settings if online
+async function flushPendingSettings() {
+    if (!isOnline()) return;
+    const pending = getPendingSettings();
+    if (!pending) return;
+
+    const user = auth.currentUser;
+    if (!user) return;
+
+    try {
+        const firebaseSettings = getFirebaseSettings(pending);
+        await db.collection('users').doc(user.uid).set({
+            settings: firebaseSettings
+        }, { merge: true });
+        console.info('Pending settings flushed to Firebase');
+        clearPendingSettings();
+    } catch (err) {
+        console.error('Failed to flush pending settings:', err);
+    }
+}
+
+// Save settings to Firebase (excludes notification settings)
+async function saveFirebaseSettings(settings) {
+    const user = auth.currentUser;
+    if (!user) {
+        console.warn('No user logged in; cannot save Firebase settings');
+        return;
+    }
+
+    // Queue the settings to be saved
+    queuePendingSettings(settings);
+
+    // If online, try to save immediately
+    if (isOnline()) {
+        try {
+            const firebaseSettings = getFirebaseSettings(settings);
+            await db.collection('users').doc(user.uid).set({
+                settings: firebaseSettings
+            }, { merge: true });
+            console.info('Settings saved to Firebase');
+            clearPendingSettings();
+        } catch (err) {
+            console.error('Failed to save settings to Firebase (will retry when online):', err);
+        }
+    } else {
+        console.info('Offline: Settings queued and will sync when back online');
+    }
+}
+
 
 function notificationsSupported() {
     return typeof window !== 'undefined' && 'Notification' in window && window.isSecureContext !== false;
@@ -1476,8 +1622,14 @@ auth.onAuthStateChanged(async user => {
             console.error('Failed flushing offline ops on login:', err);
         }
 
-        // Load and apply user settings (including simple view and tags)
-        const settings = JSON.parse(localStorage.getItem('gj_user_settings') || '{}');
+        try {
+            await flushPendingSettings();
+        } catch (err) {
+            console.error('Failed flushing pending settings on login:', err);
+        }
+
+        // Load and apply user settings from Firebase (with local notification settings)
+        const settings = await loadFirebaseSettings();
         if (settings.simpleView) {
             applySimpleViewVisibility(true);
         }
@@ -4219,6 +4371,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             saveSettings(settings);
+            // Save to Firebase (excludes notification settings)
+            await saveFirebaseSettings(settings);
             applySettings(settings);
             applySimpleViewVisibility(settings.simpleView);
 
