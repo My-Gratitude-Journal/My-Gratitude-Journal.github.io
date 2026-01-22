@@ -3986,10 +3986,17 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         // Handle tags toggle - show/hide management section immediately
-        document.getElementById('tags-toggle').addEventListener('change', (e) => {
+        document.getElementById('tags-toggle').addEventListener('change', async (e) => {
             const tagsManagementSection = document.getElementById('tags-management-section');
             if (tagsManagementSection) {
                 tagsManagementSection.style.display = e.target.checked ? '' : 'none';
+                // Populate tag management list when toggled on
+                if (e.target.checked) {
+                    // Fetch all entries first to ensure we have all tags
+                    window._allEntries = await fetchAllEntries();
+                    window._allTags = null; // Clear tag cache to force refresh
+                    renderTagManagementList();
+                }
             }
         });
 
