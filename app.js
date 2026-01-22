@@ -4238,6 +4238,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 window._allTags = null;
                 renderTagFilterOptions();
                 tagsFilterModal.classList.remove('hidden');
+                // Scroll modal into view on mobile
+                setTimeout(() => {
+                    tagsFilterModal.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 0);
             };
         }
 
