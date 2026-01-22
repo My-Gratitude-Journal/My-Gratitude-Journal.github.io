@@ -1323,6 +1323,12 @@ auth.onAuthStateChanged(async user => {
             console.error('Failed flushing offline ops on login:', err);
         }
 
+        // Load and apply user settings (including simple view)
+        const settings = JSON.parse(localStorage.getItem('gj_user_settings') || '{}');
+        if (settings.simpleView) {
+            applySimpleViewVisibility(true);
+        }
+
         // Read most recent entries
         await loadEntries(true);
         logoutBtn.style.display = 'inline-block';
@@ -3733,6 +3739,27 @@ document.addEventListener('DOMContentLoaded', function () {
             controls.style.display = enabled ? '' : 'none';
         }
 
+        // Apply simple view visibility
+        function applySimpleViewVisibility(enabled) {
+            const filterBar = document.querySelector('.md\\:sticky');
+            const tagsLabel = document.querySelector('label[for="tag-input"]');
+            const tagInputSection = tagsLabel?.parentElement;
+            const tagsFilterBtn = document.getElementById('tags-filter-btn');
+            const searchInput = document.getElementById('search-input');
+            const dateFilterBtn = document.getElementById('view-calendar-btn');
+            const favoritesToggle = document.getElementById('favorites-toggle');
+
+            // Hide/show filter UI
+            if (filterBar) filterBar.style.display = enabled ? 'none' : '';
+            if (tagsFilterBtn) tagsFilterBtn.style.display = enabled ? 'none' : '';
+            if (searchInput) searchInput.style.display = enabled ? 'none' : '';
+            if (dateFilterBtn) dateFilterBtn.style.display = enabled ? 'none' : '';
+            if (favoritesToggle) favoritesToggle.style.display = enabled ? 'none' : '';
+
+            // Hide tags input in form if enabled
+            if (tagInputSection) tagInputSection.style.display = enabled ? 'none' : '';
+        }
+
         // Apply settings to UI
         function applySettings(settings) {
             document.getElementById('font-size-select').value = settings.fontSize || 'normal';
@@ -3744,6 +3771,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('tags-toggle').checked = settings.tagsEnabled !== false;
             document.getElementById('browser-notifications-toggle').checked = settings.browserNotificationsEnabled || false;
             document.getElementById('reminder-time-select').value = settings.reminderTime || '18:00';
+            document.getElementById('simple-view-toggle').checked = settings.simpleView || false;
 
             applyTemplateVisibility(settings.templatesEnabled !== false);
 
@@ -3793,7 +3821,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 templatesEnabled: document.getElementById('templates-toggle').checked,
                 tagsEnabled: document.getElementById('tags-toggle').checked,
                 browserNotificationsEnabled: document.getElementById('browser-notifications-toggle').checked,
-                reminderTime: document.getElementById('reminder-time-select').value
+                reminderTime: document.getElementById('reminder-time-select').value,
+                simpleView: document.getElementById('simple-view-toggle').checked
             };
         }
 
@@ -3930,6 +3959,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const settings = getCurrentSettings();
             saveSettings(settings);
             applySettings(settings);
+            applySimpleViewVisibility(settings.simpleView);
 
             // Request notification permission if enabled
             if (settings.browserNotificationsEnabled && 'Notification' in window) {
