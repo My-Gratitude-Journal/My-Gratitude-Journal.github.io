@@ -3901,8 +3901,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const hasPermission = Notification.permission === 'granted';
             reminderTimeSelect.disabled = !enabled || !hasPermission;
             if (testReminderBtn) {
-                testReminderBtn.disabled = !hasPermission;
-                testReminderBtn.title = hasPermission ? '' : 'Allow notifications to send a test.';
+                const disabled = !enabled;
+                const disabledReason = !enabled ? 'Turn on daily reminders to send a test.' : '';
+                testReminderBtn.disabled = disabled;
+                testReminderBtn.title = disabled ? disabledReason : (hasPermission ? '' : 'Click to allow notifications and send a test.');
             }
             return true;
         }
