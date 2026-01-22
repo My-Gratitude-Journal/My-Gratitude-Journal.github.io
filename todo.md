@@ -4,5 +4,7 @@
         - Explains what mode does, cautions against turning it on when using public computers.
 - Save settings
     - Have settings save in Firebase to persist across devices.
+- Icons
+    - Use icons for "Privacy and Account"
 
 - **Daily Reminder Notifications** — Implement optional browser notifications reminding users to journal. Allow users to set preferred time of day. Requires user permission and Notification API.
