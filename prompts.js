@@ -32,10 +32,17 @@ const GRATITUDE_PROMPTS = [
     "What skill would you like to develop and why?"
 ];
 
-// Get a random prompt based on the day (same prompt all day)
+// Get a prompt based on the day (same prompt all day)
 function getDailyPrompt() {
     const today = new Date();
     const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / 86400000);
     const index = dayOfYear % GRATITUDE_PROMPTS.length;
     return GRATITUDE_PROMPTS[index];
+}
+
+// Get today's prompt index
+function getTodayPromptIndex() {
+    const today = new Date();
+    const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / 86400000);
+    return dayOfYear % GRATITUDE_PROMPTS.length;
 }

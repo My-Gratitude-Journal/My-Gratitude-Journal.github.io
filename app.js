@@ -4786,5 +4786,52 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             console.warn('Settings modal elements not fully found in DOM');
         }
+
+        // Handle View All Prompts
+        const viewAllPromptsBtn = document.getElementById('view-all-prompts-btn');
+        const allPromptsModal = document.getElementById('all-prompts-modal');
+        const closeAllPromptsBtn = document.getElementById('close-all-prompts-modal');
+        const promptsList = document.getElementById('prompts-list');
+
+        function renderAllPrompts() {
+            if (!promptsList) return;
+            const todayIndex = getTodayPromptIndex();
+            promptsList.innerHTML = GRATITUDE_PROMPTS.map((prompt, index) => {
+                const isToday = index === todayIndex;
+                return `
+                    <div class="p-4 rounded-lg ${isToday
+                        ? 'bg-blue-100 dark:bg-blue-900 border-2 border-primary'
+                        : 'bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600'
+                    }">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="flex-1">
+                                <p class="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-1">
+                                    Prompt ${index + 1}
+                                    ${isToday ? '<span class="ml-2 text-primary font-bold">• Today</span>' : ''}
+                                </p>
+                                <p class="text-gray-800 dark:text-gray-100">${prompt}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        if (viewAllPromptsBtn && allPromptsModal) {
+            viewAllPromptsBtn.onclick = () => {
+                renderAllPrompts();
+                allPromptsModal.classList.remove('hidden');
+            };
+
+            closeAllPromptsBtn.onclick = () => {
+                allPromptsModal.classList.add('hidden');
+            };
+
+            allPromptsModal.onclick = (e) => {
+                if (e.target === allPromptsModal) {
+                    allPromptsModal.classList.add('hidden');
+                }
+            };
+        }
     }
 });
