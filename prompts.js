@@ -36,7 +36,7 @@ const GRATITUDE_PROMPTS = [
 // Get a prompt based on the day (same prompt all day)
 function getDailyPrompt() {
     const today = new Date();
-    const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / 86400000);
+    const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 1)) / 86400000);
     const index = dayOfYear % GRATITUDE_PROMPTS.length;
     return GRATITUDE_PROMPTS[index];
 }
@@ -44,6 +44,6 @@ function getDailyPrompt() {
 // Get today's prompt index
 function getTodayPromptIndex() {
     const today = new Date();
-    const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / 86400000);
+    const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 1)) / 86400000);
     return dayOfYear % GRATITUDE_PROMPTS.length;
 }
