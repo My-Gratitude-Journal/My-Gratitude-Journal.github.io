@@ -3964,8 +3964,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 changePasswordBtn.style.display = isPasswordProvider ? 'block' : 'none';
             }
 
-            // Render tag management list when settings open
-            renderTagManagementList();
+            // Render tag management list when settings open - fetch all entries if tags enabled
+            const settings = loadSettings();
+            if (settings.tagsEnabled !== false) {
+                fetchAllEntries().then(entries => {
+                    window._allEntries = entries;
+                    window._allTags = null; // Clear cache
+                    renderTagManagementList();
+                });
+            } else {
+                renderTagManagementList(); // Still render to show "No tags yet"
+            }
 
             settingsModal.classList.remove('hidden');
             document.body.classList.add('modal-open');
