@@ -3880,14 +3880,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         function updateReminderControls(enabled) {
             const reminderToggle = document.getElementById('reminder-toggle');
-            const reminderTimeSelect = document.getElementById('reminder-time-select');
+            const reminderTimeInput = document.getElementById('reminder-time-input');
             const testReminderBtn = document.getElementById('test-reminder-btn');
-            if (!reminderToggle || !reminderTimeSelect) return false;
+            if (!reminderToggle || !reminderTimeInput) return false;
 
             if (!notificationsSupported()) {
                 reminderToggle.checked = false;
                 reminderToggle.disabled = true;
-                reminderTimeSelect.disabled = true;
+                reminderTimeInput.disabled = true;
                 reminderToggle.title = 'Notifications need a supported browser and a secure connection (https).';
                 if (testReminderBtn) {
                     testReminderBtn.disabled = true;
@@ -3899,7 +3899,7 @@ document.addEventListener('DOMContentLoaded', function () {
             reminderToggle.disabled = false;
             reminderToggle.title = '';
             const hasPermission = Notification.permission === 'granted';
-            reminderTimeSelect.disabled = !enabled || !hasPermission;
+            reminderTimeInput.disabled = !enabled || !hasPermission;
             if (testReminderBtn) {
                 const disabled = !enabled;
                 const disabledReason = !enabled ? 'Turn on daily reminders to send a test.' : '';
@@ -3950,7 +3950,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('prompts-toggle').checked = settings.promptsEnabled !== false;
             document.getElementById('templates-toggle').checked = settings.templatesEnabled !== false;
             document.getElementById('tags-toggle').checked = settings.tagsEnabled !== false;
-            document.getElementById('reminder-time-select').value = settings.reminderTime || '18:00';
+            document.getElementById('reminder-time-input').value = settings.reminderTime || '18:00';
             document.getElementById('simple-view-toggle').checked = settings.simpleView || false;
 
             applyTemplateVisibility(settings.templatesEnabled !== false);
@@ -4001,7 +4001,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 promptsEnabled: document.getElementById('prompts-toggle').checked,
                 templatesEnabled: document.getElementById('templates-toggle').checked,
                 tagsEnabled: document.getElementById('tags-toggle').checked,
-                reminderTime: document.getElementById('reminder-time-select').value,
+                reminderTime: document.getElementById('reminder-time-input').value,
                 simpleView: document.getElementById('simple-view-toggle').checked
             };
         }
