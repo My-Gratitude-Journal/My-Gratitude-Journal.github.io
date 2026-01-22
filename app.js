@@ -21,6 +21,96 @@ let userKey = sessionStorage.getItem(USER_KEY_STORAGE) || '';
 let legacyKey = sessionStorage.getItem(LEGACY_KEY_STORAGE) || '';
 let pendingPassword = '';
 
+const SETTINGS_STORAGE_KEY = 'gj_user_settings';
+let reminderTimerId = null;
+
+function loadStoredSettings() {
+    if (typeof localStorage === 'undefined') return {};
+    try {
+        return JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || '{}');
+    } catch (err) {
+        console.warn('Failed to load settings:', err);
+        return {};
+    }
+}
+
+function saveStoredSettings(nextSettings) {
+    if (typeof localStorage === 'undefined') return {};
+    const settings = nextSettings || {};
+    try {
+        localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+    } catch (err) {
+        console.warn('Failed to save settings:', err);
+    }
+    return settings;
+}
+
+function notificationsSupported() {
+    return typeof window !== 'undefined' && 'Notification' in window && window.isSecureContext !== false;
+}
+
+function msUntilNextReminder(timeString) {
+    const [hourStr, minuteStr] = (timeString || '18:00').split(':');
+    const hours = Math.min(23, Math.max(0, parseInt(hourStr, 10) || 18));
+    const minutes = Math.min(59, Math.max(0, parseInt(minuteStr, 10) || 0));
+
+    const now = new Date();
+    const next = new Date(now);
+    next.setHours(hours, minutes, 0, 0);
+    if (next <= now) {
+        next.setDate(next.getDate() + 1);
+    }
+    return Math.max(1000, next.getTime() - now.getTime());
+}
+
+function clearReminderTimer() {
+    if (reminderTimerId) {
+        clearTimeout(reminderTimerId);
+        reminderTimerId = null;
+    }
+}
+
+function showDailyReminderNotification() {
+    if (!notificationsSupported() || Notification.permission !== 'granted') return;
+    try {
+        const notification = new Notification('Time to journal', {
+            body: 'Take a minute to add something you are grateful for today.',
+            tag: 'gj-daily-reminder',
+            renotify: false
+        });
+        notification.onclick = () => window.focus();
+    } catch (err) {
+        console.warn('Failed to show notification:', err);
+    }
+}
+
+async function ensureNotificationPermission() {
+    if (!notificationsSupported()) {
+        return window.isSecureContext === false ? 'insecure' : 'unsupported';
+    }
+    if (Notification.permission === 'granted') return 'granted';
+    if (Notification.permission === 'denied') return 'denied';
+    try {
+        return await Notification.requestPermission();
+    } catch (err) {
+        console.warn('Notification permission request failed:', err);
+        return 'default';
+    }
+}
+
+function scheduleReminderFromSettings(settings) {
+    clearReminderTimer();
+    if (!settings || !settings.remindersEnabled) return;
+    if (!notificationsSupported() || Notification.permission !== 'granted') return;
+
+    const delay = msUntilNextReminder(settings.reminderTime || '18:00');
+    reminderTimerId = window.setTimeout(() => {
+        showDailyReminderNotification();
+        const latest = loadStoredSettings();
+        scheduleReminderFromSettings(latest);
+    }, delay);
+}
+
 // Simple encryption (for MVP; use stronger encryption for production)
 // Derive and store a hashed key (not the raw password) for the session using PBKDF2+salt
 let userSalt = null; // hex string stored per user
@@ -3731,8 +3821,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Only initialize settings modal if all elements exist
     if (settingsModal && menuSettingsBtn && settingsCloseBtn && settingsCancelBtn && settingsSaveBtn) {
-        // Settings keys for localStorage
-        const SETTINGS_STORAGE_KEY = 'gj_user_settings';
+        const loadSettings = () => loadStoredSettings();
+        const saveSettings = (settings) => saveStoredSettings(settings);
 
         // Format date based on user preference
         function formatDate(date, format) {
@@ -3782,30 +3872,29 @@ document.addEventListener('DOMContentLoaded', function () {
         // Make formatDate available globally for use in renderEntries
         window._formatDate = formatDate;
 
-        // Load settings from localStorage
-        function loadSettings() {
-            try {
-                const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
-                return stored ? JSON.parse(stored) : {};
-            } catch (err) {
-                console.error('Failed to load settings:', err);
-                return {};
-            }
-        }
-
-        // Save settings to localStorage
-        function saveSettings(settings) {
-            try {
-                localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
-            } catch (err) {
-                console.error('Failed to save settings:', err);
-            }
-        }
-
         function applyTemplateVisibility(enabled) {
             const controls = document.getElementById('template-controls');
             if (!controls) return;
             controls.style.display = enabled ? '' : 'none';
+        }
+
+        function updateReminderControls(enabled) {
+            const reminderToggle = document.getElementById('reminder-toggle');
+            const reminderTimeSelect = document.getElementById('reminder-time-select');
+            if (!reminderToggle || !reminderTimeSelect) return false;
+
+            if (!notificationsSupported()) {
+                reminderToggle.checked = false;
+                reminderToggle.disabled = true;
+                reminderTimeSelect.disabled = true;
+                reminderToggle.title = 'Notifications need a supported browser and a secure connection (https).';
+                return false;
+            }
+
+            reminderToggle.disabled = false;
+            reminderToggle.title = '';
+            reminderTimeSelect.disabled = !enabled;
+            return true;
         }
 
         // Apply settings to UI
@@ -3813,7 +3902,14 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('font-size-select').value = settings.fontSize || 'normal';
             document.getElementById('date-format-select').value = settings.dateFormat || 'relative';
             document.getElementById('sort-order-select').value = settings.sortOrder || 'newest';
-            document.getElementById('reminder-toggle').checked = settings.remindersEnabled || false;
+
+            const reminderToggle = document.getElementById('reminder-toggle');
+            let remindersEnabled = settings.remindersEnabled || false;
+            if (!notificationsSupported() || Notification.permission === 'denied') {
+                remindersEnabled = false;
+            }
+            reminderToggle.checked = remindersEnabled;
+
             document.getElementById('prompts-toggle').checked = settings.promptsEnabled !== false;
             document.getElementById('templates-toggle').checked = settings.templatesEnabled !== false;
             document.getElementById('tags-toggle').checked = settings.tagsEnabled !== false;
@@ -3823,12 +3919,12 @@ document.addEventListener('DOMContentLoaded', function () {
             applyTemplateVisibility(settings.templatesEnabled !== false);
             applyTagsVisibility(settings.tagsEnabled !== false);
 
-            // Enable/disable reminder time select based on reminders toggle
-            const reminderTimeSelect = document.getElementById('reminder-time-select');
-            reminderTimeSelect.disabled = !settings.remindersEnabled;
+            updateReminderControls(remindersEnabled);
 
             // Apply font size
             applyFontSize(settings.fontSize || 'normal');
+
+            scheduleReminderFromSettings({ ...settings, remindersEnabled });
         }
 
         // Apply font size to document
@@ -3988,8 +4084,29 @@ document.addEventListener('DOMContentLoaded', function () {
         settingsCancelBtn.onclick = closeSettings;
 
         // Handle reminder toggle
-        document.getElementById('reminder-toggle').addEventListener('change', (e) => {
-            document.getElementById('reminder-time-select').disabled = !e.target.checked;
+        document.getElementById('reminder-toggle').addEventListener('change', async (e) => {
+            const enabled = e.target.checked;
+            const controlsReady = updateReminderControls(enabled);
+            if (!controlsReady) {
+                e.target.checked = false;
+                return;
+            }
+
+            if (enabled) {
+                const permission = await ensureNotificationPermission();
+                if (permission !== 'granted') {
+                    e.target.checked = false;
+                    updateReminderControls(false);
+
+                    let message = 'Notifications are not available in this browser.';
+                    if (permission === 'denied') {
+                        message = 'Notifications are blocked. Enable them in your browser settings to use reminders.';
+                    } else if (permission === 'insecure') {
+                        message = 'Notifications need a secure connection (https).';
+                    }
+                    setStatus(message, 'error');
+                }
+            }
         });
 
         // Handle tags toggle - show/hide management section immediately
@@ -4028,6 +4145,16 @@ document.addEventListener('DOMContentLoaded', function () {
         // Save settings
         settingsSaveBtn.onclick = async () => {
             const settings = getCurrentSettings();
+
+            if (settings.remindersEnabled) {
+                const permission = await ensureNotificationPermission();
+                if (permission !== 'granted') {
+                    settings.remindersEnabled = false;
+                    updateReminderControls(false);
+                    setStatus('Daily reminders disabled because notification permission was not granted.', 'info');
+                }
+            }
+
             saveSettings(settings);
             applySettings(settings);
             applySimpleViewVisibility(settings.simpleView);
