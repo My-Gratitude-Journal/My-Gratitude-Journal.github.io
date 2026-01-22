@@ -3909,6 +3909,31 @@ document.addEventListener('DOMContentLoaded', function () {
             return true;
         }
 
+        function updateReminderToggleState() {
+            const reminderToggle = document.getElementById('reminder-toggle');
+            if (!reminderToggle) return;
+
+            if (!notificationsSupported()) {
+                reminderToggle.disabled = true;
+                reminderToggle.title = 'Notifications need a supported browser and a secure connection (https).';
+                reminderToggle.checked = false;
+                return;
+            }
+
+            const permission = Notification.permission;
+            if (permission === 'denied') {
+                reminderToggle.disabled = true;
+                reminderToggle.checked = false;
+                reminderToggle.title = 'Notifications are blocked. Enable them in your browser settings to use reminders.';
+            } else if (permission === 'granted') {
+                reminderToggle.disabled = false;
+                reminderToggle.title = '';
+            } else {
+                reminderToggle.disabled = false;
+                reminderToggle.title = 'Click to request notification permission';
+            }
+        }
+
         // Apply settings to UI
         function applySettings(settings) {
             document.getElementById('font-size-select').value = settings.fontSize || 'normal';
@@ -4060,6 +4085,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Open settings modal
         menuSettingsBtn.onclick = () => {
             applySettings(loadSettings());
+            updateReminderToggleState();
 
             // Show/hide change password button based on auth provider
             const user = auth.currentUser;
@@ -4097,6 +4123,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Handle reminder toggle
         document.getElementById('reminder-toggle').addEventListener('change', async (e) => {
+            if (Notification.permission === 'denied') {
+                e.target.checked = false;
+                setStatus('Notifications are blocked. Enable them in your browser settings to use reminders.', 'error');
+                return;
+            }
+
             const enabled = e.target.checked;
             const controlsReady = updateReminderControls(enabled);
             if (!controlsReady) {
