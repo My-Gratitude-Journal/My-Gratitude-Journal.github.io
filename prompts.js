@@ -29,7 +29,8 @@ const GRATITUDE_PROMPTS = [
     "Who has believed in you when you doubted yourself?",
     "What's a random act of kindness you did today?",
     "What food or meal are you grateful for?",
-    "What skill would you like to develop and why?"
+    "What skill would you like to develop and why?",
+    "What's something beautiful you noticed today?"
 ];
 
 // Get a prompt based on the day (same prompt all day)
