@@ -23,15 +23,17 @@ let legacyKey = sessionStorage.getItem(LEGACY_KEY_STORAGE) || '';
 let pendingPassword = '';
 
 const SETTINGS_STORAGE_KEY = 'gj_user_settings';
+const DEFAULT_SETTINGS = { promptsEnabled: true };
 let reminderTimerId = null;
 
 function loadStoredSettings() {
     if (typeof localStorage === 'undefined') return {};
     try {
-        return JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || '{}');
+        const stored = JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY) || '{}');
+        return { ...DEFAULT_SETTINGS, ...stored };
     } catch (err) {
         console.warn('Failed to load settings:', err);
-        return {};
+        return { ...DEFAULT_SETTINGS };
     }
 }
 
@@ -82,6 +84,7 @@ async function loadFirebaseSettings() {
             const localSettings = loadStoredSettings();
             // Merge: Firebase settings + local notification settings
             const merged = {
+                ...DEFAULT_SETTINGS,
                 ...firebaseSettings,
                 ...getLocalOnlySettings(localSettings)
             };
