@@ -4249,7 +4249,6 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!container) return;
 
             const allTags = getAllTags();
-            const activeFilters = getActiveTagFilters();
 
             if (allTags.length === 0) {
                 container.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-sm">No tags yet. Add tags to entries to manage them here.</p>';
@@ -4262,7 +4261,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     return (e.tags || []).map(t => t.toLowerCase()).includes(tag.toLowerCase());
                 });
                 const count = entriesWithTag.length;
-                const isFiltered = activeFilters.has(tag.toLowerCase());
 
                 html += `
                     <div class="flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition">
@@ -4271,8 +4269,8 @@ document.addEventListener('DOMContentLoaded', function () {
                             <div class="text-xs text-gray-600 dark:text-gray-400">${count} ${count === 1 ? 'entry' : 'entries'}</div>
                         </div>
                         <div class="flex gap-2">
-                            <button type="button" class="px-2 py-1 text-xs rounded ${isFiltered ? 'bg-purple-500 text-white' : 'bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100'} hover:opacity-80 transition" onclick="toggleTagFilter('${tag}'); document.getElementById('tags-management-list').parentElement.querySelector('button').click();">
-                                ${isFiltered ? 'Filtered' : 'Filter'}
+                            <button type="button" class="px-2 py-1 text-xs rounded bg-red-500 text-white hover:bg-red-600 transition" onclick="removeTagFromAllEntries('${tag.replace(/'/g, "\\'")}');">
+                                Remove
                             </button>
                         </div>
                     </div>
@@ -4281,6 +4279,46 @@ document.addEventListener('DOMContentLoaded', function () {
             html += '</div>';
             container.innerHTML = html;
         }
+
+        // Remove a tag from all entries
+        window.removeTagFromAllEntries = async function (tag) {
+            if (!confirm(`Remove the tag "${tag}" from all ${(window._allEntries || []).filter(e => (e.tags || []).map(t => t.toLowerCase()).includes(tag.toLowerCase())).length} entries?`)) {
+                return;
+            }
+
+            const normalizedTag = tag.toLowerCase();
+            const batch = db.batch();
+            let updateCount = 0;
+
+            // Update all entries that have this tag
+            (window._allEntries || []).forEach(entry => {
+                if ((entry.tags || []).map(t => t.toLowerCase()).includes(normalizedTag)) {
+                    const updatedTags = (entry.tags || []).filter(t => t.toLowerCase() !== normalizedTag);
+                    batch.update(
+                        db.collection('users')
+                            .doc(auth.currentUser.uid)
+                            .collection('gratitude')
+                            .doc(entry.id),
+                        { tags: updatedTags }
+                    );
+                    // Update in-memory copy
+                    entry.tags = updatedTags;
+                    updateCount++;
+                }
+            });
+
+            if (updateCount > 0) {
+                try {
+                    await batch.commit();
+                    window._allTags = null; // Clear tag cache
+                    renderTagManagementList(); // Refresh the list
+                    setStatus(`Removed tag "${tag}" from ${updateCount} ${updateCount === 1 ? 'entry' : 'entries'}.`, 'success');
+                } catch (err) {
+                    console.error('Error removing tag:', err);
+                    setStatus('Error removing tag. Please try again.', 'error');
+                }
+            }
+        };
 
         // Initialize tag UI handlers
         const addTagBtn = document.getElementById('add-tag-btn');
