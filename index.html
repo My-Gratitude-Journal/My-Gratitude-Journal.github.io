@@ -831,15 +831,6 @@
                                 </div>
                             </div>
                         </div>
-                        <!-- Tags -->
-                        <div class="space-y-2 mt-4">
-                            <label class="flex items-center gap-3 cursor-pointer">
-                                <input type="checkbox" id="tags-toggle" checked
-                                    class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary">
-                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Enable Tags for
-                                    Entries</span>
-                            </label>
-                        </div>
                     </div>
                     <!-- Privacy Tab -->
                     <div class="settings-tab-content hidden" data-tab-name="privacy">
@@ -868,12 +859,29 @@
                     <!-- Tags Tab -->
                     <div class="settings-tab-content hidden" data-tab-name="tags">
                         <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Tag Management</h3>
-                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">View and manage all tags used in your
-                            entries.</p>
-                        <div id="tags-management-list" class="space-y-2">
-                            <!-- Tags will be dynamically populated here -->
-                            <p class="text-gray-500 dark:text-gray-400 text-sm">No tags yet. Add tags to entries to
-                                manage them here.</p>
+                        <!-- Enable Tags Toggle -->
+                        <div class="space-y-2 mb-6">
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" id="tags-toggle" checked
+                                    class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary">
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Enable Tags for
+                                    Entries</span>
+                            </label>
+                            <p class="text-xs text-gray-600 dark:text-gray-400">Turn off to hide all tag-related
+                                features</p>
+                        </div>
+                        <div class="border-t border-gray-200 dark:border-gray-700 my-4"></div>
+                        <!-- Tag Management Section (hidden when tags disabled) -->
+                        <div id="tags-management-section">
+                            <h4 class="text-sm font-semibold text-gray-800 dark:text-white mb-3 mt-4">All Tags</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">View and manage all tags used in
+                                your
+                                entries.</p>
+                            <div id="tags-management-list" class="space-y-2">
+                                <!-- Tags will be dynamically populated here -->
+                                <p class="text-gray-500 dark:text-gray-400 text-sm">No tags yet. Add tags to entries to
+                                    manage them here.</p>
+                            </div>
                         </div>
                     </div>
                     <!-- Notifications Tab -->

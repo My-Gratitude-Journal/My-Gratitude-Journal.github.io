@@ -263,6 +263,16 @@ function renderEditingTags() {
 function renderModalViewTags(tags) {
     const container = document.getElementById('modal-entry-tags');
     if (!container) return;
+
+    const settings = JSON.parse(localStorage.getItem('gj_user_settings') || '{}');
+
+    // Hide tags container if tags are disabled
+    if (settings.tagsEnabled === false) {
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = '';
     container.innerHTML = '';
     (tags || []).forEach(tag => {
         const chip = document.createElement('span');
@@ -720,6 +730,59 @@ function showOfflineBanner(message) {
 function hideOfflineBanner() {
     const banner = document.getElementById('offline-banner');
     if (banner) banner.classList.add('hidden');
+}
+
+// UI Visibility Helper Functions (must be defined globally for auth handler access)
+function applyTemplateVisibility(enabled) {
+    const controls = document.getElementById('template-controls');
+    if (!controls) return;
+    controls.style.display = enabled ? '' : 'none';
+}
+
+function applySimpleViewVisibility(enabled) {
+    const filterBar = document.querySelector('.md\\:sticky');
+    const tagsLabel = document.querySelector('label[for="tag-input"]');
+    const tagInputSection = tagsLabel?.parentElement;
+    const tagsFilterBtn = document.getElementById('tags-filter-btn');
+    const searchInput = document.getElementById('search-input');
+    const dateFilterBtn = document.getElementById('view-calendar-btn');
+    const favoritesToggle = document.getElementById('favorites-toggle');
+
+    // Hide/show filter UI
+    if (filterBar) filterBar.style.display = enabled ? 'none' : '';
+    if (tagsFilterBtn) tagsFilterBtn.style.display = enabled ? 'none' : '';
+    if (searchInput) searchInput.style.display = enabled ? 'none' : '';
+    if (dateFilterBtn) dateFilterBtn.style.display = enabled ? 'none' : '';
+    if (favoritesToggle) favoritesToggle.style.display = enabled ? 'none' : '';
+
+    // Hide tags input in form if enabled
+    if (tagInputSection) tagInputSection.style.display = enabled ? 'none' : '';
+}
+
+function applyTagsVisibility(enabled) {
+    const tagsLabel = document.querySelector('label[for="tag-input"]');
+    const tagInputSection = tagsLabel?.parentElement;
+    const tagsFilterBtn = document.getElementById('tags-filter-btn');
+    const tagsManagementSection = document.getElementById('tags-management-section');
+    const editTagInputSection = document.querySelector('label[for="edit-tag-input"]');
+    const editTagInputParent = editTagInputSection?.parentElement;
+
+    // Hide/show tags input in form
+    if (tagInputSection) tagInputSection.style.display = enabled ? '' : 'none';
+
+    // Hide/show tags filter button
+    if (tagsFilterBtn) tagsFilterBtn.style.display = enabled ? '' : 'none';
+
+    // Hide/show tags management section in settings (everything except the toggle)
+    if (tagsManagementSection) tagsManagementSection.style.display = enabled ? '' : 'none';
+
+    // Hide/show tags in edit modal
+    if (editTagInputParent) editTagInputParent.style.display = enabled ? '' : 'none';
+
+    // Re-render entries to hide/show tags on entry cards
+    if (typeof renderEntries === 'function') {
+        renderEntries();
+    }
 }
 
 // Show banner on initial load if offline
@@ -1323,10 +1386,13 @@ auth.onAuthStateChanged(async user => {
             console.error('Failed flushing offline ops on login:', err);
         }
 
-        // Load and apply user settings (including simple view)
+        // Load and apply user settings (including simple view and tags)
         const settings = JSON.parse(localStorage.getItem('gj_user_settings') || '{}');
         if (settings.simpleView) {
             applySimpleViewVisibility(true);
+        }
+        if (settings.tagsEnabled === false) {
+            applyTagsVisibility(false);
         }
 
         // Read most recent entries
@@ -1934,8 +2000,9 @@ function renderEntries() {
         textWrapper.className = "flex-1 flex flex-col gap-2";
         textWrapper.appendChild(entryText);
 
-        // Add tags display if entry has tags
-        if (e.tags && e.tags.length > 0) {
+        // Add tags display if entry has tags and tags are enabled
+        const settings = JSON.parse(localStorage.getItem('gj_user_settings') || '{}');
+        if (e.tags && e.tags.length > 0 && settings.tagsEnabled !== false) {
             const tagsContainer = document.createElement('div');
             tagsContainer.className = "flex flex-wrap gap-1";
             e.tags.forEach(tag => {
@@ -3739,27 +3806,6 @@ document.addEventListener('DOMContentLoaded', function () {
             controls.style.display = enabled ? '' : 'none';
         }
 
-        // Apply simple view visibility
-        function applySimpleViewVisibility(enabled) {
-            const filterBar = document.querySelector('.md\\:sticky');
-            const tagsLabel = document.querySelector('label[for="tag-input"]');
-            const tagInputSection = tagsLabel?.parentElement;
-            const tagsFilterBtn = document.getElementById('tags-filter-btn');
-            const searchInput = document.getElementById('search-input');
-            const dateFilterBtn = document.getElementById('view-calendar-btn');
-            const favoritesToggle = document.getElementById('favorites-toggle');
-
-            // Hide/show filter UI
-            if (filterBar) filterBar.style.display = enabled ? 'none' : '';
-            if (tagsFilterBtn) tagsFilterBtn.style.display = enabled ? 'none' : '';
-            if (searchInput) searchInput.style.display = enabled ? 'none' : '';
-            if (dateFilterBtn) dateFilterBtn.style.display = enabled ? 'none' : '';
-            if (favoritesToggle) favoritesToggle.style.display = enabled ? 'none' : '';
-
-            // Hide tags input in form if enabled
-            if (tagInputSection) tagInputSection.style.display = enabled ? 'none' : '';
-        }
-
         // Apply settings to UI
         function applySettings(settings) {
             document.getElementById('font-size-select').value = settings.fontSize || 'normal';
@@ -3774,6 +3820,7 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('simple-view-toggle').checked = settings.simpleView || false;
 
             applyTemplateVisibility(settings.templatesEnabled !== false);
+            applyTagsVisibility(settings.tagsEnabled !== false);
 
             // Enable/disable reminder time select based on reminders toggle
             const reminderTimeSelect = document.getElementById('reminder-time-select');
@@ -4292,8 +4339,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 clearTagFilters();
                 if (tagsFilterModal) tagsFilterModal.classList.add('hidden');
             };
+        } else {
+            console.warn('Settings modal elements not fully found in DOM');
         }
-    } else {
-        console.warn('Settings modal elements not fully found in DOM');
     }
 });
