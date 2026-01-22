@@ -3881,6 +3881,7 @@ document.addEventListener('DOMContentLoaded', function () {
         function updateReminderControls(enabled) {
             const reminderToggle = document.getElementById('reminder-toggle');
             const reminderTimeSelect = document.getElementById('reminder-time-select');
+            const testReminderBtn = document.getElementById('test-reminder-btn');
             if (!reminderToggle || !reminderTimeSelect) return false;
 
             if (!notificationsSupported()) {
@@ -3888,12 +3889,21 @@ document.addEventListener('DOMContentLoaded', function () {
                 reminderToggle.disabled = true;
                 reminderTimeSelect.disabled = true;
                 reminderToggle.title = 'Notifications need a supported browser and a secure connection (https).';
+                if (testReminderBtn) {
+                    testReminderBtn.disabled = true;
+                    testReminderBtn.title = 'Notifications are unavailable on this browser or connection.';
+                }
                 return false;
             }
 
             reminderToggle.disabled = false;
             reminderToggle.title = '';
-            reminderTimeSelect.disabled = !enabled;
+            const hasPermission = Notification.permission === 'granted';
+            reminderTimeSelect.disabled = !enabled || !hasPermission;
+            if (testReminderBtn) {
+                testReminderBtn.disabled = !hasPermission;
+                testReminderBtn.title = hasPermission ? '' : 'Allow notifications to send a test.';
+            }
             return true;
         }
 
@@ -4108,6 +4118,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         });
+
+        // Send test notification
+        const testReminderBtn = document.getElementById('test-reminder-btn');
+        if (testReminderBtn) {
+            testReminderBtn.addEventListener('click', async () => {
+                const permission = await ensureNotificationPermission();
+                if (permission !== 'granted') {
+                    updateReminderControls(document.getElementById('reminder-toggle')?.checked);
+                    setStatus(permission === 'denied'
+                        ? 'Notifications are blocked. Enable them in your browser settings to test reminders.'
+                        : 'Please allow notifications to send a test reminder.', 'error');
+                    return;
+                }
+
+                updateReminderControls(document.getElementById('reminder-toggle')?.checked);
+                showDailyReminderNotification();
+                setStatus('Test notification sent. Check your notification tray.', 'success');
+            });
+        }
 
         // Handle tags toggle - show/hide management section immediately
         document.getElementById('tags-toggle').addEventListener('change', async (e) => {
