@@ -975,6 +975,18 @@ function applyTemplateVisibility(enabled) {
     controls.style.display = enabled ? '' : 'none';
 }
 
+function applyPromptsVisibility(enabled) {
+    const promptSection = document.getElementById('prompts-section');
+    if (!promptSection) return;
+    promptSection.style.display = enabled ? '' : 'none';
+}
+
+function updateDailyPrompt() {
+    const promptElement = document.getElementById('daily-prompt');
+    if (!promptElement) return;
+    promptElement.textContent = getDailyPrompt();
+}
+
 function applySimpleViewVisibility(enabled) {
     const filterBar = document.querySelector('.md\\:sticky');
     const tagsLabel = document.querySelector('label[for="tag-input"]');
@@ -1635,6 +1647,11 @@ auth.onAuthStateChanged(async user => {
         }
         if (settings.tagsEnabled === false) {
             applyTagsVisibility(false);
+        }
+        if (settings.promptsEnabled === false) {
+            applyPromptsVisibility(false);
+        } else {
+            updateDailyPrompt();
         }
 
         // Read most recent entries
@@ -4107,6 +4124,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             applyTemplateVisibility(settings.templatesEnabled !== false);
             applyTagsVisibility(settings.tagsEnabled !== false);
+            applyPromptsVisibility(settings.promptsEnabled !== false);
+            updateDailyPrompt();
 
             updateReminderControls(remindersEnabled);
 
@@ -4325,6 +4344,17 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // Handle tags toggle - show/hide management section immediately
+        // Handle prompts toggle - show/hide prompt section immediately
+        document.getElementById('prompts-toggle').addEventListener('change', (e) => {
+            const promptsSection = document.getElementById('prompts-section');
+            if (promptsSection) {
+                promptsSection.style.display = e.target.checked ? '' : 'none';
+                if (e.target.checked) {
+                    updateDailyPrompt();
+                }
+            }
+        });
+
         document.getElementById('tags-toggle').addEventListener('change', async (e) => {
             const tagsManagementSection = document.getElementById('tags-management-section');
             if (tagsManagementSection) {
