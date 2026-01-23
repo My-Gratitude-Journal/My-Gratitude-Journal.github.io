@@ -973,12 +973,6 @@ function hideOfflineBanner() {
 }
 
 // UI Visibility Helper Functions (must be defined globally for auth handler access)
-function applyTemplateVisibility(enabled) {
-    const controls = document.getElementById('template-controls');
-    if (!controls) return;
-    controls.style.display = enabled ? '' : 'none';
-}
-
 function applyPromptsVisibility(enabled) {
     const promptSection = document.getElementById('prompts-section');
     if (!promptSection) return;
@@ -1657,6 +1651,10 @@ auth.onAuthStateChanged(async user => {
         } else {
             updateDailyPrompt();
         }
+        if (settings.templatesEnabled === false) {
+            applyTemplateVisibility(false);
+        }
+        initTemplateSelector();
 
         // Read most recent entries
         await loadEntries(true);
@@ -1709,86 +1707,6 @@ function showAccountDeletedModal() {
         });
     }
 }
-
-// Entry Templates System
-const TEMPLATES = {
-    'three-things': {
-        name: '3 Things I\'m Grateful For',
-        text: `1. 
-2. 
-3. `
-    },
-    'challenge-gratitude': {
-        name: 'Gratitude from a Challenge',
-        text: `Challenge I faced:
-
-What I'm grateful for despite this:
-
-How this made me stronger:`
-    },
-    'people': {
-        name: 'People I\'m Grateful For',
-        text: `Person: 
-Why I'm grateful: 
-
-Person: 
-Why I'm grateful: 
-
-Person: 
-Why I'm grateful: `
-    },
-    'moments': {
-        name: 'Favorite Moments',
-        text: `Moment 1: 
-
-Moment 2: 
-
-Moment 3: `
-    },
-    'health': {
-        name: 'Health & Wellness',
-        text: `Physical health I'm grateful for:
-
-Mental/emotional wellness I appreciate:
-
-People who support my health:
-
-Habits I'm grateful for:`
-    },
-    'reflection': {
-        name: 'Daily Reflection',
-        text: `Today's highlight:
-
-Someone who made me smile:
-
-Something small I appreciate:
-
-Tomorrow I'm excited about:`
-    }
-};
-
-const templateSelector = document.getElementById('template-selector');
-const insertTemplateBtn = document.getElementById('insert-template-btn');
-
-insertTemplateBtn.onclick = () => {
-    const selectedTemplate = templateSelector.value;
-    if (!selectedTemplate || !TEMPLATES[selectedTemplate]) return;
-
-    const templateText = TEMPLATES[selectedTemplate].text;
-    const currentText = gratitudeInput.value.trim();
-
-    if (currentText) {
-        // If there's existing text, ask if user wants to replace it
-        if (!confirm('Replace existing text with template?')) {
-            return;
-        }
-    }
-
-    gratitudeInput.value = templateText;
-    gratitudeInput.focus();
-    // Reset selector
-    templateSelector.value = '';
-};
 
 gratitudeForm.onsubmit = async (e) => {
     e.preventDefault();
