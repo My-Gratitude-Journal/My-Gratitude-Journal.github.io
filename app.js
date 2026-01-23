@@ -993,6 +993,8 @@ function applySimpleViewVisibility(enabled) {
     const searchInput = document.getElementById('search-input');
     const dateFilterBtn = document.getElementById('view-calendar-btn');
     const favoritesToggle = document.getElementById('favorites-toggle');
+    const promptsSection = document.getElementById('prompts-section');
+    const templateControls = document.getElementById('template-controls');
 
     // Hide/show filter UI
     if (filterBar) filterBar.style.display = enabled ? 'none' : '';
@@ -1003,6 +1005,10 @@ function applySimpleViewVisibility(enabled) {
 
     // Hide tags input in form if enabled
     if (tagInputSection) tagInputSection.style.display = enabled ? 'none' : '';
+
+    // Hide prompts and templates in simple view
+    if (promptsSection) promptsSection.style.display = enabled ? 'none' : '';
+    if (templateControls) templateControls.style.display = enabled ? 'none' : '';
 }
 
 function applyTagsVisibility(enabled) {
@@ -1640,18 +1646,23 @@ auth.onAuthStateChanged(async user => {
 
         // Load and apply user settings from Firebase (with local notification settings)
         const settings = await loadFirebaseSettings();
-        if (settings.simpleView) {
+        const isSimpleView = settings.simpleView || false;
+
+        // Apply simple view first (it takes precedence over feature toggles)
+        if (isSimpleView) {
             applySimpleViewVisibility(true);
         }
-        if (settings.tagsEnabled === false) {
+
+        // Apply individual feature visibility only if not in simple view
+        if (settings.tagsEnabled === false || isSimpleView) {
             applyTagsVisibility(false);
         }
-        if (settings.promptsEnabled === false) {
+        if (settings.promptsEnabled === false || isSimpleView) {
             applyPromptsVisibility(false);
         } else {
             updateDailyPrompt();
         }
-        if (settings.templatesEnabled === false) {
+        if (settings.templatesEnabled === false || isSimpleView) {
             applyTemplateVisibility(false);
         }
         initTemplateSelector();
@@ -4068,15 +4079,31 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             reminderToggle.checked = remindersEnabled;
 
-            document.getElementById('prompts-toggle').checked = settings.promptsEnabled !== false;
-            document.getElementById('templates-toggle').checked = settings.templatesEnabled !== false;
-            document.getElementById('tags-toggle').checked = settings.tagsEnabled !== false;
-            document.getElementById('reminder-time-input').value = settings.reminderTime || '18:00';
-            document.getElementById('simple-view-toggle').checked = settings.simpleView || false;
+            const promptsToggle = document.getElementById('prompts-toggle');
+            const templatesToggle = document.getElementById('templates-toggle');
+            const tagsToggle = document.getElementById('tags-toggle');
+            const simpleViewToggle = document.getElementById('simple-view-toggle');
 
-            applyTemplateVisibility(settings.templatesEnabled !== false);
-            applyTagsVisibility(settings.tagsEnabled !== false);
-            applyPromptsVisibility(settings.promptsEnabled !== false);
+            promptsToggle.checked = settings.promptsEnabled !== false;
+            templatesToggle.checked = settings.templatesEnabled !== false;
+            tagsToggle.checked = settings.tagsEnabled !== false;
+            document.getElementById('reminder-time-input').value = settings.reminderTime || '18:00';
+            simpleViewToggle.checked = settings.simpleView || false;
+
+            // Disable feature toggles when simple view is enabled
+            const isSimpleView = settings.simpleView || false;
+            promptsToggle.disabled = isSimpleView;
+            templatesToggle.disabled = isSimpleView;
+            tagsToggle.disabled = isSimpleView;
+
+            // Update visual feedback for disabled toggles
+            updateDisabledToggleVisuals('prompts', isSimpleView);
+            updateDisabledToggleVisuals('templates', isSimpleView);
+            updateDisabledToggleVisuals('tags', isSimpleView);
+
+            applyTemplateVisibility(settings.templatesEnabled !== false && !isSimpleView);
+            applyTagsVisibility(settings.tagsEnabled !== false && !isSimpleView);
+            applyPromptsVisibility(settings.promptsEnabled !== false && !isSimpleView);
             updateDailyPrompt();
 
             updateReminderControls(remindersEnabled);
@@ -4295,6 +4322,57 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
+        // Handle simple view toggle - disable feature toggles and hide features
+        document.getElementById('simple-view-toggle').addEventListener('change', (e) => {
+            const isSimpleView = e.target.checked;
+            const promptsToggle = document.getElementById('prompts-toggle');
+            const templatesToggle = document.getElementById('templates-toggle');
+            const tagsToggle = document.getElementById('tags-toggle');
+
+            // Disable/enable feature toggles based on simple view
+            promptsToggle.disabled = isSimpleView;
+            templatesToggle.disabled = isSimpleView;
+            tagsToggle.disabled = isSimpleView;
+
+            // Update visual feedback for disabled toggles
+            updateDisabledToggleVisuals('prompts', isSimpleView);
+            updateDisabledToggleVisuals('templates', isSimpleView);
+            updateDisabledToggleVisuals('tags', isSimpleView);
+
+            // Apply visibility based on simple view and feature toggles
+            applyPromptsVisibility(promptsToggle.checked && !isSimpleView);
+            applyTemplateVisibility(templatesToggle.checked && !isSimpleView);
+            applyTagsVisibility(tagsToggle.checked && !isSimpleView);
+            applySimpleViewVisibility(isSimpleView);
+        });
+
+        // Helper function to update visual feedback for disabled toggles
+        function updateDisabledToggleVisuals(featureName, isDisabled) {
+            const toggleId = `${featureName}-toggle`;
+            const sectionId = `${featureName}-toggle-section`;
+            const reasonId = `${featureName}-toggle-disabled-reason`;
+
+            const toggle = document.getElementById(toggleId);
+            const section = document.getElementById(sectionId);
+            const reason = document.getElementById(reasonId);
+
+            if (toggle) {
+                // Update toggle opacity and cursor
+                toggle.style.opacity = isDisabled ? '0.5' : '1';
+                toggle.style.cursor = isDisabled ? 'not-allowed' : 'pointer';
+            }
+
+            if (section) {
+                // Dim the entire section
+                section.style.opacity = isDisabled ? '0.6' : '1';
+            }
+
+            if (reason) {
+                // Show/hide the disabled reason
+                reason.classList.toggle('hidden', !isDisabled);
+            }
+        }
+
         // Handle tags toggle - show/hide management section immediately
         // Handle prompts toggle - show/hide prompt section immediately
         document.getElementById('prompts-toggle').addEventListener('change', (e) => {
@@ -4304,6 +4382,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (e.target.checked) {
                     updateDailyPrompt();
                 }
+            }
+        });
+
+        document.getElementById('templates-toggle').addEventListener('change', (e) => {
+            const templateControls = document.getElementById('template-controls');
+            if (templateControls) {
+                templateControls.style.display = e.target.checked ? '' : 'none';
             }
         });
 

@@ -808,7 +808,7 @@
                     <div class="settings-tab-content hidden" data-tab-name="journaling">
                         <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Journaling Features</h3>
                         <!-- Gratitude Prompts -->
-                        <div class="space-y-2 mt-4">
+                        <div id="prompts-toggle-section" class="space-y-2 mt-4">
                             <label class="flex items-center gap-3 cursor-pointer">
                                 <input type="checkbox" id="prompts-toggle" checked
                                     class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary">
@@ -817,9 +817,12 @@
                             </label>
                             <p class="text-xs text-gray-600 dark:text-gray-400 mb-3">Daily prompts to inspire your
                                 writing.</p>
+                            <p id="prompts-toggle-disabled-reason"
+                                class="text-xs text-amber-600 dark:text-amber-400 font-medium hidden">⚠️ Disabled when
+                                Simple View is enabled</p>
                         </div>
                         <!-- Entry Templates -->
-                        <div class="space-y-2 mt-4">
+                        <div id="templates-toggle-section" class="space-y-2 mt-4">
                             <label class="flex items-center gap-3 cursor-pointer">
                                 <input type="checkbox" id="templates-toggle" checked
                                     class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary">
@@ -828,6 +831,9 @@
                             </label>
                             <p class="text-xs text-gray-600 dark:text-gray-400 mb-3">Pre-made layouts to guide your
                                 writing. Select one and insert before writing your entry.</p>
+                            <p id="templates-toggle-disabled-reason"
+                                class="text-xs text-amber-600 dark:text-amber-400 font-medium hidden">⚠️ Disabled when
+                                Simple View is enabled</p>
                         </div>
                     </div>
                     <!-- Privacy Tab -->
@@ -858,7 +864,7 @@
                     <div class="settings-tab-content hidden" data-tab-name="tags">
                         <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Tag Management</h3>
                         <!-- Enable Tags Toggle -->
-                        <div class="space-y-2 mb-6">
+                        <div id="tags-toggle-section" class="space-y-2 mb-6">
                             <label class="flex items-center gap-3 cursor-pointer">
                                 <input type="checkbox" id="tags-toggle" checked
                                     class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary">
@@ -867,6 +873,9 @@
                             </label>
                             <p class="text-xs text-gray-600 dark:text-gray-400">Turn off to hide all tag-related
                                 features</p>
+                            <p id="tags-toggle-disabled-reason"
+                                class="text-xs text-amber-600 dark:text-amber-400 font-medium hidden">⚠️ Disabled when
+                                Simple View is enabled</p>
                         </div>
                         <div class="border-t border-gray-200 dark:border-gray-700 my-4"></div>
                         <!-- Tag Management Section (hidden when tags disabled) -->
