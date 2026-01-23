@@ -2139,7 +2139,14 @@ function renderEntries() {
         entries = entries.filter(e => e.starred);
     }
     if (keyword) {
-        entries = entries.filter(e => e.text.toLowerCase().includes(keyword));
+        entries = entries.filter(e => {
+            // Search in entry text
+            const textMatches = e.text.toLowerCase().includes(keyword);
+            // Search in tags
+            const tagMatches = e.tags && Array.isArray(e.tags) &&
+                e.tags.some(tag => tag.toLowerCase().includes(keyword));
+            return textMatches || tagMatches;
+        });
     }
     if (dateVal) {
         console.log('Filtering by date:', dateVal);
@@ -2238,7 +2245,14 @@ function renderEntries() {
             e.tags.forEach(tag => {
                 const tagChip = document.createElement('span');
                 tagChip.className = "inline-block px-2 py-1 bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded text-xs font-medium cursor-pointer hover:bg-purple-300 dark:hover:bg-purple-800 transition";
-                tagChip.textContent = tag;
+
+                // Highlight tag if it matches search keyword
+                if (keyword && tag.toLowerCase().includes(keyword)) {
+                    tagChip.innerHTML = highlightText(tag, keyword);
+                } else {
+                    tagChip.textContent = tag;
+                }
+
                 tagChip.title = `Filter by tag: ${tag}`;
                 tagChip.onclick = (e) => {
                     e.stopPropagation();
