@@ -683,7 +683,8 @@ async function flushPendingOps() {
                     entry: op.entry,
                     created: op.created ? new Date(op.created) : new Date(),
                     starred: !!op.starred,
-                    tags: Array.isArray(op.tags) ? op.tags : []
+                    tags: Array.isArray(op.tags) ? op.tags : [],
+                    prompt: op.prompt || null
                 });
                 replaceTempIdEverywhere(op.tempId, docRef.id);
             } else if (op.type === 'edit') {
@@ -1819,13 +1820,17 @@ gratitudeForm.onsubmit = async (e) => {
     // Build local entry with temp id, including tags
     const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
     const tags = window._currentEntryTags || [];
+    // Save the prompt with the entry if prompts are enabled
+    const settings = loadStoredSettings();
+    const promptText = settings.promptsEnabled ? getDailyPrompt() : null;
     const newEntry = {
         id: tempId,
         text: entry,
         created,
         starred: false,
         tags: tags,
-        cipher: encrypted
+        cipher: encrypted,
+        prompt: promptText
     };
 
     if (!existingTodayEntry) {
@@ -1854,7 +1859,8 @@ gratitudeForm.onsubmit = async (e) => {
                 entry: encrypted,
                 created,
                 starred: false,
-                tags: tags
+                tags: tags,
+                prompt: promptText || null
             });
 
         replaceTempIdEverywhere(tempId, docRef.id);
@@ -1869,11 +1875,11 @@ gratitudeForm.onsubmit = async (e) => {
             await persistRemote();
         } catch (err) {
             console.error('Failed to save entry online, queuing:', err);
-            queuePendingOp({ type: 'add', tempId, entry: encrypted, created: created.toISOString(), starred: false, tags: tags });
+            queuePendingOp({ type: 'add', tempId, entry: encrypted, created: created.toISOString(), starred: false, tags: tags, prompt: promptText || null });
             setStatus('Entry saved offline. It will sync when you are back online.', 'info');
         }
     } else {
-        queuePendingOp({ type: 'add', tempId, entry: encrypted, created: created.toISOString(), starred: false, tags: tags });
+        queuePendingOp({ type: 'add', tempId, entry: encrypted, created: created.toISOString(), starred: false, tags: tags, prompt: promptText || null });
         setStatus('Entry saved offline. It will sync when you are back online.', 'info');
     }
 };
@@ -1981,7 +1987,8 @@ async function loadEntries() {
                 created: data.created && data.created.toDate ? data.created.toDate() : (data.created instanceof Date ? data.created : new Date(data.created)),
                 starred: !!data.starred,
                 tags: data.tags || [],
-                cipher: data.entry
+                cipher: data.entry,
+                prompt: data.prompt || null
             });
         });
         // Fetch ALL favorites and merge so they are always available
@@ -2000,7 +2007,8 @@ async function loadEntries() {
                     text: decrypt(data.entry, activeKey),
                     created: data.created && data.created.toDate ? data.created.toDate() : (data.created instanceof Date ? data.created : new Date(data.created)),
                     starred: true,
-                    cipher: data.entry
+                    cipher: data.entry,
+                    prompt: data.prompt || null
                 });
             });
             window._allEntries = Array.from(byId.values())
@@ -2079,7 +2087,8 @@ async function fetchEntriesBatch(startAt = 0, limit = 20) {
                     text: decrypt(data.entry, activeKey),
                     created: data.created && data.created.toDate ? data.created.toDate() : (data.created instanceof Date ? data.created : new Date(data.created)),
                     starred: !!data.starred,
-                    tags: data.tags || []
+                    tags: data.tags || [],
+                    prompt: data.prompt || null
                 });
             }
             index++;
@@ -2110,7 +2119,8 @@ async function fetchAllEntries() {
                 text: decrypt(data.entry, activeKey),
                 created: data.created && data.created.toDate ? data.created.toDate() : (data.created instanceof Date ? data.created : new Date(data.created)),
                 starred: !!data.starred,
-                tags: data.tags || []
+                tags: data.tags || [],
+                prompt: data.prompt || null
             });
         });
         return allEntries;
