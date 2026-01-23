@@ -19,7 +19,7 @@ const GRATITUDE_PROMPTS = [
     "What act of kindness did you witness or experience?",
     "What opportunity are you grateful for?",
     "What's something that makes your home special?",
-    "What would make today a good day?",
+    "What made today a good day?",
     "What quality do you appreciate in a friend?",
     "What's something you're proud of accomplishing?",
     "What brings you peace?",
