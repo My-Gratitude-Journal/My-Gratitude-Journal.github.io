@@ -2270,6 +2270,15 @@ function renderEntries() {
         // Create a wrapper for text and tags
         const textWrapper = document.createElement('div');
         textWrapper.className = "flex-1 flex flex-col gap-2";
+
+        // Display saved prompt if it exists
+        if (e.prompt) {
+            const promptDisplay = document.createElement('div');
+            promptDisplay.className = "text-sm italic text-green-700 dark:text-green-400 mb-1";
+            promptDisplay.textContent = `Prompt: ${e.prompt}`;
+            textWrapper.appendChild(promptDisplay);
+        }
+
         textWrapper.appendChild(entryText);
 
         // Add tags display if entry has tags and tags are enabled
@@ -3741,6 +3750,18 @@ function openEntryModal(entry) {
 
     // Set content
     modalEntryText.textContent = decodeURIComponent(entry.text);
+
+    // Display saved prompt if it exists
+    const modalPromptDisplay = document.getElementById('modal-prompt-display');
+    if (modalPromptDisplay) {
+        if (entry.prompt) {
+            modalPromptDisplay.textContent = `💭 ${entry.prompt}`;
+            modalPromptDisplay.classList.remove('hidden');
+        } else {
+            modalPromptDisplay.classList.add('hidden');
+        }
+    }
+
     renderModalViewTags(entry.tags || []);
     const entryDate = getEntryDate(entry);
     if (entryDate && window._formatDate) {
