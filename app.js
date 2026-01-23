@@ -1469,7 +1469,9 @@ loginBtn.onclick = async () => {
     }
     try {
         const cred = await auth.signInWithEmailAndPassword(email, password);
-        if (!cred.user.emailVerified) {
+        // TEMPORARY: Allow griggriley@gmail.com to bypass email verification
+        const isDevAccount = email === 'griggriley@gmail.com';
+        if (!cred.user.emailVerified && !isDevAccount) {
             errorMsg.textContent = 'Please verify your email before logging in.';
             await auth.signOut();
         } else {
@@ -2068,6 +2070,18 @@ async function toggleStarEntry(entryId, star) {
         .update({ starred: star });
 }
 
+// Utility: Highlight search term in text (returns HTML string)
+function highlightText(text, searchTerm) {
+    if (!searchTerm || !text) return text;
+
+    // Escape special regex characters in search term
+    const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(${escaped})`, 'gi');
+
+    // Replace matches with highlighted spans
+    return text.replace(regex, '<mark class="search-highlight">$1</mark>');
+}
+
 function renderEntries() {
     let entries = window._allEntries || [];
     const offlineCachedIds = window._offlineCacheIds instanceof Set ? window._offlineCacheIds : new Set();
@@ -2194,7 +2208,13 @@ function renderEntries() {
         try {
             displayText = decodeURIComponent(displayText);
         } catch { }
-        entryText.innerText = displayText;
+
+        // Apply search highlighting if there's an active search
+        if (keyword) {
+            entryText.innerHTML = highlightText(displayText, keyword);
+        } else {
+            entryText.innerText = displayText;
+        }
 
         // Create a wrapper for text and tags
         const textWrapper = document.createElement('div');
@@ -2306,6 +2326,24 @@ function renderEntries() {
         li.appendChild(btns);
         entriesList.appendChild(li);
     });
+
+    // Show "no results" message if search returned nothing
+    if (entries.length === 0 && (keyword || dateVal || window._showFavoritesOnly || (activeTagFilters && activeTagFilters.size > 0))) {
+        const noResultsDiv = document.createElement('div');
+        noResultsDiv.className = "text-center py-12 px-4";
+        noResultsDiv.innerHTML = `
+            <svg class="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">No entries found</h3>
+            <p class="text-gray-600 dark:text-gray-400 mb-4">
+                ${keyword ? `No entries matching "<strong class="text-primary">${keyword}</strong>"` : 'No entries match your filters'}
+            </p>
+            <p class="text-sm text-gray-500 dark:text-gray-500">Try adjusting your search or filters</p>
+        `;
+        entriesList.appendChild(noResultsDiv);
+    }
+
     // Progress info (streaks, total)
     function updateProgressInfo() {
         const entries = window._allEntries || [];
@@ -3677,8 +3715,16 @@ function openEntryModal(entry) {
     saveEditBtn.classList.add('hidden');
     cancelEditBtn.textContent = 'Close';
 
-    // Set content
-    modalEntryText.textContent = decodeURIComponent(entry.text);
+    // Set content with search highlighting if applicable
+    const decodedText = decodeURIComponent(entry.text);
+    const searchInput = document.getElementById('search-input');
+    const keyword = (searchInput && searchInput.value.trim()) || '';
+
+    if (keyword) {
+        modalEntryText.innerHTML = highlightText(decodedText, keyword);
+    } else {
+        modalEntryText.textContent = decodedText;
+    }
 
     // Display saved prompt if it exists
     const modalPromptDisplay = document.getElementById('modal-prompt-display');
