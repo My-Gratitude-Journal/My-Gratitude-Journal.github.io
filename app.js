@@ -18,6 +18,8 @@ const PENDING_OPS_PREFIX = 'gj_pending_ops_';
 const OFFLINE_PINS_PREFIX = 'gj_offline_pins_';
 const OFFLINE_EXCLUDES_PREFIX = 'gj_offline_excludes_';
 const PENDING_SETTINGS_PREFIX = 'gj_pending_settings_';
+const DRAFT_STORAGE_PREFIX = 'gj_draft_';
+const AUTOSAVE_INTERVAL_MS = 30000;
 let userKey = sessionStorage.getItem(USER_KEY_STORAGE) || '';
 let legacyKey = sessionStorage.getItem(LEGACY_KEY_STORAGE) || '';
 let pendingPassword = '';
@@ -25,6 +27,8 @@ let pendingPassword = '';
 const SETTINGS_STORAGE_KEY = 'gj_user_settings';
 const DEFAULT_SETTINGS = { promptsEnabled: true };
 let reminderTimerId = null;
+let autosaveTimerId = null;
+let autosaveStatusEl = null;
 
 function loadStoredSettings() {
     if (typeof localStorage === 'undefined') return {};
@@ -376,6 +380,117 @@ function persistLocalCounters({ daysJournaled, totalEntries }) {
     } catch (err) {
         console.warn('Failed to persist local counters:', err);
     }
+}
+
+// Draft autosave helpers
+const draftKeyForUser = () => {
+    const user = auth.currentUser;
+    return user ? `${DRAFT_STORAGE_PREFIX}${user.uid}` : null;
+};
+
+const ensureAutosaveStatusEl = () => {
+    if (!autosaveStatusEl) {
+        autosaveStatusEl = document.getElementById('autosave-status');
+    }
+    return autosaveStatusEl;
+};
+
+const formatAutosaveTime = (date = new Date()) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+};
+
+function setAutosaveStatus(message) {
+    const el = ensureAutosaveStatusEl();
+    if (!el) return;
+    el.textContent = message;
+}
+
+function clearDraftStorage() {
+    const key = draftKeyForUser();
+    if (!key) return;
+    try {
+        localStorage.removeItem(key);
+    } catch (err) {
+        console.warn('Failed to clear draft cache:', err);
+    }
+    setAutosaveStatus('Draft cleared.');
+}
+
+function saveDraftToLocal() {
+    if (!gratitudeInput) return;
+    const key = draftKeyForUser();
+    if (!key || !userKey) return;
+
+    const text = gratitudeInput.value || '';
+    const tags = window._currentEntryTags || [];
+    const hasContent = Boolean(text.trim()) || (Array.isArray(tags) && tags.length > 0);
+
+    if (!hasContent) {
+        clearDraftStorage();
+        return;
+    }
+
+    try {
+        const payload = {
+            cipher: encrypt(text, userKey),
+            tags,
+            updatedAt: new Date().toISOString()
+        };
+        localStorage.setItem(key, JSON.stringify(payload));
+        setAutosaveStatus(`Autosaved ${formatAutosaveTime()}`);
+    } catch (err) {
+        console.warn('Failed to autosave draft:', err);
+        setAutosaveStatus('Autosave failed.');
+    }
+}
+
+function loadDraftFromLocal() {
+    if (!gratitudeInput) return;
+    const key = draftKeyForUser();
+    if (!key || !userKey) return;
+
+    try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return;
+
+        const payload = JSON.parse(raw);
+        if (payload.cipher) {
+            const decrypted = decrypt(payload.cipher, userKey);
+            if (decrypted && decrypted !== '[Decryption failed]') {
+                gratitudeInput.value = decrypted;
+            }
+        }
+
+        if (Array.isArray(payload.tags)) {
+            window._currentEntryTags = payload.tags;
+            renderCurrentTags();
+        }
+
+        if (payload.cipher) {
+            setStatus('Draft restored from autosave.', 'info');
+            setAutosaveStatus(`Draft restored (${formatAutosaveTime(new Date(payload.updatedAt || Date.now()))})`);
+        }
+    } catch (err) {
+        console.warn('Failed to load draft:', err);
+        setAutosaveStatus('Unable to load draft.');
+    }
+}
+
+function startDraftAutosave() {
+    stopDraftAutosave();
+    if (!gratitudeInput || !userKey) return;
+    setAutosaveStatus('Autosave on (every 30s).');
+    autosaveTimerId = window.setInterval(() => {
+        saveDraftToLocal();
+    }, AUTOSAVE_INTERVAL_MS);
+}
+
+function stopDraftAutosave() {
+    if (autosaveTimerId) {
+        clearInterval(autosaveTimerId);
+        autosaveTimerId = null;
+    }
+    setAutosaveStatus('Autosave paused.');
 }
 
 // ========== TAG MANAGEMENT FUNCTIONS ==========
@@ -1100,6 +1215,14 @@ const journalSection = document.getElementById('journal-section');
 const gratitudeForm = document.getElementById('gratitude-form');
 const gratitudeInput = document.getElementById('gratitude-input');
 const entriesList = document.getElementById('entries-list');
+autosaveStatusEl = document.getElementById('autosave-status');
+
+// Ensure the latest draft is captured before navigating away
+if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', () => {
+        saveDraftToLocal();
+    });
+}
 
 // Function to handle delete account (called from menu or settings)
 function openDeleteAccountModal() {
@@ -1634,6 +1757,9 @@ auth.onAuthStateChanged(async user => {
             }
         }
 
+        loadDraftFromLocal();
+        startDraftAutosave();
+
         try {
             await flushPendingOps();
         } catch (err) {
@@ -1673,6 +1799,7 @@ auth.onAuthStateChanged(async user => {
         await loadEntries(true);
         logoutBtn.style.display = 'inline-block';
     } else {
+        stopDraftAutosave();
         authSection.style.display = 'block';
         journalSection.style.display = 'none';
         entriesList.innerHTML = '';
@@ -1773,6 +1900,8 @@ gratitudeForm.onsubmit = async (e) => {
     gratitudeInput.value = '';
     window._currentEntryTags = [];
     renderCurrentTags();
+    clearDraftStorage();
+    setAutosaveStatus('Draft cleared after save.');
     window._allEntries = [newEntry, ...entriesSnapshot];
     if (!window._allEntriesLoaded) {
         window._allEntries = window._allEntries.slice(0, 20);
