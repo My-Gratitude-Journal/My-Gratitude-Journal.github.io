@@ -2022,9 +2022,11 @@ gratitudeForm.onsubmit = async (e) => {
     if (!entry) return;
     const tagInputEl = document.getElementById('tag-input');
     if (tagInputEl) {
-        const pendingTag = tagInputEl.value.trim();
-        if (pendingTag) {
-            addTagToEntry(pendingTag);
+        const pendingTagInput = tagInputEl.value.trim();
+        if (pendingTagInput) {
+            // Parse comma-separated tags
+            const tagList = pendingTagInput.split(',').map(t => t.trim()).filter(t => t);
+            tagList.forEach(tag => addTagToEntry(tag));
             tagInputEl.value = '';
         }
     }
@@ -4190,7 +4192,9 @@ if (editAddTagBtn) {
     editAddTagBtn.addEventListener('click', () => {
         if (!editTagInput) return;
         const value = editTagInput.value.trim();
-        addEditingTag(value);
+        // Parse comma-separated tags
+        const tagList = value.split(',').map(t => t.trim()).filter(t => t);
+        tagList.forEach(tag => addEditingTag(tag));
         editTagInput.value = '';
         editTagInput.focus();
     });
@@ -4201,7 +4205,9 @@ if (editTagInput) {
         if (e.key === 'Enter') {
             e.preventDefault();
             const value = editTagInput.value.trim();
-            addEditingTag(value);
+            // Parse comma-separated tags
+            const tagList = value.split(',').map(t => t.trim()).filter(t => t);
+            tagList.forEach(tag => addEditingTag(tag));
             editTagInput.value = '';
         }
     });
@@ -4211,9 +4217,11 @@ saveEditBtn.onclick = async () => {
     const newText = editEntryInput.value.trim();
     if (!newText || !editingEntryId) return;
     if (editTagInput) {
-        const pendingTag = editTagInput.value.trim();
-        if (pendingTag) {
-            addEditingTag(pendingTag);
+        const pendingTagInput = editTagInput.value.trim();
+        if (pendingTagInput) {
+            // Parse comma-separated tags
+            const tagList = pendingTagInput.split(',').map(t => t.trim()).filter(t => t);
+            tagList.forEach(tag => addEditingTag(tag));
             editTagInput.value = '';
         }
     }
@@ -5100,9 +5108,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (addTagBtn && tagInput) {
             const addTagHandler = () => {
-                const tag = tagInput.value.trim();
-                if (tag) {
-                    addTagToEntry(tag);
+                const input = tagInput.value.trim();
+                if (input) {
+                    // Parse comma-separated tags
+                    const tagList = input.split(',').map(t => t.trim()).filter(t => t);
+                    tagList.forEach(tag => addTagToEntry(tag));
                     tagInput.value = '';
                     tagInput.focus();
                     updateTagSuggestionList(tagInput, 'tag-suggestion-list', window._currentEntryTags || []);
