@@ -417,6 +417,59 @@ function setAutosaveStatus(message) {
     el.textContent = message;
 }
 
+// Save draft to Firebase
+async function saveDraftToFirebase(text, tags) {
+    const user = auth.currentUser;
+    if (!user || !userKey) return false;
+
+    try {
+        const payload = {
+            cipher: encrypt(text, userKey),
+            tags,
+            updatedAt: new Date().toISOString()
+        };
+        await db.collection('users').doc(user.uid).set({
+            draft: payload
+        }, { merge: true });
+        return true;
+    } catch (err) {
+        console.warn('Failed to save draft to Firebase:', err);
+        return false;
+    }
+}
+
+// Load draft from Firebase
+async function loadDraftFromFirebase() {
+    const user = auth.currentUser;
+    if (!user || !userKey) return null;
+
+    try {
+        const docSnapshot = await db.collection('users').doc(user.uid).get();
+        if (docSnapshot.exists && docSnapshot.data().draft) {
+            return docSnapshot.data().draft;
+        }
+    } catch (err) {
+        console.warn('Failed to load draft from Firebase:', err);
+    }
+    return null;
+}
+
+// Clear draft from Firebase
+async function clearDraftFromFirebase() {
+    const user = auth.currentUser;
+    if (!user) return false;
+
+    try {
+        await db.collection('users').doc(user.uid).update({
+            draft: firebase.firestore.FieldValue.delete()
+        });
+        return true;
+    } catch (err) {
+        console.warn('Failed to clear draft from Firebase:', err);
+        return false;
+    }
+}
+
 function clearDraftStorage() {
     const key = draftKeyForUser();
     if (!key) return;
@@ -428,6 +481,14 @@ function clearDraftStorage() {
     lastAutosaveContent = null;
     lastAutosaveTags = null;
     setAutosaveStatus('Draft cleared.');
+}
+
+// Clear draft from both local and Firebase
+async function clearAllDrafts() {
+    clearDraftStorage();
+    if (navigator.onLine && auth.currentUser) {
+        await clearDraftFromFirebase();
+    }
 }
 
 function saveDraftToLocal() {
@@ -459,6 +520,50 @@ function saveDraftToLocal() {
     } catch (err) {
         console.warn('Failed to autosave draft:', err);
         setAutosaveStatus('Autosave failed.');
+    }
+}
+
+// Save draft based on online/offline status
+async function saveDraft() {
+    if (!gratitudeInput) return;
+    if (!userKey) return;
+
+    const text = gratitudeInput.value || '';
+    const tags = window._currentEntryTags || [];
+    const hasContent = Boolean(text.trim()) || (Array.isArray(tags) && tags.length > 0);
+
+    if (!hasContent) {
+        clearDraftStorage();
+        if (navigator.onLine && auth.currentUser) {
+            await clearDraftFromFirebase();
+        }
+        lastAutosaveContent = null;
+        lastAutosaveTags = null;
+        return;
+    }
+
+    lastAutosaveContent = text;
+    lastAutosaveTags = JSON.stringify(tags);
+
+    // If offline or no user, save to local storage only
+    if (!navigator.onLine || !auth.currentUser) {
+        saveDraftToLocal();
+        return;
+    }
+
+    // If online and authenticated, save to Firebase
+    try {
+        const success = await saveDraftToFirebase(text, tags);
+        if (success) {
+            setAutosaveStatus(`Autosaved ${formatAutosaveTime()}`);
+        } else {
+            // Fallback to local storage if Firebase fails
+            saveDraftToLocal();
+        }
+    } catch (err) {
+        console.warn('Error saving draft:', err);
+        // Fallback to local storage
+        saveDraftToLocal();
     }
 }
 
@@ -496,6 +601,44 @@ function loadDraftFromLocal() {
     }
 }
 
+// Load draft based on online/offline status
+async function loadDraft() {
+    if (!gratitudeInput || !userKey) return;
+
+    // If offline or no user, load from local storage only
+    if (!navigator.onLine || !auth.currentUser) {
+        loadDraftFromLocal();
+        return;
+    }
+
+    // If online and authenticated, try Firebase first, fallback to local
+    try {
+        const firebaseDraft = await loadDraftFromFirebase();
+        if (firebaseDraft) {
+            const decrypted = decrypt(firebaseDraft.cipher, userKey);
+            if (decrypted && decrypted !== '[Decryption failed]') {
+                gratitudeInput.value = decrypted;
+                lastAutosaveContent = decrypted;
+            }
+
+            if (Array.isArray(firebaseDraft.tags)) {
+                window._currentEntryTags = firebaseDraft.tags;
+                lastAutosaveTags = JSON.stringify(firebaseDraft.tags);
+                renderCurrentTags();
+            }
+
+            setStatus('Draft restored from autosave.', 'info');
+            setAutosaveStatus(`Draft restored (${formatAutosaveTime(new Date(firebaseDraft.updatedAt || Date.now()))})`);
+            return;
+        }
+    } catch (err) {
+        console.warn('Failed to load draft from Firebase:', err);
+    }
+
+    // Fallback to local storage
+    loadDraftFromLocal();
+}
+
 function startDraftAutosave() {
     stopDraftAutosave();
     if (!gratitudeInput || !userKey) return;
@@ -505,7 +648,7 @@ function startDraftAutosave() {
         const currentTags = JSON.stringify(window._currentEntryTags || []);
         // Only save if content has changed
         if (currentText !== lastAutosaveContent || currentTags !== lastAutosaveTags) {
-            saveDraftToLocal();
+            saveDraft();
         }
     }, AUTOSAVE_INTERVAL_MS);
 }
@@ -1782,7 +1925,7 @@ auth.onAuthStateChanged(async user => {
             }
         }
 
-        loadDraftFromLocal();
+        await loadDraft();
         startDraftAutosave();
 
         try {
@@ -1925,7 +2068,7 @@ gratitudeForm.onsubmit = async (e) => {
     gratitudeInput.value = '';
     window._currentEntryTags = [];
     renderCurrentTags();
-    clearDraftStorage();
+    await clearAllDrafts();
     setAutosaveStatus('Draft cleared after save.');
     window._allEntries = [newEntry, ...entriesSnapshot];
     if (!window._allEntriesLoaded) {
