@@ -19,7 +19,10 @@ const OFFLINE_PINS_PREFIX = 'gj_offline_pins_';
 const OFFLINE_EXCLUDES_PREFIX = 'gj_offline_excludes_';
 const PENDING_SETTINGS_PREFIX = 'gj_pending_settings_';
 const DRAFT_STORAGE_PREFIX = 'gj_draft_';
-const AUTOSAVE_INTERVAL_MS = 30000;
+const FREE_TIER_MODE = true;
+const LOCAL_AUTOSAVE_INTERVAL_MS = 10000;
+const REMOTE_DRAFT_SYNC_INTERVAL_MS = 60000;
+const FAVORITES_PREFETCH_ENABLED = !FREE_TIER_MODE;
 let userKey = sessionStorage.getItem(USER_KEY_STORAGE) || '';
 let legacyKey = sessionStorage.getItem(LEGACY_KEY_STORAGE) || '';
 let pendingPassword = '';
@@ -41,6 +44,10 @@ let autosaveTimerId = null;
 let autosaveStatusEl = null;
 let lastAutosaveContent = null;
 let lastAutosaveTags = null;
+let remoteDraftTimerId = null;
+let lastRemoteDraftSaveAt = 0;
+let lastRemoteDraftSignature = '';
+let draftBlurListenerBound = false;
 
 function loadStoredSettings() {
     if (typeof localStorage === 'undefined') return {};
@@ -417,6 +424,10 @@ function setAutosaveStatus(message) {
     el.textContent = message;
 }
 
+function makeDraftSignature(text, tags) {
+    return `${(text || '').trim()}::${JSON.stringify(tags || [])}`;
+}
+
 // Save draft to Firebase
 async function saveDraftToFirebase(text, tags) {
     const user = auth.currentUser;
@@ -431,6 +442,8 @@ async function saveDraftToFirebase(text, tags) {
         await db.collection('users').doc(user.uid).set({
             draft: payload
         }, { merge: true });
+        lastRemoteDraftSaveAt = Date.now();
+        lastRemoteDraftSignature = makeDraftSignature(text, tags);
         return true;
     } catch (err) {
         console.warn('Failed to save draft to Firebase:', err);
@@ -523,8 +536,54 @@ function saveDraftToLocal() {
     }
 }
 
-// Save draft based on online/offline status
-async function saveDraft() {
+function getLocalDraftPayload() {
+    const key = draftKeyForUser();
+    if (!key) return null;
+    try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : null;
+    } catch (err) {
+        console.warn('Failed to read local draft payload:', err);
+        return null;
+    }
+}
+
+function getDraftUpdatedAtMs(payload) {
+    if (!payload || !payload.updatedAt) return 0;
+    const ts = new Date(payload.updatedAt).getTime();
+    return Number.isFinite(ts) ? ts : 0;
+}
+
+function applyDraftPayload(payload, source = 'autosave') {
+    if (!gratitudeInput || !payload || !payload.cipher) return false;
+
+    const decrypted = decrypt(payload.cipher, userKey);
+    if (!decrypted || decrypted === '[Decryption failed]') {
+        return false;
+    }
+
+    gratitudeInput.value = decrypted;
+    lastAutosaveContent = decrypted;
+
+    if (Array.isArray(payload.tags)) {
+        window._currentEntryTags = payload.tags;
+        lastAutosaveTags = JSON.stringify(payload.tags);
+        renderCurrentTags();
+    }
+
+    // Only Firebase restores should update the last known cloud signature.
+    if (source === 'firebase') {
+        lastRemoteDraftSignature = makeDraftSignature(decrypted, payload.tags || []);
+    }
+
+    setStatus('Draft restored from autosave.', 'info');
+    setAutosaveStatus(`Draft restored (${formatAutosaveTime(new Date(payload.updatedAt || Date.now()))})`);
+    return true;
+}
+
+// Save draft locally, and optionally sync to Firebase.
+async function saveDraft(options = {}) {
+    const { remote = false, forceRemote = false } = options;
     if (!gratitudeInput) return;
     if (!userKey) return;
 
@@ -534,67 +593,56 @@ async function saveDraft() {
 
     if (!hasContent) {
         clearDraftStorage();
-        if (navigator.onLine && auth.currentUser) {
+        if (remote && navigator.onLine && auth.currentUser) {
             await clearDraftFromFirebase();
         }
         lastAutosaveContent = null;
         lastAutosaveTags = null;
+        lastRemoteDraftSignature = '';
         return;
     }
 
     lastAutosaveContent = text;
     lastAutosaveTags = JSON.stringify(tags);
+    saveDraftToLocal();
 
-    // If offline or no user, save to local storage only
-    if (!navigator.onLine || !auth.currentUser) {
-        saveDraftToLocal();
+    if (!remote) {
         return;
     }
 
-    // If online and authenticated, save to Firebase
+    // Remote sync path (periodic or manual button)
+    if (!navigator.onLine || !auth.currentUser) {
+        setStatus('Offline: draft saved locally and will sync later.', 'info');
+        return;
+    }
+
+    const signature = makeDraftSignature(text, tags);
+    const enoughTimeElapsed = (Date.now() - lastRemoteDraftSaveAt) >= REMOTE_DRAFT_SYNC_INTERVAL_MS;
+    if (!forceRemote && (!enoughTimeElapsed || signature === lastRemoteDraftSignature)) {
+        return;
+    }
+
     try {
         const success = await saveDraftToFirebase(text, tags);
         if (success) {
-            setAutosaveStatus(`Autosaved ${formatAutosaveTime()}`);
+            setAutosaveStatus(`Draft synced ${formatAutosaveTime()}`);
         } else {
-            // Fallback to local storage if Firebase fails
-            saveDraftToLocal();
+            setAutosaveStatus('Local draft saved. Cloud sync failed.');
         }
     } catch (err) {
-        console.warn('Error saving draft:', err);
-        // Fallback to local storage
-        saveDraftToLocal();
+        console.warn('Error syncing draft:', err);
+        setAutosaveStatus('Local draft saved. Cloud sync failed.');
     }
 }
 
 function loadDraftFromLocal() {
     if (!gratitudeInput) return;
-    const key = draftKeyForUser();
-    if (!key || !userKey) return;
+    if (!userKey) return;
 
     try {
-        const raw = localStorage.getItem(key);
-        if (!raw) return;
-
-        const payload = JSON.parse(raw);
-        if (payload.cipher) {
-            const decrypted = decrypt(payload.cipher, userKey);
-            if (decrypted && decrypted !== '[Decryption failed]') {
-                gratitudeInput.value = decrypted;
-                lastAutosaveContent = decrypted;
-            }
-        }
-
-        if (Array.isArray(payload.tags)) {
-            window._currentEntryTags = payload.tags;
-            lastAutosaveTags = JSON.stringify(payload.tags);
-            renderCurrentTags();
-        }
-
-        if (payload.cipher) {
-            setStatus('Draft restored from autosave.', 'info');
-            setAutosaveStatus(`Draft restored (${formatAutosaveTime(new Date(payload.updatedAt || Date.now()))})`);
-        }
+        const payload = getLocalDraftPayload();
+        if (!payload) return;
+        applyDraftPayload(payload, 'local');
     } catch (err) {
         console.warn('Failed to load draft:', err);
         setAutosaveStatus('Unable to load draft.');
@@ -611,52 +659,71 @@ async function loadDraft() {
         return;
     }
 
-    // If online and authenticated, try Firebase first, fallback to local
+    // If online and authenticated, choose the newest draft between local and Firebase
+    const localDraft = getLocalDraftPayload();
+    let firebaseDraft = null;
     try {
-        const firebaseDraft = await loadDraftFromFirebase();
-        if (firebaseDraft) {
-            const decrypted = decrypt(firebaseDraft.cipher, userKey);
-            if (decrypted && decrypted !== '[Decryption failed]') {
-                gratitudeInput.value = decrypted;
-                lastAutosaveContent = decrypted;
-            }
-
-            if (Array.isArray(firebaseDraft.tags)) {
-                window._currentEntryTags = firebaseDraft.tags;
-                lastAutosaveTags = JSON.stringify(firebaseDraft.tags);
-                renderCurrentTags();
-            }
-
-            setStatus('Draft restored from autosave.', 'info');
-            setAutosaveStatus(`Draft restored (${formatAutosaveTime(new Date(firebaseDraft.updatedAt || Date.now()))})`);
-            return;
-        }
+        firebaseDraft = await loadDraftFromFirebase();
     } catch (err) {
         console.warn('Failed to load draft from Firebase:', err);
     }
 
-    // Fallback to local storage
-    loadDraftFromLocal();
+    const localTs = getDraftUpdatedAtMs(localDraft);
+    const firebaseTs = getDraftUpdatedAtMs(firebaseDraft);
+
+    const primary = (localTs >= firebaseTs) ? { payload: localDraft, source: 'local' } : { payload: firebaseDraft, source: 'firebase' };
+    const secondary = (primary.source === 'local') ? { payload: firebaseDraft, source: 'firebase' } : { payload: localDraft, source: 'local' };
+
+    if (primary.payload && applyDraftPayload(primary.payload, primary.source)) {
+        return;
+    }
+
+    if (secondary.payload && applyDraftPayload(secondary.payload, secondary.source)) {
+        return;
+    }
+
+    setAutosaveStatus('No draft found.');
 }
 
 function startDraftAutosave() {
     stopDraftAutosave();
     if (!gratitudeInput || !userKey) return;
-    setAutosaveStatus('Autosave on (every 30s).');
+    setAutosaveStatus('Local autosave on (every 10s). Cloud sync every 60s.');
+
+    if (!draftBlurListenerBound) {
+        gratitudeInput.addEventListener('blur', () => {
+            saveDraft({ remote: false });
+        });
+        draftBlurListenerBound = true;
+    }
+
     autosaveTimerId = window.setInterval(() => {
         const currentText = gratitudeInput.value || '';
         const currentTags = JSON.stringify(window._currentEntryTags || []);
         // Only save if content has changed
         if (currentText !== lastAutosaveContent || currentTags !== lastAutosaveTags) {
-            saveDraft();
+            saveDraft({ remote: false });
         }
-    }, AUTOSAVE_INTERVAL_MS);
+    }, LOCAL_AUTOSAVE_INTERVAL_MS);
+
+    remoteDraftTimerId = window.setInterval(() => {
+        const currentText = gratitudeInput.value || '';
+        const currentTags = JSON.stringify(window._currentEntryTags || []);
+        if (currentText !== lastAutosaveContent || currentTags !== lastAutosaveTags) {
+            saveDraft({ remote: false });
+        }
+        saveDraft({ remote: true });
+    }, REMOTE_DRAFT_SYNC_INTERVAL_MS);
 }
 
 function stopDraftAutosave() {
     if (autosaveTimerId) {
         clearInterval(autosaveTimerId);
         autosaveTimerId = null;
+    }
+    if (remoteDraftTimerId) {
+        clearInterval(remoteDraftTimerId);
+        remoteDraftTimerId = null;
     }
     setAutosaveStatus('Autosave paused.');
 }
@@ -1382,8 +1449,16 @@ const authSection = document.getElementById('auth-section');
 const journalSection = document.getElementById('journal-section');
 const gratitudeForm = document.getElementById('gratitude-form');
 const gratitudeInput = document.getElementById('gratitude-input');
+const saveDraftBtn = document.getElementById('save-draft-btn');
 const entriesList = document.getElementById('entries-list');
 autosaveStatusEl = document.getElementById('autosave-status');
+
+if (saveDraftBtn) {
+    saveDraftBtn.addEventListener('click', async () => {
+        await saveDraft({ remote: true, forceRemote: true });
+        setStatus('Draft saved to cloud.', 'success');
+    });
+}
 
 // Ensure the latest draft is captured before navigating away
 if (typeof window !== 'undefined') {
@@ -2195,11 +2270,13 @@ async function loadEntries() {
         return;
     }
     try {
-        // Load user data to get counters
-        const userDoc = await db.collection('users').doc(auth.currentUser.uid).get();
-        window._daysJournaled = userDoc.exists ? (userDoc.data().daysJournaled || 0) : 0;
-        window._totalEntries = userDoc.exists ? (userDoc.data().totalEntries || 0) : 0;
-        persistLocalCounters({ daysJournaled: window._daysJournaled, totalEntries: window._totalEntries });
+        // Load user counters only when missing locally to avoid extra startup reads.
+        if (typeof window._daysJournaled !== 'number' || typeof window._totalEntries !== 'number') {
+            const userDoc = await db.collection('users').doc(auth.currentUser.uid).get();
+            window._daysJournaled = userDoc.exists ? (userDoc.data().daysJournaled || 0) : 0;
+            window._totalEntries = userDoc.exists ? (userDoc.data().totalEntries || 0) : 0;
+            persistLocalCounters({ daysJournaled: window._daysJournaled, totalEntries: window._totalEntries });
+        }
         const snap = await db.collection('users')
             .doc(auth.currentUser.uid)
             .collection('gratitude')
@@ -2221,30 +2298,33 @@ async function loadEntries() {
                 prompt: data.prompt || null
             });
         });
-        // Fetch ALL favorites and merge so they are always available
-        try {
-            const favSnap = await db.collection('users')
-                .doc(auth.currentUser.uid)
-                .collection('gratitude')
-                .where('starred', '==', true)
-                .get();
-            const byId = new Map(window._allEntries.map(e => [e.id, e]));
-            favSnap.forEach(doc => {
-                if (byId.has(doc.id)) return;
-                const data = doc.data();
-                byId.set(doc.id, {
-                    id: doc.id,
-                    text: decrypt(data.entry, activeKey),
-                    created: data.created && data.created.toDate ? data.created.toDate() : (data.created instanceof Date ? data.created : new Date(data.created)),
-                    starred: true,
-                    cipher: data.entry,
-                    prompt: data.prompt || null
+        // Optional extra query to include favorites not in the first page.
+        // Disabled in free-tier mode to avoid expensive startup reads.
+        if (FAVORITES_PREFETCH_ENABLED) {
+            try {
+                const favSnap = await db.collection('users')
+                    .doc(auth.currentUser.uid)
+                    .collection('gratitude')
+                    .where('starred', '==', true)
+                    .get();
+                const byId = new Map(window._allEntries.map(e => [e.id, e]));
+                favSnap.forEach(doc => {
+                    if (byId.has(doc.id)) return;
+                    const data = doc.data();
+                    byId.set(doc.id, {
+                        id: doc.id,
+                        text: decrypt(data.entry, activeKey),
+                        created: data.created && data.created.toDate ? data.created.toDate() : (data.created instanceof Date ? data.created : new Date(data.created)),
+                        starred: true,
+                        cipher: data.entry,
+                        prompt: data.prompt || null
+                    });
                 });
-            });
-            window._allEntries = Array.from(byId.values())
-                .sort((a, b) => new Date(b.created) - new Date(a.created));
-        } catch (favErr) {
-            console.warn('Could not load favorites separately:', favErr);
+                window._allEntries = Array.from(byId.values())
+                    .sort((a, b) => new Date(b.created) - new Date(a.created));
+            } catch (favErr) {
+                console.warn('Could not load favorites separately:', favErr);
+            }
         }
 
         const computedCounters = computeCountersFromEntries(window._allEntries);
