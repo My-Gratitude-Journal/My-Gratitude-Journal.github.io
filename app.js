@@ -39,6 +39,8 @@ const DEFAULT_SETTINGS = {
 let reminderTimerId = null;
 let autosaveTimerId = null;
 let autosaveStatusEl = null;
+let lastAutosaveContent = null;
+let lastAutosaveTags = null;
 
 function loadStoredSettings() {
     if (typeof localStorage === 'undefined') return {};
@@ -423,6 +425,8 @@ function clearDraftStorage() {
     } catch (err) {
         console.warn('Failed to clear draft cache:', err);
     }
+    lastAutosaveContent = null;
+    lastAutosaveTags = null;
     setAutosaveStatus('Draft cleared.');
 }
 
@@ -437,6 +441,8 @@ function saveDraftToLocal() {
 
     if (!hasContent) {
         clearDraftStorage();
+        lastAutosaveContent = null;
+        lastAutosaveTags = null;
         return;
     }
 
@@ -447,6 +453,8 @@ function saveDraftToLocal() {
             updatedAt: new Date().toISOString()
         };
         localStorage.setItem(key, JSON.stringify(payload));
+        lastAutosaveContent = text;
+        lastAutosaveTags = JSON.stringify(tags);
         setAutosaveStatus(`Autosaved ${formatAutosaveTime()}`);
     } catch (err) {
         console.warn('Failed to autosave draft:', err);
@@ -468,11 +476,13 @@ function loadDraftFromLocal() {
             const decrypted = decrypt(payload.cipher, userKey);
             if (decrypted && decrypted !== '[Decryption failed]') {
                 gratitudeInput.value = decrypted;
+                lastAutosaveContent = decrypted;
             }
         }
 
         if (Array.isArray(payload.tags)) {
             window._currentEntryTags = payload.tags;
+            lastAutosaveTags = JSON.stringify(payload.tags);
             renderCurrentTags();
         }
 
@@ -491,7 +501,12 @@ function startDraftAutosave() {
     if (!gratitudeInput || !userKey) return;
     setAutosaveStatus('Autosave on (every 30s).');
     autosaveTimerId = window.setInterval(() => {
-        saveDraftToLocal();
+        const currentText = gratitudeInput.value || '';
+        const currentTags = JSON.stringify(window._currentEntryTags || []);
+        // Only save if content has changed
+        if (currentText !== lastAutosaveContent || currentTags !== lastAutosaveTags) {
+            saveDraftToLocal();
+        }
     }, AUTOSAVE_INTERVAL_MS);
 }
 
