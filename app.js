@@ -25,7 +25,17 @@ let legacyKey = sessionStorage.getItem(LEGACY_KEY_STORAGE) || '';
 let pendingPassword = '';
 
 const SETTINGS_STORAGE_KEY = 'gj_user_settings';
-const DEFAULT_SETTINGS = { promptsEnabled: true };
+const DEFAULT_SETTINGS = {
+    promptsEnabled: true,
+    templatesEnabled: true,
+    tagsEnabled: true,
+    fontSize: 'normal',
+    dateFormat: 'relative',
+    sortOrder: 'newest',
+    simpleView: false,
+    remindersEnabled: false,
+    reminderTime: '18:00'
+};
 let reminderTimerId = null;
 let autosaveTimerId = null;
 let autosaveStatusEl = null;
@@ -4273,11 +4283,17 @@ document.addEventListener('DOMContentLoaded', function () {
             const tagsToggle = document.getElementById('tags-toggle');
             const simpleViewToggle = document.getElementById('simple-view-toggle');
 
+            // Set a flag to prevent event listeners from running while we update state
+            window._applyingSettings = true;
+
             promptsToggle.checked = settings.promptsEnabled !== false;
             templatesToggle.checked = settings.templatesEnabled !== false;
             tagsToggle.checked = settings.tagsEnabled !== false;
             document.getElementById('reminder-time-input').value = settings.reminderTime || '18:00';
             simpleViewToggle.checked = settings.simpleView || false;
+
+            // Clear the flag and update visibility directly
+            window._applyingSettings = false;
 
             // Disable feature toggles when simple view is enabled
             const isSimpleView = settings.simpleView || false;
@@ -4513,6 +4529,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Handle simple view toggle - disable feature toggles and hide features
         document.getElementById('simple-view-toggle').addEventListener('change', (e) => {
+            if (window._applyingSettings) return;
             const isSimpleView = e.target.checked;
             const promptsToggle = document.getElementById('prompts-toggle');
             const templatesToggle = document.getElementById('templates-toggle');
@@ -4565,6 +4582,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Handle tags toggle - show/hide management section immediately
         // Handle prompts toggle - show/hide prompt section immediately
         document.getElementById('prompts-toggle').addEventListener('change', (e) => {
+            if (window._applyingSettings) return;
             const promptsSection = document.getElementById('prompts-section');
             if (promptsSection) {
                 promptsSection.style.display = e.target.checked ? '' : 'none';
@@ -4575,6 +4593,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         document.getElementById('templates-toggle').addEventListener('change', (e) => {
+            if (window._applyingSettings) return;
             const templateControls = document.getElementById('template-controls');
             if (templateControls) {
                 templateControls.style.display = e.target.checked ? '' : 'none';
@@ -4582,6 +4601,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         document.getElementById('tags-toggle').addEventListener('change', async (e) => {
+            if (window._applyingSettings) return;
             const tagsManagementSection = document.getElementById('tags-management-section');
             if (tagsManagementSection) {
                 tagsManagementSection.style.display = e.target.checked ? '' : 'none';
@@ -4630,7 +4650,6 @@ document.addEventListener('DOMContentLoaded', function () {
             // Save to Firebase (excludes notification settings)
             await saveFirebaseSettings(settings);
             applySettings(settings);
-            applySimpleViewVisibility(settings.simpleView);
 
             // Re-render entries to apply new date format and sort order
             if (typeof renderEntries === 'function') {
