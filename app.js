@@ -2099,7 +2099,7 @@ gratitudeForm.onsubmit = async (e) => {
     const todayKey = getEntryDayKey(new Date());
     const alreadyPostedToday = entriesSnapshot.some((existingEntry) => getEntryDayKey(existingEntry) === todayKey);
     if (alreadyPostedToday) {
-        setStatus('You can only create one gratitude entry per day.', 'error');
+        setStatus('Your entry for today is saved. You can add on to it or come back tomorrow.', 'info');
         return;
     }
 
@@ -4093,6 +4093,9 @@ function updateDailyPostLimitUI() {
 
     if (notice) {
         notice.classList.toggle('hidden', !hasEntryToday);
+        notice.textContent = hasEntryToday
+            ? 'Your entry for today is saved. Add on to your current entry, or come back tomorrow to create a new gratitude entry.'
+            : 'You already posted today. Add on to your current entry, or come back tomorrow to create a new gratitude entry.';
     }
 
     if (submitBtn) {
