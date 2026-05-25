@@ -1483,6 +1483,8 @@ const entriesList = document.getElementById('entries-list');
 const entryComposerIsland = document.querySelector('.entry-composer-island');
 const entryComposerModal = document.getElementById('entry-composer-modal');
 const openEntryComposerBtn = document.getElementById('open-entry-composer-btn');
+const hamburgerToggleBtn = document.getElementById('hamburger-toggle');
+const sideMenu = document.getElementById('side-menu');
 autosaveStatusEl = document.getElementById('autosave-status');
 let entryComposerHideTimer = null;
 let reduceMotionEnabled = false;
@@ -1512,6 +1514,17 @@ function setEntryComposerButtonState(isOpen) {
 function setEntryComposerVisibility(isVisible) {
     if (!entryComposerIsland) return;
     entryComposerIsland.style.display = isVisible ? '' : 'none';
+}
+
+function setMenuVisibility(isVisible) {
+    if (hamburgerToggleBtn) hamburgerToggleBtn.style.display = isVisible ? '' : 'none';
+    if (sideMenu) {
+        if (!isVisible) {
+            sideMenu.classList.add('hidden');
+            document.body.classList.remove('modal-open');
+        }
+        sideMenu.style.display = isVisible ? '' : 'none';
+    }
 }
 
 function updateReduceMotionState(shouldReduceMotion) {
@@ -2094,6 +2107,7 @@ auth.onAuthStateChanged(async user => {
         authSection.style.display = 'none';
         journalSection.style.display = 'block';
         setEntryComposerVisibility(true);
+        setMenuVisibility(true);
         showLoading('Loading your entries...');
         showEntriesSkeleton();
         // Show export buttons
@@ -2202,6 +2216,7 @@ auth.onAuthStateChanged(async user => {
         authSection.style.display = 'block';
         journalSection.style.display = 'none';
         setEntryComposerVisibility(false);
+        setMenuVisibility(false);
         entriesList.innerHTML = '';
         logoutBtn.style.display = 'none';
         // Clear cached entries
