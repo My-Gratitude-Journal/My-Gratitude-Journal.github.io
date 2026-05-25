@@ -1829,10 +1829,35 @@ function openDeleteAccountModal() {
 }
 
 // Add manual refresh button for entries
+const MANUAL_REFRESH_COOLDOWN_MS = 60 * 1000; // 1 minute
+let _lastManualRefreshAt = Number(sessionStorage.getItem('gj_last_manual_refresh') || 0);
+
 const refreshBtn = document.createElement('button');
 refreshBtn.textContent = 'Refresh Entries';
 refreshBtn.className = 'px-3 py-1 rounded bg-blue-400 text-white hover:bg-blue-500 text-xs font-semibold mb-2';
-refreshBtn.onclick = () => loadEntries(true);
+
+function attemptManualRefresh() {
+    const now = Date.now();
+    const elapsed = now - (_lastManualRefreshAt || 0);
+    if (elapsed < MANUAL_REFRESH_COOLDOWN_MS) {
+        const remaining = Math.ceil((MANUAL_REFRESH_COOLDOWN_MS - elapsed) / 1000);
+        setStatus(`Please wait ${remaining}s before refreshing again.`, 'info');
+        refreshBtn.disabled = true;
+        setTimeout(() => { try { refreshBtn.disabled = false; } catch { } }, MANUAL_REFRESH_COOLDOWN_MS - elapsed);
+        return;
+    }
+
+    _lastManualRefreshAt = now;
+    try { sessionStorage.setItem('gj_last_manual_refresh', String(now)); } catch (e) { /* ignore */ }
+    refreshBtn.disabled = true;
+    setStatus('Refreshing entries...', 'info');
+    // Perform refresh; keep button disabled for the cooldown period after the refresh completes
+    Promise.resolve(loadEntries(true)).finally(() => {
+        setTimeout(() => { try { refreshBtn.disabled = false; } catch { } }, MANUAL_REFRESH_COOLDOWN_MS);
+    });
+}
+
+refreshBtn.onclick = attemptManualRefresh;
 document.getElementById('journal-section').insertBefore(refreshBtn, entriesList);
 
 // Add error and loading UI
