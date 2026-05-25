@@ -428,6 +428,28 @@ function makeDraftSignature(text, tags) {
     return `${(text || '').trim()}::${JSON.stringify(tags || [])}`;
 }
 
+function getCurrentDraftState() {
+    const text = gratitudeInput ? (gratitudeInput.value || '') : '';
+    const tags = window._currentEntryTags || [];
+    const hasContent = Boolean(text.trim()) || (Array.isArray(tags) && tags.length > 0);
+    const currentSignature = makeDraftSignature(text, tags);
+    let savedTags = [];
+    if (lastAutosaveTags) {
+        try {
+            savedTags = JSON.parse(lastAutosaveTags) || [];
+        } catch {
+            savedTags = [];
+        }
+    }
+    const savedSignature = makeDraftSignature(lastAutosaveContent || '', savedTags);
+    return {
+        hasContent,
+        currentSignature,
+        savedSignature,
+        isDirty: hasContent && currentSignature !== savedSignature
+    };
+}
+
 // Save draft to Firebase
 async function saveDraftToFirebase(text, tags) {
     const user = auth.currentUser;
@@ -494,6 +516,7 @@ function clearDraftStorage() {
     lastAutosaveContent = null;
     lastAutosaveTags = null;
     setAutosaveStatus('Draft cleared.');
+    updateDailyPostLimitUI();
 }
 
 // Clear draft from both local and Firebase
@@ -517,6 +540,7 @@ function saveDraftToLocal() {
         clearDraftStorage();
         lastAutosaveContent = null;
         lastAutosaveTags = null;
+        updateDailyPostLimitUI();
         return;
     }
 
@@ -530,6 +554,7 @@ function saveDraftToLocal() {
         lastAutosaveContent = text;
         lastAutosaveTags = JSON.stringify(tags);
         setAutosaveStatus(`Autosaved ${formatAutosaveTime()}`);
+        updateDailyPostLimitUI();
     } catch (err) {
         console.warn('Failed to autosave draft:', err);
         setAutosaveStatus('Autosave failed.');
@@ -578,6 +603,7 @@ function applyDraftPayload(payload, source = 'autosave') {
 
     setStatus('Draft restored from autosave.', 'info');
     setAutosaveStatus(`Draft restored (${formatAutosaveTime(new Date(payload.updatedAt || Date.now()))})`);
+    updateDailyPostLimitUI();
     return true;
 }
 
@@ -647,6 +673,7 @@ function loadDraftFromLocal() {
         console.warn('Failed to load draft:', err);
         setAutosaveStatus('Unable to load draft.');
     }
+    updateDailyPostLimitUI();
 }
 
 // Load draft based on online/offline status
@@ -656,6 +683,7 @@ async function loadDraft() {
     // If offline or no user, load from local storage only
     if (!navigator.onLine || !auth.currentUser) {
         loadDraftFromLocal();
+        updateDailyPostLimitUI();
         return;
     }
 
@@ -683,6 +711,7 @@ async function loadDraft() {
     }
 
     setAutosaveStatus('No draft found.');
+    updateDailyPostLimitUI();
 }
 
 function startDraftAutosave() {
@@ -773,6 +802,7 @@ function addTagToEntry(tag) {
     }
     renderCurrentTags();
     updateTagSuggestionList(document.getElementById('tag-input'), 'tag-suggestion-list', window._currentEntryTags);
+    updateDailyPostLimitUI();
 }
 
 // Remove a tag from the current entry being composed
@@ -781,6 +811,7 @@ function removeTagFromEntry(tag) {
     window._currentEntryTags = window._currentEntryTags.filter(t => t !== tag.toLowerCase());
     renderCurrentTags();
     updateTagSuggestionList(document.getElementById('tag-input'), 'tag-suggestion-list', window._currentEntryTags);
+    updateDailyPostLimitUI();
 }
 
 // Render current tags in the form
@@ -1455,8 +1486,15 @@ autosaveStatusEl = document.getElementById('autosave-status');
 
 if (saveDraftBtn) {
     saveDraftBtn.addEventListener('click', async () => {
+        if (saveDraftBtn.disabled) return;
         await saveDraft({ remote: true, forceRemote: true });
         setStatus('Draft saved to cloud.', 'success');
+    });
+}
+
+if (gratitudeInput) {
+    gratitudeInput.addEventListener('input', () => {
+        updateDailyPostLimitUI();
     });
 }
 
@@ -4084,12 +4122,15 @@ function updateDailyPostLimitUI() {
     const notice = document.getElementById('daily-post-limit-notice');
     const submitBtn = document.getElementById('gratitude-submit-btn');
     const saveDraftBtn = document.getElementById('save-draft-btn');
+    const saveDraftState = document.getElementById('save-draft-state');
     const gratitudeInputEl = document.getElementById('gratitude-input');
     const tagInputEl = document.getElementById('tag-input');
     const addTagBtn = document.getElementById('add-tag-btn');
     const templateSelector = document.getElementById('template-selector');
     const insertTemplateBtn = document.getElementById('insert-template-btn');
     const hasEntryToday = (window._allEntries || []).some((existingEntry) => getEntryDayKey(existingEntry) === getEntryDayKey(new Date()));
+    const draftState = getCurrentDraftState();
+    const canSaveDraft = !hasEntryToday && draftState.isDirty;
 
     if (notice) {
         notice.classList.toggle('hidden', !hasEntryToday);
@@ -4106,10 +4147,28 @@ function updateDailyPostLimitUI() {
     }
 
     if (saveDraftBtn) {
-        saveDraftBtn.disabled = hasEntryToday;
-        saveDraftBtn.title = hasEntryToday ? 'Drafts are disabled after you post today.' : 'Save your current draft to the cloud.';
-        saveDraftBtn.classList.toggle('opacity-50', hasEntryToday);
-        saveDraftBtn.classList.toggle('cursor-not-allowed', hasEntryToday);
+        saveDraftBtn.disabled = !canSaveDraft;
+        saveDraftBtn.title = hasEntryToday
+            ? 'Drafts are disabled after you post today.'
+            : (draftState.hasContent ? 'No draft changes to save.' : 'Add text or tags before saving a draft.');
+        saveDraftBtn.classList.toggle('opacity-50', !canSaveDraft);
+        saveDraftBtn.classList.toggle('cursor-not-allowed', !canSaveDraft);
+    }
+
+    if (saveDraftState) {
+        if (hasEntryToday) {
+            saveDraftState.textContent = 'Draft locked today';
+            saveDraftState.className = 'inline-flex items-center rounded-full bg-green-100 px-2.5 py-1 text-[11px] font-semibold text-green-700 dark:bg-green-900/30 dark:text-green-200';
+        } else if (!draftState.hasContent) {
+            saveDraftState.textContent = 'No changes';
+            saveDraftState.className = 'inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300';
+        } else if (draftState.isDirty) {
+            saveDraftState.textContent = 'Ready to save';
+            saveDraftState.className = 'inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-1 text-[11px] font-semibold text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-200';
+        } else {
+            saveDraftState.textContent = 'Saved';
+            saveDraftState.className = 'inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200';
+        }
     }
 
     [gratitudeInputEl, tagInputEl, addTagBtn, templateSelector, insertTemplateBtn].forEach((control) => {
