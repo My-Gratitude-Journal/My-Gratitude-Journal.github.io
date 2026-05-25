@@ -2095,6 +2095,14 @@ gratitudeForm.onsubmit = async (e) => {
     e.preventDefault();
     const entry = gratitudeInput.value.trim();
     if (!entry) return;
+    const entriesSnapshot = window._allEntries || [];
+    const todayKey = getEntryDayKey(new Date());
+    const alreadyPostedToday = entriesSnapshot.some((existingEntry) => getEntryDayKey(existingEntry) === todayKey);
+    if (alreadyPostedToday) {
+        setStatus('You can only create one gratitude entry per day.', 'error');
+        return;
+    }
+
     const tagInputEl = document.getElementById('tag-input');
     if (tagInputEl) {
         const pendingTagInput = tagInputEl.value.trim();
@@ -2108,17 +2116,6 @@ gratitudeForm.onsubmit = async (e) => {
     const encrypted = encrypt(entry, userKey);
     const created = new Date();
     created.setMilliseconds(0);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().slice(0, 10);
-    const entriesSnapshot = window._allEntries || [];
-
-    // Check if user already has an entry today
-    const existingTodayEntry = entriesSnapshot.some(e => {
-        const eDate = e.created instanceof Date ? e.created : new Date(e.created);
-        eDate.setHours(0, 0, 0, 0);
-        return eDate.toISOString().slice(0, 10) === todayStr;
-    });
 
     // Build local entry with temp id, including tags
     const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -2136,9 +2133,7 @@ gratitudeForm.onsubmit = async (e) => {
         prompt: promptText
     };
 
-    if (!existingTodayEntry) {
-        window._daysJournaled = (window._daysJournaled || 0) + 1;
-    }
+    window._daysJournaled = (window._daysJournaled || 0) + 1;
     window._totalEntries = (window._totalEntries || 0) + 1;
     persistLocalCounters({ daysJournaled: window._daysJournaled, totalEntries: window._totalEntries });
 
@@ -2155,6 +2150,7 @@ gratitudeForm.onsubmit = async (e) => {
     syncOfflineCacheFromMemory();
     updateProgressInfo();
     renderEntries();
+    updateDailyPostLimitUI();
 
     const persistRemote = async () => {
         const docRef = await db.collection('users')
@@ -2263,6 +2259,7 @@ async function loadEntries() {
     if (window._allEntries && !arguments[0]) {
         updateProgressInfo();
         renderEntries();
+        updateDailyPostLimitUI();
         if (window._currentView === 'calendar') {
             renderCalendarView();
         }
@@ -2339,6 +2336,7 @@ async function loadEntries() {
         syncOfflineCacheFromMemory();
         updateProgressInfo();
         renderEntries();
+        updateDailyPostLimitUI();
         if (window._currentView === 'calendar') {
             renderCalendarView();
         }
@@ -2359,6 +2357,7 @@ async function loadEntries() {
             showOfflineBanner("You're offline. Showing cached entries. Favorites are always available offline.");
             updateProgressInfo();
             renderEntries();
+            updateDailyPostLimitUI();
             if (window._currentView === 'calendar') {
                 renderCalendarView();
             }
@@ -3997,6 +3996,7 @@ async function deleteEntry(entryId) {
     window._allEntries = (window._allEntries || []).filter(e => e.id !== entryId);
     updateProgressInfo();
     renderEntries();
+    updateDailyPostLimitUI();
     syncOfflineCacheFromMemory();
 
     const persistDelete = async () => {
@@ -4071,13 +4071,58 @@ function getEntryDate(entry) {
     return isNaN(parsed.getTime()) ? null : parsed;
 }
 
+function getEntryDayKey(entry) {
+    const date = getEntryDate(entry) || (entry instanceof Date ? entry : null);
+    if (!date) return null;
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function updateDailyPostLimitUI() {
+    const notice = document.getElementById('daily-post-limit-notice');
+    const submitBtn = document.getElementById('gratitude-submit-btn');
+    const saveDraftBtn = document.getElementById('save-draft-btn');
+    const gratitudeInputEl = document.getElementById('gratitude-input');
+    const tagInputEl = document.getElementById('tag-input');
+    const addTagBtn = document.getElementById('add-tag-btn');
+    const templateSelector = document.getElementById('template-selector');
+    const insertTemplateBtn = document.getElementById('insert-template-btn');
+    const hasEntryToday = (window._allEntries || []).some((existingEntry) => getEntryDayKey(existingEntry) === getEntryDayKey(new Date()));
+
+    if (notice) {
+        notice.classList.toggle('hidden', !hasEntryToday);
+    }
+
+    if (submitBtn) {
+        submitBtn.disabled = hasEntryToday;
+        submitBtn.textContent = hasEntryToday ? 'Entry saved for today' : 'Save Entry';
+        submitBtn.classList.toggle('opacity-50', hasEntryToday);
+        submitBtn.classList.toggle('cursor-not-allowed', hasEntryToday);
+    }
+
+    if (saveDraftBtn) {
+        saveDraftBtn.disabled = hasEntryToday;
+        saveDraftBtn.title = hasEntryToday ? 'Drafts are disabled after you post today.' : 'Save your current draft to the cloud.';
+        saveDraftBtn.classList.toggle('opacity-50', hasEntryToday);
+        saveDraftBtn.classList.toggle('cursor-not-allowed', hasEntryToday);
+    }
+
+    [gratitudeInputEl, tagInputEl, addTagBtn, templateSelector, insertTemplateBtn].forEach((control) => {
+        if (!control) return;
+        control.disabled = hasEntryToday;
+        control.classList.toggle('opacity-50', hasEntryToday);
+        control.classList.toggle('cursor-not-allowed', hasEntryToday);
+    });
+}
+
 function computeCountersFromEntries(entries) {
     const dates = new Set();
     (entries || []).forEach((e) => {
-        const d = getEntryDate(e);
-        if (!d) return;
-        d.setHours(0, 0, 0, 0);
-        dates.add(d.toISOString().slice(0, 10));
+        const dayKey = getEntryDayKey(e);
+        if (!dayKey) return;
+        dates.add(dayKey);
     });
     return { daysJournaled: dates.size, totalEntries: (entries || []).length };
 }

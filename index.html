@@ -321,6 +321,10 @@
                         class="px-3 py-1 rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 text-xs font-semibold transition self-start sm:self-auto">Save
                         Draft</button>
                 </div>
+                <div id="daily-post-limit-notice"
+                    class="hidden rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 shadow-sm dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-100">
+                    You already posted today. Add on to your current entry, or come back tomorrow to create a new gratitude entry.
+                </div>
                 <!-- Tags Input Section -->
                 <div class="flex flex-col gap-2">
                     <label for="tag-input" class="text-sm font-medium text-gray-700 dark:text-gray-300">Tags
@@ -334,7 +338,7 @@
                     <div id="tags-display" class="flex flex-wrap gap-2"></div>
                     <datalist id="tag-suggestion-list"></datalist>
                 </div>
-                <button type="submit"
+                <button type="submit" id="gratitude-submit-btn"
                     class="w-full bg-gradient-to-r from-primary to-blue-400 hover:from-blue-500 hover:to-blue-600 text-white font-bold py-2 px-4 rounded-xl transition text-base shadow">Save
                     Entry</button>
             </form>
