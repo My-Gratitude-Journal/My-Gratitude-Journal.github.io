@@ -1483,6 +1483,8 @@ const entriesList = document.getElementById('entries-list');
 const entryComposerModal = document.getElementById('entry-composer-modal');
 const openEntryComposerBtn = document.getElementById('open-entry-composer-btn');
 autosaveStatusEl = document.getElementById('autosave-status');
+let entryComposerHideTimer = null;
+let reduceMotionEnabled = false;
 
 const entryComposerClosedIcon = `
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -1500,6 +1502,7 @@ const entryComposerOpenIcon = `
 
 function setEntryComposerButtonState(isOpen) {
     if (!openEntryComposerBtn) return;
+    openEntryComposerBtn.classList.toggle('is-open', isOpen);
     const icon = openEntryComposerBtn.querySelector('.entry-composer-icon');
     if (icon) {
         icon.innerHTML = isOpen ? entryComposerOpenIcon : entryComposerClosedIcon;
@@ -1507,17 +1510,67 @@ function setEntryComposerButtonState(isOpen) {
     openEntryComposerBtn.setAttribute('aria-label', isOpen ? 'Close gratitude composer' : 'Open gratitude composer');
 }
 
+function updateReduceMotionState(shouldReduceMotion) {
+    reduceMotionEnabled = !!shouldReduceMotion;
+    if (typeof document !== 'undefined' && document.documentElement) {
+        document.documentElement.classList.toggle('reduce-motion', reduceMotionEnabled);
+    }
+}
+
+function shouldReduceMotion() {
+    if (typeof window === 'undefined') return true;
+    const mediaQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+    const saveData = !!(navigator.connection && navigator.connection.saveData);
+    return !!(mediaQuery && mediaQuery.matches) || saveData;
+}
+
+updateReduceMotionState(shouldReduceMotion());
+
+if (typeof navigator !== 'undefined' && navigator.getBattery) {
+    navigator.getBattery().then((battery) => {
+        if (!battery) return;
+        const lowPower = !battery.charging && battery.level <= 0.2;
+        updateReduceMotionState(shouldReduceMotion() || lowPower);
+    }).catch(() => { });
+}
+
 function closeEntryComposer() {
     if (!entryComposerModal) return;
-    entryComposerModal.classList.add('hidden');
+    entryComposerModal.classList.remove('is-visible');
     document.body.classList.remove('modal-open');
     setEntryComposerButtonState(false);
+
+    if (entryComposerHideTimer) {
+        window.clearTimeout(entryComposerHideTimer);
+        entryComposerHideTimer = null;
+    }
+
+    const finishClose = () => {
+        entryComposerModal.classList.add('hidden');
+        entryComposerModal.removeEventListener('transitionend', onTransitionEnd);
+    };
+
+    const onTransitionEnd = (event) => {
+        if (event.target !== entryComposerModal) return;
+        finishClose();
+    };
+
+    if (reduceMotionEnabled) {
+        finishClose();
+        return;
+    }
+
+    entryComposerModal.addEventListener('transitionend', onTransitionEnd);
+    entryComposerHideTimer = window.setTimeout(finishClose, 320);
 }
 
 function openEntryComposer() {
     if (!entryComposerModal) return;
     updateDailyPostLimitUI();
     entryComposerModal.classList.remove('hidden');
+    requestAnimationFrame(() => {
+        entryComposerModal.classList.add('is-visible');
+    });
     document.body.classList.add('modal-open');
     setEntryComposerButtonState(true);
     setTimeout(() => {

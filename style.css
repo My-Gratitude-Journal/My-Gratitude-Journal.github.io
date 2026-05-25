@@ -29,6 +29,49 @@ textarea:focus-visible {
     backdrop-filter: blur(6px);
 }
 
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+#entry-composer-modal {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 220ms ease, visibility 0s linear 220ms;
+}
+
+#entry-composer-modal.is-visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity 220ms ease, visibility 0s;
+}
+
+#entry-composer-modal .entry-composer-panel {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+    transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease;
+}
+
+#entry-composer-modal.is-visible .entry-composer-panel {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
 .entry-composer-island {
     position: fixed;
     left: 50%;
@@ -55,6 +98,7 @@ textarea:focus-visible {
     color: #fff;
     backdrop-filter: blur(18px);
     cursor: pointer;
+    transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 220ms ease, filter 220ms ease;
 }
 
 .dark .entry-composer-pill {
@@ -92,6 +136,7 @@ textarea:focus-visible {
     background: linear-gradient(135deg, #ffffff, #dbeafe);
     color: #1d4ed8;
     box-shadow: 0 12px 26px rgba(15, 23, 42, 0.22);
+    transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), background 220ms ease, box-shadow 220ms ease;
 }
 
 .entry-composer-icon svg {
@@ -99,6 +144,15 @@ textarea:focus-visible {
     width: 1.85rem;
     height: 1.85rem;
     transform: translate(0.05rem, 0.02rem);
+    transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease;
+}
+
+.entry-composer-pill.is-open .entry-composer-icon {
+    transform: scale(0.96) rotate(90deg);
+}
+
+.entry-composer-pill.is-open .entry-composer-icon svg {
+    transform: translate(0.03rem, 0.02rem) scale(0.98);
 }
 
 .entry-composer-pill:hover {
@@ -158,6 +212,10 @@ textarea:focus-visible {
         width: 1.45rem;
         height: 1.45rem;
         transform: translate(0.03rem, 0);
+    }
+
+    .entry-composer-pill.is-open .entry-composer-icon svg {
+        transform: translate(0.02rem, 0) scale(0.98);
     }
 }
 
