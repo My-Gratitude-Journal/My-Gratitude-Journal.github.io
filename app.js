@@ -1482,13 +1482,36 @@ const saveDraftBtn = document.getElementById('save-draft-btn');
 const entriesList = document.getElementById('entries-list');
 const entryComposerModal = document.getElementById('entry-composer-modal');
 const openEntryComposerBtn = document.getElementById('open-entry-composer-btn');
-const closeEntryComposerBtn = document.getElementById('close-entry-composer-btn');
 autosaveStatusEl = document.getElementById('autosave-status');
+
+const entryComposerClosedIcon = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 20l4.5-1 9.7-9.7a1.5 1.5 0 0 0 0-2.1l-1.4-1.4a1.5 1.5 0 0 0-2.1 0L5 15.5 4 20z" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M13.5 6.5l4 4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+`;
+
+const entryComposerOpenIcon = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+        <path d="M6 6l12 12" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M18 6L6 18" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+`;
+
+function setEntryComposerButtonState(isOpen) {
+    if (!openEntryComposerBtn) return;
+    const icon = openEntryComposerBtn.querySelector('.entry-composer-icon');
+    if (icon) {
+        icon.innerHTML = isOpen ? entryComposerOpenIcon : entryComposerClosedIcon;
+    }
+    openEntryComposerBtn.setAttribute('aria-label', isOpen ? 'Close gratitude composer' : 'Open gratitude composer');
+}
 
 function closeEntryComposer() {
     if (!entryComposerModal) return;
     entryComposerModal.classList.add('hidden');
     document.body.classList.remove('modal-open');
+    setEntryComposerButtonState(false);
 }
 
 function openEntryComposer() {
@@ -1496,12 +1519,13 @@ function openEntryComposer() {
     updateDailyPostLimitUI();
     entryComposerModal.classList.remove('hidden');
     document.body.classList.add('modal-open');
+    setEntryComposerButtonState(true);
     setTimeout(() => {
         if (gratitudeInput && !gratitudeInput.disabled) {
             gratitudeInput.focus();
             gratitudeInput.setSelectionRange(gratitudeInput.value.length, gratitudeInput.value.length);
-        } else if (closeEntryComposerBtn) {
-            closeEntryComposerBtn.focus();
+        } else if (openEntryComposerBtn) {
+            openEntryComposerBtn.focus();
         }
     }, 0);
 }
@@ -1515,14 +1539,18 @@ if (saveDraftBtn) {
 }
 
 if (openEntryComposerBtn) {
-    openEntryComposerBtn.addEventListener('click', openEntryComposer);
-}
-
-if (closeEntryComposerBtn) {
-    closeEntryComposerBtn.addEventListener('click', closeEntryComposer);
+    openEntryComposerBtn.addEventListener('click', () => {
+        if (entryComposerModal && entryComposerModal.classList.contains('hidden')) {
+            openEntryComposer();
+        } else {
+            closeEntryComposer();
+        }
+    });
 }
 
 bindModalBackdropClose(entryComposerModal, closeEntryComposer);
+
+setEntryComposerButtonState(false);
 
 if (gratitudeInput) {
     gratitudeInput.addEventListener('input', () => {
