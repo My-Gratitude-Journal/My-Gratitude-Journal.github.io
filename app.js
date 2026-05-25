@@ -505,7 +505,7 @@ async function clearDraftFromFirebase() {
     }
 }
 
-function clearDraftStorage() {
+function clearDraftStorage(statusMessage = 'Draft cleared.') {
     const key = draftKeyForUser();
     if (!key) return;
     try {
@@ -515,7 +515,7 @@ function clearDraftStorage() {
     }
     lastAutosaveContent = null;
     lastAutosaveTags = null;
-    setAutosaveStatus('Draft cleared.');
+    setAutosaveStatus(statusMessage);
     updateDailyPostLimitUI();
 }
 
@@ -537,9 +537,7 @@ function saveDraftToLocal() {
     const hasContent = Boolean(text.trim()) || (Array.isArray(tags) && tags.length > 0);
 
     if (!hasContent) {
-        clearDraftStorage();
-        lastAutosaveContent = null;
-        lastAutosaveTags = null;
+        clearDraftStorage('No changes to save.');
         updateDailyPostLimitUI();
         return;
     }
@@ -618,7 +616,7 @@ async function saveDraft(options = {}) {
     const hasContent = Boolean(text.trim()) || (Array.isArray(tags) && tags.length > 0);
 
     if (!hasContent) {
-        clearDraftStorage();
+        clearDraftStorage('No changes to save.');
         if (remote && navigator.onLine && auth.currentUser) {
             await clearDraftFromFirebase();
         }
