@@ -1480,6 +1480,7 @@ const gratitudeForm = document.getElementById('gratitude-form');
 const gratitudeInput = document.getElementById('gratitude-input');
 const saveDraftBtn = document.getElementById('save-draft-btn');
 const entriesList = document.getElementById('entries-list');
+const entryComposerIsland = document.querySelector('.entry-composer-island');
 const entryComposerModal = document.getElementById('entry-composer-modal');
 const openEntryComposerBtn = document.getElementById('open-entry-composer-btn');
 autosaveStatusEl = document.getElementById('autosave-status');
@@ -1506,6 +1507,11 @@ function setEntryComposerButtonState(isOpen) {
     openEntryComposerBtn.innerHTML = isOpen ? entryComposerOpenIcon : entryComposerClosedIcon;
     openEntryComposerBtn.setAttribute('data-tooltip', isOpen ? 'Close composer' : 'New entry');
     openEntryComposerBtn.setAttribute('aria-label', isOpen ? 'Close gratitude composer' : 'Open gratitude composer');
+}
+
+function setEntryComposerVisibility(isVisible) {
+    if (!entryComposerIsland) return;
+    entryComposerIsland.style.display = isVisible ? '' : 'none';
 }
 
 function updateReduceMotionState(shouldReduceMotion) {
@@ -2087,6 +2093,7 @@ auth.onAuthStateChanged(async user => {
     if (user) {
         authSection.style.display = 'none';
         journalSection.style.display = 'block';
+        setEntryComposerVisibility(true);
         showLoading('Loading your entries...');
         showEntriesSkeleton();
         // Show export buttons
@@ -2194,6 +2201,7 @@ auth.onAuthStateChanged(async user => {
         stopDraftAutosave();
         authSection.style.display = 'block';
         journalSection.style.display = 'none';
+        setEntryComposerVisibility(false);
         entriesList.innerHTML = '';
         logoutBtn.style.display = 'none';
         // Clear cached entries
