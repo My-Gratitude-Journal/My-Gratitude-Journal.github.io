@@ -1503,10 +1503,8 @@ const entryComposerOpenIcon = `
 function setEntryComposerButtonState(isOpen) {
     if (!openEntryComposerBtn) return;
     openEntryComposerBtn.classList.toggle('is-open', isOpen);
-    const icon = openEntryComposerBtn.querySelector('.entry-composer-icon');
-    if (icon) {
-        icon.innerHTML = isOpen ? entryComposerOpenIcon : entryComposerClosedIcon;
-    }
+    openEntryComposerBtn.innerHTML = isOpen ? entryComposerOpenIcon : entryComposerClosedIcon;
+    openEntryComposerBtn.setAttribute('data-tooltip', isOpen ? 'Close composer' : 'New entry');
     openEntryComposerBtn.setAttribute('aria-label', isOpen ? 'Close gratitude composer' : 'Open gratitude composer');
 }
 

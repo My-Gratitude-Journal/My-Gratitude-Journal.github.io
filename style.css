@@ -86,11 +86,13 @@ html.reduce-motion *::after {
     pointer-events: auto;
     appearance: none;
     border: 0;
-    display: flex;
+    position: relative;
+    display: inline-flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.6rem;
-    padding: 0.65rem 0.7rem 0.65rem 0.85rem;
+    justify-content: center;
+    width: 3.4rem;
+    height: 3.4rem;
+    padding: 0;
     border-radius: 9999px;
     border: 1px solid rgba(255, 255, 255, 0.28);
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(37, 99, 235, 0.88));
@@ -106,53 +108,65 @@ html.reduce-motion *::after {
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(30, 64, 175, 0.9));
 }
 
-.entry-composer-copy {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 0.25rem;
-    min-width: 0;
-}
-
-.entry-composer-label {
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-}
-
-.entry-composer-subtitle {
-    display: none;
-}
-
-.entry-composer-icon {
+.entry-composer-pill svg {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 3.4rem;
-    height: 3.4rem;
-    flex: 0 0 auto;
-    border-radius: 9999px;
-    background: linear-gradient(135deg, #ffffff, #dbeafe);
-    color: #1d4ed8;
-    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.22);
-    transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), background 220ms ease, box-shadow 220ms ease;
-}
-
-.entry-composer-icon svg {
-    display: block;
     width: 1.85rem;
     height: 1.85rem;
+    flex: 0 0 auto;
+    display: block;
     transform: translate(0.05rem, 0.02rem);
     transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease;
 }
 
-.entry-composer-pill.is-open .entry-composer-icon {
+.entry-composer-pill.is-open svg {
     transform: scale(0.96) rotate(90deg);
 }
 
-.entry-composer-pill.is-open .entry-composer-icon svg {
+.entry-composer-pill.is-open svg {
     transform: translate(0.03rem, 0.02rem) scale(0.98);
+}
+
+.entry-composer-pill::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    right: calc(100% + 0.6rem);
+    top: 50%;
+    transform: translate(0.5rem, -50%);
+    opacity: 0;
+    pointer-events: none;
+    white-space: nowrap;
+    padding: 0.45rem 0.7rem;
+    border-radius: 9999px;
+    background: rgba(15, 23, 42, 0.95);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 600;
+    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.26);
+    transition: opacity 180ms ease, transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.entry-composer-pill::before {
+    content: '';
+    position: absolute;
+    right: calc(100% + 0.28rem);
+    top: 50%;
+    transform: translate(0.5rem, -50%) rotate(45deg);
+    width: 0.55rem;
+    height: 0.55rem;
+    background: rgba(15, 23, 42, 0.95);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms ease, transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.entry-composer-pill:hover::after,
+.entry-composer-pill:hover::before,
+.entry-composer-pill:focus-visible::after,
+.entry-composer-pill:focus-visible::before {
+    opacity: 1;
+    transform: translate(0, -50%);
 }
 
 .entry-composer-pill:hover {
@@ -193,26 +207,19 @@ html.reduce-motion *::after {
     }
 
     .entry-composer-pill {
-        justify-content: center;
-        gap: 0;
-        padding: 0.35rem;
-        min-width: 0;
-    }
-
-    .entry-composer-copy,
-    .entry-composer-subtitle {
-        display: none;
-    }
-
-    .entry-composer-icon {
         width: 2.5rem;
         height: 2.5rem;
     }
 
-    .entry-composer-icon svg {
+    .entry-composer-pill svg {
         width: 1.45rem;
         height: 1.45rem;
         transform: translate(0.03rem, 0);
+    }
+
+    .entry-composer-pill::after,
+    .entry-composer-pill::before {
+        display: none;
     }
 
     .entry-composer-pill.is-open .entry-composer-icon svg {
