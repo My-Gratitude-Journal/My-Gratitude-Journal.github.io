@@ -1480,7 +1480,31 @@ const gratitudeForm = document.getElementById('gratitude-form');
 const gratitudeInput = document.getElementById('gratitude-input');
 const saveDraftBtn = document.getElementById('save-draft-btn');
 const entriesList = document.getElementById('entries-list');
+const entryComposerModal = document.getElementById('entry-composer-modal');
+const openEntryComposerBtn = document.getElementById('open-entry-composer-btn');
+const closeEntryComposerBtn = document.getElementById('close-entry-composer-btn');
 autosaveStatusEl = document.getElementById('autosave-status');
+
+function closeEntryComposer() {
+    if (!entryComposerModal) return;
+    entryComposerModal.classList.add('hidden');
+    document.body.classList.remove('modal-open');
+}
+
+function openEntryComposer() {
+    if (!entryComposerModal) return;
+    updateDailyPostLimitUI();
+    entryComposerModal.classList.remove('hidden');
+    document.body.classList.add('modal-open');
+    setTimeout(() => {
+        if (gratitudeInput && !gratitudeInput.disabled) {
+            gratitudeInput.focus();
+            gratitudeInput.setSelectionRange(gratitudeInput.value.length, gratitudeInput.value.length);
+        } else if (closeEntryComposerBtn) {
+            closeEntryComposerBtn.focus();
+        }
+    }, 0);
+}
 
 if (saveDraftBtn) {
     saveDraftBtn.addEventListener('click', async () => {
@@ -1489,6 +1513,16 @@ if (saveDraftBtn) {
         setStatus('Draft saved to cloud.', 'success');
     });
 }
+
+if (openEntryComposerBtn) {
+    openEntryComposerBtn.addEventListener('click', openEntryComposer);
+}
+
+if (closeEntryComposerBtn) {
+    closeEntryComposerBtn.addEventListener('click', closeEntryComposer);
+}
+
+bindModalBackdropClose(entryComposerModal, closeEntryComposer);
 
 if (gratitudeInput) {
     gratitudeInput.addEventListener('input', () => {
@@ -2187,6 +2221,7 @@ gratitudeForm.onsubmit = async (e) => {
     updateProgressInfo();
     renderEntries();
     updateDailyPostLimitUI();
+    closeEntryComposer();
 
     const persistRemote = async () => {
         const docRef = await db.collection('users')

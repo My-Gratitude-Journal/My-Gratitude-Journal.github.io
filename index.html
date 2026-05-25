@@ -280,74 +280,103 @@
                     </div>
                 </div>
             </div>
-            <form id="gratitude-form"
-                class="mb-6 bg-white/80 dark:bg-darkcard/80 rounded-2xl shadow p-6 flex flex-col gap-4">
-                <!-- Daily Gratitude Prompt -->
-                <div id="prompts-section"
-                    class="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-700 dark:to-gray-600 rounded-lg p-4 border-l-4 border-primary">
-                    <div class="flex items-start justify-between gap-3">
-                        <div class="flex-1">
-                            <p class="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">Today's Prompt</p>
-                            <p id="daily-prompt" class="text-base text-gray-800 dark:text-gray-100 font-medium"></p>
+            <div id="entry-composer-modal"
+                class="hidden fixed inset-0 z-50 flex items-stretch justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4"
+                role="dialog" aria-modal="true" aria-labelledby="entry-composer-title">
+                <div
+                    class="entry-composer-panel bg-white/95 dark:bg-darkcard/95 text-gray-800 dark:text-gray-100 w-full h-full sm:h-auto sm:max-h-[92vh] sm:max-w-4xl sm:rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-y-auto">
+                    <form id="gratitude-form" class="flex min-h-full flex-col gap-4 p-5 sm:p-7 lg:p-8">
+                        <div
+                            class="flex items-start justify-between gap-4 border-b border-gray-200/80 pb-4 dark:border-gray-700/80">
+                            <div>
+                                <p
+                                    class="text-xs font-semibold uppercase tracking-[0.2em] text-primary dark:text-blue-300">
+                                    Compose</p>
+                                <h2 id="entry-composer-title"
+                                    class="text-2xl sm:text-3xl font-extrabold tracking-tight">Write a gratitude entry
+                                </h2>
+                            </div>
+                            <button type="button" id="close-entry-composer-btn"
+                                class="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-800 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
+                                aria-label="Close entry composer">
+                                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M6 6l12 12M18 6L6 18" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round" />
+                                </svg>
+                            </button>
                         </div>
-                        <button type="button" id="view-all-prompts-btn"
-                            class="px-3 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-blue-600 transition whitespace-nowrap">
-                            View All
-                        </button>
-                    </div>
+                        <!-- Daily Gratitude Prompt -->
+                        <div id="prompts-section"
+                            class="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-gray-700 dark:to-gray-600 rounded-lg p-4 border-l-4 border-primary">
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="flex-1">
+                                    <p class="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-2">Today's
+                                        Prompt</p>
+                                    <p id="daily-prompt" class="text-base text-gray-800 dark:text-gray-100 font-medium">
+                                    </p>
+                                </div>
+                                <button type="button" id="view-all-prompts-btn"
+                                    class="px-3 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-blue-600 transition whitespace-nowrap">
+                                    View All
+                                </button>
+                            </div>
+                        </div>
+                        <div id="template-controls" class="flex flex-col sm:flex-row gap-3">
+                            <select id="template-selector"
+                                class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white text-sm shadow-sm">
+                                <option value="">— Select a template —</option>
+                                <option value="three-things">3 Things I'm Grateful For</option>
+                                <option value="challenge-gratitude">Gratitude from a Challenge</option>
+                                <option value="people">People I'm Grateful For</option>
+                                <option value="moments">Favorite Moments</option>
+                                <option value="health">Health & Wellness</option>
+                                <option value="reflection">Daily Reflection</option>
+                            </select>
+                            <button type="button" id="insert-template-btn"
+                                class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 font-medium text-sm transition">Insert
+                                Template</button>
+                        </div>
+                        <textarea id="gratitude-input" placeholder="What are you grateful for today?" required
+                            class="w-full min-h-[220px] px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white text-base shadow-sm resize-y placeholder:text-gray-400 dark:placeholder:text-gray-500"></textarea>
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <div id="autosave-status" class="text-xs text-gray-500 dark:text-gray-400 italic">Local
+                                autosave on
+                                (every
+                                10s). Cloud sync every 60s.</div>
+                            <div class="flex items-center gap-2 self-start sm:self-auto">
+                                <span id="save-draft-state"
+                                    class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300"
+                                    aria-live="polite">No changes</span>
+                                <button type="button" id="save-draft-btn"
+                                    class="px-3 py-1 rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 text-xs font-semibold transition">Save
+                                    Draft</button>
+                            </div>
+                        </div>
+                        <div id="daily-post-limit-notice"
+                            class="hidden rounded-xl border border-green-300 bg-green-50 px-4 py-3 text-sm font-semibold text-green-900 shadow-sm dark:border-green-700 dark:bg-green-900/30 dark:text-green-100">
+                            Your entry for today is saved. Add on to your current entry, or come back tomorrow to create
+                            a new gratitude entry.
+                        </div>
+                        <!-- Tags Input Section -->
+                        <div class="flex flex-col gap-2">
+                            <label for="tag-input" class="text-sm font-medium text-gray-700 dark:text-gray-300">Tags
+                                (optional)</label>
+                            <div class="flex gap-2">
+                                <input id="tag-input" type="text" placeholder="Add a tag..." list="tag-suggestion-list"
+                                    class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white text-sm shadow-sm" />
+                                <button type="button" id="add-tag-btn"
+                                    class="px-4 py-2 rounded-lg bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100 hover:bg-gray-400 dark:hover:bg-gray-500 font-medium text-sm transition">Add</button>
+                            </div>
+                            <div id="tags-display" class="flex flex-wrap gap-2"></div>
+                            <datalist id="tag-suggestion-list"></datalist>
+                        </div>
+                        <button type="submit" id="gratitude-submit-btn"
+                            class="mt-auto w-full bg-gradient-to-r from-primary to-blue-400 hover:from-blue-500 hover:to-blue-600 text-white font-bold py-3 px-4 rounded-xl transition text-base shadow">Save
+                            Entry</button>
+                    </form>
                 </div>
-                <div id="template-controls" class="flex flex-col sm:flex-row gap-3">
-                    <select id="template-selector"
-                        class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white text-sm shadow-sm">
-                        <option value="">— Select a template —</option>
-                        <option value="three-things">3 Things I'm Grateful For</option>
-                        <option value="challenge-gratitude">Gratitude from a Challenge</option>
-                        <option value="people">People I'm Grateful For</option>
-                        <option value="moments">Favorite Moments</option>
-                        <option value="health">Health & Wellness</option>
-                        <option value="reflection">Daily Reflection</option>
-                    </select>
-                    <button type="button" id="insert-template-btn"
-                        class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 font-medium text-sm transition">Insert
-                        Template</button>
-                </div>
-                <textarea id="gratitude-input" placeholder="What are you grateful for today?" required
-                    class="w-full min-h-[80px] px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white text-base shadow-sm resize-vertical placeholder:text-gray-400 dark:placeholder:text-gray-500"></textarea>
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <div id="autosave-status" class="text-xs text-gray-500 dark:text-gray-400 italic">Local autosave on
-                        (every
-                        10s). Cloud sync every 60s.</div>
-                    <div class="flex items-center gap-2 self-start sm:self-auto">
-                        <span id="save-draft-state"
-                            class="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300"
-                            aria-live="polite">No changes</span>
-                        <button type="button" id="save-draft-btn"
-                            class="px-3 py-1 rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 text-xs font-semibold transition">Save
-                            Draft</button>
-                    </div>
-                </div>
-                <div id="daily-post-limit-notice"
-                    class="hidden rounded-xl border border-green-300 bg-green-50 px-4 py-3 text-sm font-semibold text-green-900 shadow-sm dark:border-green-700 dark:bg-green-900/30 dark:text-green-100">
-                    Your entry for today is saved. Add on to your current entry, or come back tomorrow to create
-                    a new gratitude entry.
-                </div>
-                <!-- Tags Input Section -->
-                <div class="flex flex-col gap-2">
-                    <label for="tag-input" class="text-sm font-medium text-gray-700 dark:text-gray-300">Tags
-                        (optional)</label>
-                    <div class="flex gap-2">
-                        <input id="tag-input" type="text" placeholder="Add a tag..." list="tag-suggestion-list"
-                            class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white text-sm shadow-sm" />
-                        <button type="button" id="add-tag-btn"
-                            class="px-4 py-2 rounded-lg bg-gray-300 dark:bg-gray-600 text-gray-800 dark:text-gray-100 hover:bg-gray-400 dark:hover:bg-gray-500 font-medium text-sm transition">Add</button>
-                    </div>
-                    <div id="tags-display" class="flex flex-wrap gap-2"></div>
-                    <datalist id="tag-suggestion-list"></datalist>
-                </div>
-                <button type="submit" id="gratitude-submit-btn"
-                    class="w-full bg-gradient-to-r from-primary to-blue-400 hover:from-blue-500 hover:to-blue-600 text-white font-bold py-2 px-4 rounded-xl transition text-base shadow">Save
-                    Entry</button>
-            </form>
+            </div>
             <h2 class="text-xl font-bold text-gray-700 dark:text-gray-200 mb-4">Your Entries</h2>
             <div class="md:sticky md:top-0 md:z-40 md:bg-white md:dark:bg-gray-900 md:pt-3 pb-3 space-y-3">
                 <input id="search-input" type="text" placeholder="Search entries..."
@@ -583,517 +612,526 @@
         <script src="prompts.js"></script>
         <script src="templates.js"></script>
         <script src="app.js"></script>
-        <!-- Privacy Notice Modal -->
-        <div id="privacy-modal"
-            class="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 hidden p-4 pt-6"
-            role="dialog" aria-modal="true" aria-labelledby="privacy-title">
-            <div
-                class="bg-white dark:bg-darkcard rounded-lg shadow-lg max-w-lg w-full p-6 relative my-4 max-h-[90vh] overflow-y-auto">
-                <h2 id="privacy-title" class="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">Privacy Notice
-                </h2>
-                <div class="text-gray-700 dark:text-gray-200 text-sm mb-4 max-h-64 overflow-y-auto">
-                    <p><strong>Data Encryption:</strong> Your journal entries are encrypted in your browser using your
-                        password before being sent to Firebase. Only you can decrypt your data; no one (including the
-                        app
-                        creator) can read your entries without your password.</p>
-                    <p><strong>Storage:</strong> Encrypted data is stored in Google Firebase. The app does not store or
-                        transmit your password.</p>
-                    <p><strong>Account Deletion:</strong> You can delete your account and all associated data at any
-                        time
-                        from the app interface.</p>
-                    <p><strong>Security Notice:</strong> While strong encryption (AES) is used, your password is the
-                        key.
-                        Choose a strong password and keep it safe. If you lose your password, you may reset it.
-                    </p>
-                    <p><strong>Analytics:</strong> This app does not use analytics, tracking, or advertising.</p>
-                </div>
-                <button id="close-privacy-btn"
-                    class="px-4 py-2 bg-primary text-white rounded hover:bg-blue-600">Close</button>
+    </div>
+    <div class="entry-composer-island" aria-label="Entry composer">
+        <div class="entry-composer-pill">
+            <div class="entry-composer-copy">
+                <span class="entry-composer-label">New entry</span>
+                <span class="entry-composer-subtitle">Open the full-page composer</span>
             </div>
+            <button type="button" id="open-entry-composer-btn" class="entry-composer-fab"
+                aria-label="Open gratitude composer">
+                <span aria-hidden="true">+</span>
+            </button>
         </div>
-        <!-- PDF Settings Modal -->
-        <div id="pdf-settings-modal"
-            class="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center p-4 pt-6 hidden" role="dialog"
-            aria-modal="true" aria-labelledby="pdf-settings-title" style="z-index: 9999;">
-            <div
-                class="bg-white dark:bg-darkcard rounded-2xl p-6 shadow-2xl w-full max-w-4xl border border-gray-200 dark:border-gray-700 mx-2 my-4 max-h-[90vh] overflow-y-auto">
-                <h2 id="pdf-settings-title" class="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">PDF Settings
-                </h2>
-                <div id="pdf-settings-error"
-                    class="hidden mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg text-red-700 dark:text-red-300 text-sm">
-                </div>
-                <div class="space-y-4 text-sm">
-                    <div>
-                        <label for="pdf-page-size" class="block font-medium text-gray-700 dark:text-gray-200 mb-1">Page
-                            Size</label>
-                        <select id="pdf-page-size"
-                            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-                            <option value="letter">Letter</option>
-                            <option value="a4">A4</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="pdf-orientation"
-                            class="block font-medium text-gray-700 dark:text-gray-200 mb-1">Orientation</label>
-                        <select id="pdf-orientation"
-                            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-                            <option value="portrait">Portrait</option>
-                            <option value="landscape">Landscape</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="pdf-margin"
-                            class="block font-medium text-gray-700 dark:text-gray-200 mb-1">Margins</label>
-                        <select id="pdf-margin"
-                            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-                            <option value="5">Small (5 mm)</option>
-                            <option value="10">Medium (10 mm)</option>
-                            <option value="15">Large (15 mm)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="pdf-custom-title"
-                            class="block font-medium text-gray-700 dark:text-gray-200 mb-1">Title/Name
-                            (optional)</label>
-                        <input id="pdf-custom-title" type="text" placeholder="e.g., Jane Doe — Gratitude Journal"
-                            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
-                    </div>
-
-                    <div>
-                        <label for="pdf-layout" class="block font-medium text-gray-700 dark:text-gray-200 mb-1">Layout
-                            Density</label>
-                        <select id="pdf-layout"
-                            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-                            <option value="comfortable">Comfortable</option>
-                            <option value="compact">Compact</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="pdf-date-from" class="block font-medium text-gray-700 dark:text-gray-200 mb-1">Date
-                            Range (From)</label>
-                        <input id="pdf-date-from" type="date"
-                            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
-                    </div>
-                    <div>
-                        <label for="pdf-date-to" class="block font-medium text-gray-700 dark:text-gray-200 mb-1">Date
-                            Range
-                            (To)</label>
-                        <input id="pdf-date-to" type="date"
-                            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <input type="checkbox" id="pdf-show-header"
-                            class="rounded border-gray-300 dark:border-gray-600">
-                        <label for="pdf-show-header" class="text-gray-700 dark:text-gray-200">Show date range
-                            header</label>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <input type="checkbox" id="pdf-color-style"
-                            class="rounded border-gray-300 dark:border-gray-600">
-                        <label for="pdf-color-style" class="text-gray-700 dark:text-gray-200">Color PDF</label>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <input type="checkbox" id="pdf-favorites-only"
-                            class="rounded border-gray-300 dark:border-gray-600">
-                        <label for="pdf-favorites-only" class="text-gray-700 dark:text-gray-200">Favorites only</label>
-                    </div>
-                    <div class="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
-                        <h3 class="font-semibold text-gray-800 dark:text-gray-100 mb-2">Book Mode</h3>
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="pdf-book-mode"
-                                class="rounded border-gray-300 dark:border-gray-600">
-                            <label for="pdf-book-mode" class="text-gray-700 dark:text-gray-200">Book mode (nice for
-                                printing)</label>
-                        </div>
-                        <div class="flex items-center gap-2 mt-2 ml-6">
-                            <input type="checkbox" id="pdf-two-column"
-                                class="rounded border-gray-300 dark:border-gray-600" disabled>
-                            <label for="pdf-two-column" class="text-gray-700 dark:text-gray-200">Two columns per
-                                page</label>
-                        </div>
-                    </div>
-                </div>
-                <div
-                    class="flex justify-end gap-3 mt-6 pt-4 bg-white dark:bg-darkcard border-t border-gray-200 dark:border-gray-700 -mx-6 px-6 -mb-6 pb-6">
-                    <button id="pdf-settings-defaults"
-                        class="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600">Reset
-                        to Defaults</button>
-                    <button id="pdf-settings-cancel"
-                        class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600">Cancel</button>
-                    <button id="pdf-settings-save"
-                        class="px-4 py-2 rounded-lg bg-primary text-white hover:bg-blue-600 font-semibold">Save</button>
-                </div>
+    </div>
+    <!-- Privacy Notice Modal -->
+    <div id="privacy-modal"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 hidden p-4 pt-6" role="dialog"
+        aria-modal="true" aria-labelledby="privacy-title">
+        <div
+            class="bg-white dark:bg-darkcard rounded-lg shadow-lg max-w-lg w-full p-6 relative my-4 max-h-[90vh] overflow-y-auto">
+            <h2 id="privacy-title" class="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">Privacy Notice
+            </h2>
+            <div class="text-gray-700 dark:text-gray-200 text-sm mb-4 max-h-64 overflow-y-auto">
+                <p><strong>Data Encryption:</strong> Your journal entries are encrypted in your browser using your
+                    password before being sent to Firebase. Only you can decrypt your data; no one (including the
+                    app
+                    creator) can read your entries without your password.</p>
+                <p><strong>Storage:</strong> Encrypted data is stored in Google Firebase. The app does not store or
+                    transmit your password.</p>
+                <p><strong>Account Deletion:</strong> You can delete your account and all associated data at any
+                    time
+                    from the app interface.</p>
+                <p><strong>Security Notice:</strong> While strong encryption (AES) is used, your password is the
+                    key.
+                    Choose a strong password and keep it safe. If you lose your password, you may reset it.
+                </p>
+                <p><strong>Analytics:</strong> This app does not use analytics, tracking, or advertising.</p>
             </div>
+            <button id="close-privacy-btn"
+                class="px-4 py-2 bg-primary text-white rounded hover:bg-blue-600">Close</button>
         </div>
-        <!-- Settings Modal -->
-        <div id="settings-modal"
-            class="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center z-50 hidden p-4 pt-6"
-            role="dialog" aria-modal="true" aria-labelledby="settings-title">
-            <div
-                class="bg-white dark:bg-darkcard rounded-2xl shadow-2xl w-full max-w-2xl border border-gray-200 dark:border-gray-700 mx-2 my-4 max-h-[90vh] overflow-hidden flex flex-col">
-                <!-- Header -->
-                <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-                    <h2 id="settings-title" class="text-xl font-bold text-gray-800 dark:text-white">Settings</h2>
-                    <button id="settings-close" class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-800 transition">
-                        <svg class="w-6 h-6 text-gray-800 dark:text-white" fill="none" stroke="currentColor"
-                            viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
-                </div>
-                <!-- Tabs Container with Scroll Support -->
-                <div class="settings-tabs-container border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 overflow-x-auto px-4 py-2"
-                    role="tablist">
-                    <div class="flex flex-nowrap gap-3">
-                        <button
-                            class="settings-tab flex-shrink-0 min-w-max px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 border-b-2 border-transparent hover:border-primary transition snap-center"
-                            data-tab-name="general" aria-selected="true" role="tab">
-                            General
-                        </button>
-                        <button
-                            class="settings-tab flex-shrink-0 min-w-max px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 border-b-2 border-transparent hover:border-primary transition snap-center"
-                            data-tab-name="journaling" aria-selected="false" role="tab">
-                            Journaling
-                        </button>
-                        <button
-                            class="settings-tab flex-shrink-0 min-w-max px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 border-b-2 border-transparent hover:border-primary transition snap-center"
-                            data-tab-name="privacy" aria-selected="false" role="tab">
-                            Privacy
-                        </button>
-                        <button
-                            class="settings-tab flex-shrink-0 min-w-max px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 border-b-2 border-transparent hover:border-primary transition snap-center"
-                            data-tab-name="tags" aria-selected="false" role="tab">
-                            Tags
-                        </button>
-                        <button
-                            class="settings-tab flex-shrink-0 min-w-max px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 border-b-2 border-transparent hover:border-primary transition snap-center"
-                            data-tab-name="notifications" aria-selected="false" role="tab">
-                            Notifications
-                        </button>
-                    </div>
-                </div>
-                <!-- Tab Content -->
-                <div class="flex-1 overflow-y-auto p-6 space-y-6">
-                    <!-- General Tab -->
-                    <div class="settings-tab-content" data-tab-name="general">
-                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">General Settings</h3>
-                        <!-- Font Size -->
-                        <div class="space-y-2">
-                            <label for="font-size-select"
-                                class="block text-sm font-medium text-gray-700 dark:text-gray-300">Font Size</label>
-                            <select id="font-size-select"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white">
-                                <option value="small">Small</option>
-                                <option value="normal" selected>Normal</option>
-                                <option value="large">Large</option>
-                            </select>
-                        </div>
-                        <!-- Date Format -->
-                        <div class="space-y-2 mt-4">
-                            <label for="date-format-select"
-                                class="block text-sm font-medium text-gray-700 dark:text-gray-300">Date Format</label>
-                            <select id="date-format-select"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white">
-                                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                                <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                                <option value="relative" selected>Relative (2 days ago)</option>
-                            </select>
-                        </div>
-                        <!-- Sort Order -->
-                        <div class="space-y-2 mt-4">
-                            <label for="sort-order-select"
-                                class="block text-sm font-medium text-gray-700 dark:text-gray-300">Sort Entries</label>
-                            <select id="sort-order-select"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white">
-                                <option value="newest">Newest First</option>
-                                <option value="oldest">Oldest First</option>
-                                <option value="alphabetical">Alphabetical</option>
-                            </select>
-                        </div>
-                        <!-- Simple View -->
-                        <div class="space-y-2 mt-4">
-                            <label class="flex items-center gap-3 cursor-pointer">
-                                <input type="checkbox" id="simple-view-toggle"
-                                    class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary">
-                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Simple View</span>
-                            </label>
-                            <p class="text-xs text-gray-600 dark:text-gray-400">Focus on journaling by hiding filters,
-                                search, and other features</p>
-                        </div>
-                    </div>
-                    <!-- Journaling Tab -->
-                    <div class="settings-tab-content hidden" data-tab-name="journaling">
-                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Journaling Features</h3>
-                        <!-- Gratitude Prompts -->
-                        <div id="prompts-toggle-section" class="space-y-2 mt-4">
-                            <label class="flex items-center gap-3 cursor-pointer">
-                                <input type="checkbox" id="prompts-toggle" checked
-                                    class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary">
-                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Show Gratitude
-                                    Prompts</span>
-                            </label>
-                            <p class="text-xs text-gray-600 dark:text-gray-400 mb-3">Daily prompts to inspire your
-                                writing.</p>
-                            <p id="prompts-toggle-disabled-reason"
-                                class="text-xs text-amber-600 dark:text-amber-400 font-medium hidden">⚠️ Disabled when
-                                Simple View is enabled</p>
-                        </div>
-                        <!-- Entry Templates -->
-                        <div id="templates-toggle-section" class="space-y-2 mt-4">
-                            <label class="flex items-center gap-3 cursor-pointer">
-                                <input type="checkbox" id="templates-toggle" checked
-                                    class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary">
-                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Show Entry
-                                    Templates</span>
-                            </label>
-                            <p class="text-xs text-gray-600 dark:text-gray-400 mb-3">Pre-made layouts to guide your
-                                writing. Select one and insert before writing your entry.</p>
-                            <p id="templates-toggle-disabled-reason"
-                                class="text-xs text-amber-600 dark:text-amber-400 font-medium hidden">⚠️ Disabled when
-                                Simple View is enabled</p>
-                        </div>
-                    </div>
-                    <!-- Privacy Tab -->
-                    <div class="settings-tab-content hidden" data-tab-name="privacy">
-                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Privacy & Account</h3>
-                        <!-- Change Password -->
-                        <button id="change-password-btn"
-                            class="w-full text-left px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition border border-gray-300 dark:border-gray-700">
-                            <span class="font-medium text-gray-800 dark:text-white">Change Password</span>
-                            <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Update your account password</p>
-                        </button>
-                        <!-- Clear Cache -->
-                        <button id="clear-cache-btn"
-                            class="w-full text-left px-4 py-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/30 hover:bg-yellow-100 dark:hover:bg-yellow-900/50 transition border border-yellow-300 dark:border-yellow-700 mt-4">
-                            <span class="font-medium text-yellow-800 dark:text-yellow-200">Clear Local Cache</span>
-                            <p class="text-xs text-yellow-700 dark:text-yellow-300 mt-1">Remove offline entries from
-                                this device</p>
-                        </button>
-                        <!-- Delete Account -->
-                        <button id="delete-account-from-settings"
-                            class="w-full text-left px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 transition border border-red-300 dark:border-red-700 mt-4">
-                            <span class="font-medium text-red-700 dark:text-red-300">Delete Account</span>
-                            <p class="text-xs text-red-600 dark:text-red-400 mt-1">Permanently delete your account and
-                                all data</p>
-                        </button>
-                    </div>
-                    <!-- Tags Tab -->
-                    <div class="settings-tab-content hidden" data-tab-name="tags">
-                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Tag Management</h3>
-                        <!-- Enable Tags Toggle -->
-                        <div id="tags-toggle-section" class="space-y-2 mb-6">
-                            <label class="flex items-center gap-3 cursor-pointer">
-                                <input type="checkbox" id="tags-toggle" checked
-                                    class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary">
-                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Enable Tags for
-                                    Entries</span>
-                            </label>
-                            <p class="text-xs text-gray-600 dark:text-gray-400">Turn off to hide all tag-related
-                                features</p>
-                            <p id="tags-toggle-disabled-reason"
-                                class="text-xs text-amber-600 dark:text-amber-400 font-medium hidden">⚠️ Disabled when
-                                Simple View is enabled</p>
-                        </div>
-                        <div class="border-t border-gray-200 dark:border-gray-700 my-4"></div>
-                        <!-- Tag Management Section (hidden when tags disabled) -->
-                        <div id="tags-management-section">
-                            <h4 class="text-sm font-semibold text-gray-800 dark:text-white mb-3 mt-4">All Tags</h4>
-                            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">View and manage all tags used in
-                                your
-                                entries.</p>
-                            <div id="tags-management-list" class="space-y-2">
-                                <!-- Tags will be dynamically populated here -->
-                                <p class="text-gray-500 dark:text-gray-400 text-sm">No tags yet. Add tags to entries to
-                                    manage them here.</p>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- Notifications Tab -->
-                    <div class="settings-tab-content hidden" data-tab-name="notifications">
-                        <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Notification Preferences
-                        </h3>
-                        <!-- Daily Reminders -->
-                        <div class="space-y-2">
-                            <label class="flex items-center gap-3 cursor-pointer">
-                                <input type="checkbox" id="reminder-toggle"
-                                    class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary">
-                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Enable Daily
-                                    Reminders</span>
-                            </label>
-                        </div>
-                        <!-- Reminder Time -->
-                        <div class="space-y-2 mt-4">
-                            <label for="reminder-time-input"
-                                class="block text-sm font-medium text-gray-700 dark:text-gray-300">Reminder Time</label>
-                            <input id="reminder-time-input" type="time" value="18:00"
-                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white"
-                                disabled>
-                            <button id="test-reminder-btn" type="button"
-                                class="mt-2 px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 font-medium disabled:opacity-60 disabled:cursor-not-allowed"
-                                disabled>Send Test Notification</button>
-                        </div>
-                    </div>
-                </div>
-                <!-- Footer -->
-                <div
-                    class="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-                    <button id="settings-cancel"
-                        class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600">Cancel</button>
-                    <button id="settings-save"
-                        class="px-4 py-2 rounded-lg bg-primary text-white hover:bg-blue-600 font-semibold">Save</button>
-                </div>
+    </div>
+    <!-- PDF Settings Modal -->
+    <div id="pdf-settings-modal"
+        class="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center p-4 pt-6 hidden" role="dialog"
+        aria-modal="true" aria-labelledby="pdf-settings-title" style="z-index: 9999;">
+        <div
+            class="bg-white dark:bg-darkcard rounded-2xl p-6 shadow-2xl w-full max-w-4xl border border-gray-200 dark:border-gray-700 mx-2 my-4 max-h-[90vh] overflow-y-auto">
+            <h2 id="pdf-settings-title" class="text-xl font-bold mb-4 text-gray-800 dark:text-gray-100">PDF Settings
+            </h2>
+            <div id="pdf-settings-error"
+                class="hidden mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg text-red-700 dark:text-red-300 text-sm">
             </div>
-        </div>
-        <!-- Change Password Modal -->
-        <div id="change-password-modal"
-            class="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center z-50 hidden p-4 pt-6"
-            role="dialog" aria-modal="true" aria-labelledby="change-password-title">
-            <div
-                class="bg-white dark:bg-darkcard rounded-2xl p-6 shadow-2xl w-full max-w-md border border-gray-200 dark:border-gray-700 mx-2 my-4 max-h-[90vh] overflow-y-auto">
-                <h2 id="change-password-title" class="text-xl font-bold mb-2 text-gray-800 dark:text-white">Change
-                    Password</h2>
-                <p class="text-sm text-gray-700 dark:text-gray-200 mb-4">Your existing entries will be re-encrypted with
-                    the new password.</p>
-
-                <div class="space-y-3">
-                    <!-- Current Password -->
-                    <div class="space-y-1">
-                        <label for="current-password-input"
-                            class="block text-sm font-medium text-gray-700 dark:text-gray-300">Current Password</label>
-                        <input id="current-password-input" type="password" autocomplete="current-password"
-                            placeholder="Enter current password"
-                            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary" />
-                    </div>
-
-                    <!-- New Password -->
-                    <div class="space-y-1">
-                        <label for="new-password-input"
-                            class="block text-sm font-medium text-gray-700 dark:text-gray-300">New Password</label>
-                        <input id="new-password-input" type="password" autocomplete="new-password"
-                            placeholder="Enter new password"
-                            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary" />
-                    </div>
-
-                    <!-- Confirm Password -->
-                    <div class="space-y-1">
-                        <label for="confirm-password-input"
-                            class="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirm New
-                            Password</label>
-                        <input id="confirm-password-input" type="password" autocomplete="new-password"
-                            placeholder="Confirm new password"
-                            class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary" />
-                    </div>
+            <div class="space-y-4 text-sm">
+                <div>
+                    <label for="pdf-page-size" class="block font-medium text-gray-700 dark:text-gray-200 mb-1">Page
+                        Size</label>
+                    <select id="pdf-page-size"
+                        class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                        <option value="letter">Letter</option>
+                        <option value="a4">A4</option>
+                    </select>
                 </div>
-
-                <!-- Error Message -->
-                <div id="change-password-error"
-                    class="hidden mt-3 p-2 rounded border text-sm border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+                <div>
+                    <label for="pdf-orientation"
+                        class="block font-medium text-gray-700 dark:text-gray-200 mb-1">Orientation</label>
+                    <select id="pdf-orientation"
+                        class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                        <option value="portrait">Portrait</option>
+                        <option value="landscape">Landscape</option>
+                    </select>
                 </div>
-
-                <!-- Processing Indicator -->
-                <div id="change-password-processing"
-                    class="hidden mt-3 text-center text-sm text-gray-600 dark:text-gray-400">
-                    <div class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
-                    Processing...
+                <div>
+                    <label for="pdf-margin"
+                        class="block font-medium text-gray-700 dark:text-gray-200 mb-1">Margins</label>
+                    <select id="pdf-margin"
+                        class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                        <option value="5">Small (5 mm)</option>
+                        <option value="10">Medium (10 mm)</option>
+                        <option value="15">Large (15 mm)</option>
+                    </select>
                 </div>
-
-                <div class="flex justify-end gap-3 mt-5">
-                    <button id="change-password-cancel"
-                        class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 font-medium">Cancel</button>
-                    <button id="change-password-submit"
-                        class="px-4 py-2 rounded-lg bg-primary text-white hover:bg-blue-600 font-semibold transition">Change
-                        Password</button>
-                </div>
-            </div>
-        </div>
-        <!-- Delete Account Modal -->
-        <div id="delete-account-modal"
-            class="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center z-50 hidden p-4 pt-6"
-            role="dialog" aria-modal="true" aria-labelledby="delete-account-title">
-            <div
-                class="bg-white dark:bg-darkcard rounded-2xl p-6 shadow-2xl w-full max-w-md border border-gray-200 dark:border-gray-700 mx-2 my-4 max-h-[90vh] overflow-y-auto">
-                <h2 id="delete-account-title" class="text-xl font-bold mb-2 text-red-600 dark:text-red-400">Delete
-                    Account</h2>
-                <p class="text-sm text-gray-700 dark:text-gray-200 mb-2">This will permanently delete your account and
-                    all journal entries. This action cannot be undone.</p>
-                <div class="mb-4 text-sm text-gray-700 dark:text-gray-200">
-                    <ul class="list-disc ml-5 space-y-1">
-                        <li>Entries to delete: <span id="delete-account-summary-entries" class="font-semibold">0</span>
-                        </li>
-                        <li>Favorites: <span id="delete-account-summary-favorites" class="font-semibold">0</span></li>
-                        <li>Offline entries will be removed</li>
-                    </ul>
-                </div>
-
-                <!-- Email/password reauth -->
-                <div id="delete-account-password-group" class="space-y-2 hidden">
-                    <label for="delete-account-password"
-                        class="block text-sm font-medium text-gray-700 dark:text-gray-200">Confirm your password</label>
-                    <input id="delete-account-password" type="password" autocomplete="current-password"
-                        placeholder="Password"
+                <div>
+                    <label for="pdf-custom-title"
+                        class="block font-medium text-gray-700 dark:text-gray-200 mb-1">Title/Name
+                        (optional)</label>
+                    <input id="pdf-custom-title" type="text" placeholder="e.g., Jane Doe — Gratitude Journal"
                         class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
                 </div>
 
-                <!-- Provider reauth (e.g., Google) -->
-                <div id="delete-account-reauth-group" class="space-y-2 hidden">
-                    <p class="text-sm text-gray-700 dark:text-gray-200">You'll need to sign in again to continue.</p>
-                    <button id="delete-account-reauth-btn"
-                        class="w-full px-4 py-2 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 font-semibold">Sign
-                        In</button>
+                <div>
+                    <label for="pdf-layout" class="block font-medium text-gray-700 dark:text-gray-200 mb-1">Layout
+                        Density</label>
+                    <select id="pdf-layout"
+                        class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                        <option value="comfortable">Comfortable</option>
+                        <option value="compact">Compact</option>
+                    </select>
                 </div>
-
-                <div id="delete-account-error"
-                    class="hidden mt-3 p-2 rounded border text-sm border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+                <div>
+                    <label for="pdf-date-from" class="block font-medium text-gray-700 dark:text-gray-200 mb-1">Date
+                        Range (From)</label>
+                    <input id="pdf-date-from" type="date"
+                        class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
                 </div>
-
-                <div class="flex justify-end gap-3 mt-5">
-                    <button id="delete-account-cancel"
-                        class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600">Cancel</button>
-                    <button id="delete-account-confirm"
-                        class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-semibold">Delete
-                        Account</button>
+                <div>
+                    <label for="pdf-date-to" class="block font-medium text-gray-700 dark:text-gray-200 mb-1">Date
+                        Range
+                        (To)</label>
+                    <input id="pdf-date-to" type="date"
+                        class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
                 </div>
-            </div>
-        </div>
-        <!-- Account Deleted Modal -->
-        <div id="account-deleted-modal"
-            class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] hidden" role="dialog"
-            aria-modal="true" aria-labelledby="account-deleted-title">
-            <div
-                class="bg-white dark:bg-darkcard rounded-2xl p-8 shadow-2xl w-full max-w-md border border-gray-200 dark:border-gray-700 mx-4 text-center">
-                <div class="mb-4 flex justify-center">
-                    <div class="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
-                        <svg class="w-8 h-8 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd"></path>
-                        </svg>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="pdf-show-header" class="rounded border-gray-300 dark:border-gray-600">
+                    <label for="pdf-show-header" class="text-gray-700 dark:text-gray-200">Show date range
+                        header</label>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="pdf-color-style" class="rounded border-gray-300 dark:border-gray-600">
+                    <label for="pdf-color-style" class="text-gray-700 dark:text-gray-200">Color PDF</label>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="pdf-favorites-only" class="rounded border-gray-300 dark:border-gray-600">
+                    <label for="pdf-favorites-only" class="text-gray-700 dark:text-gray-200">Favorites only</label>
+                </div>
+                <div class="border-t border-gray-200 dark:border-gray-700 pt-3 mt-3">
+                    <h3 class="font-semibold text-gray-800 dark:text-gray-100 mb-2">Book Mode</h3>
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" id="pdf-book-mode" class="rounded border-gray-300 dark:border-gray-600">
+                        <label for="pdf-book-mode" class="text-gray-700 dark:text-gray-200">Book mode (nice for
+                            printing)</label>
+                    </div>
+                    <div class="flex items-center gap-2 mt-2 ml-6">
+                        <input type="checkbox" id="pdf-two-column" class="rounded border-gray-300 dark:border-gray-600"
+                            disabled>
+                        <label for="pdf-two-column" class="text-gray-700 dark:text-gray-200">Two columns per
+                            page</label>
                     </div>
                 </div>
-                <h2 id="account-deleted-title" class="text-2xl font-bold mb-2 text-red-600 dark:text-red-400">Account
-                    Deleted</h2>
-                <p class="text-gray-700 dark:text-gray-200 mb-6">Your account and all journal entries have been
-                    permanently deleted.</p>
-                <button id="account-deleted-close"
-                    class="w-full px-4 py-2 rounded-lg bg-primary hover:bg-blue-600 text-white font-semibold transition">
-                    OK
+            </div>
+            <div
+                class="flex justify-end gap-3 mt-6 pt-4 bg-white dark:bg-darkcard border-t border-gray-200 dark:border-gray-700 -mx-6 px-6 -mb-6 pb-6">
+                <button id="pdf-settings-defaults"
+                    class="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600">Reset
+                    to Defaults</button>
+                <button id="pdf-settings-cancel"
+                    class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600">Cancel</button>
+                <button id="pdf-settings-save"
+                    class="px-4 py-2 rounded-lg bg-primary text-white hover:bg-blue-600 font-semibold">Save</button>
+            </div>
+        </div>
+    </div>
+    <!-- Settings Modal -->
+    <div id="settings-modal"
+        class="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center z-50 hidden p-4 pt-6" role="dialog"
+        aria-modal="true" aria-labelledby="settings-title">
+        <div
+            class="bg-white dark:bg-darkcard rounded-2xl shadow-2xl w-full max-w-2xl border border-gray-200 dark:border-gray-700 mx-2 my-4 max-h-[90vh] overflow-hidden flex flex-col">
+            <!-- Header -->
+            <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+                <h2 id="settings-title" class="text-xl font-bold text-gray-800 dark:text-white">Settings</h2>
+                <button id="settings-close" class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-800 transition">
+                    <svg class="w-6 h-6 text-gray-800 dark:text-white" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
                 </button>
             </div>
-        </div>
-        <!-- Loading overlay for entry fetches -->
-        <div id="loading-overlay" role="status" aria-live="polite"
-            class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <!-- Tabs Container with Scroll Support -->
+            <div class="settings-tabs-container border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 overflow-x-auto px-4 py-2"
+                role="tablist">
+                <div class="flex flex-nowrap gap-3">
+                    <button
+                        class="settings-tab flex-shrink-0 min-w-max px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 border-b-2 border-transparent hover:border-primary transition snap-center"
+                        data-tab-name="general" aria-selected="true" role="tab">
+                        General
+                    </button>
+                    <button
+                        class="settings-tab flex-shrink-0 min-w-max px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 border-b-2 border-transparent hover:border-primary transition snap-center"
+                        data-tab-name="journaling" aria-selected="false" role="tab">
+                        Journaling
+                    </button>
+                    <button
+                        class="settings-tab flex-shrink-0 min-w-max px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 border-b-2 border-transparent hover:border-primary transition snap-center"
+                        data-tab-name="privacy" aria-selected="false" role="tab">
+                        Privacy
+                    </button>
+                    <button
+                        class="settings-tab flex-shrink-0 min-w-max px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 border-b-2 border-transparent hover:border-primary transition snap-center"
+                        data-tab-name="tags" aria-selected="false" role="tab">
+                        Tags
+                    </button>
+                    <button
+                        class="settings-tab flex-shrink-0 min-w-max px-4 py-3 font-semibold text-gray-700 dark:text-gray-300 border-b-2 border-transparent hover:border-primary transition snap-center"
+                        data-tab-name="notifications" aria-selected="false" role="tab">
+                        Notifications
+                    </button>
+                </div>
+            </div>
+            <!-- Tab Content -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                <!-- General Tab -->
+                <div class="settings-tab-content" data-tab-name="general">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">General Settings</h3>
+                    <!-- Font Size -->
+                    <div class="space-y-2">
+                        <label for="font-size-select"
+                            class="block text-sm font-medium text-gray-700 dark:text-gray-300">Font Size</label>
+                        <select id="font-size-select"
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white">
+                            <option value="small">Small</option>
+                            <option value="normal" selected>Normal</option>
+                            <option value="large">Large</option>
+                        </select>
+                    </div>
+                    <!-- Date Format -->
+                    <div class="space-y-2 mt-4">
+                        <label for="date-format-select"
+                            class="block text-sm font-medium text-gray-700 dark:text-gray-300">Date Format</label>
+                        <select id="date-format-select"
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white">
+                            <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                            <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                            <option value="relative" selected>Relative (2 days ago)</option>
+                        </select>
+                    </div>
+                    <!-- Sort Order -->
+                    <div class="space-y-2 mt-4">
+                        <label for="sort-order-select"
+                            class="block text-sm font-medium text-gray-700 dark:text-gray-300">Sort Entries</label>
+                        <select id="sort-order-select"
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white">
+                            <option value="newest">Newest First</option>
+                            <option value="oldest">Oldest First</option>
+                            <option value="alphabetical">Alphabetical</option>
+                        </select>
+                    </div>
+                    <!-- Simple View -->
+                    <div class="space-y-2 mt-4">
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="simple-view-toggle"
+                                class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Simple View</span>
+                        </label>
+                        <p class="text-xs text-gray-600 dark:text-gray-400">Focus on journaling by hiding filters,
+                            search, and other features</p>
+                    </div>
+                </div>
+                <!-- Journaling Tab -->
+                <div class="settings-tab-content hidden" data-tab-name="journaling">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Journaling Features</h3>
+                    <!-- Gratitude Prompts -->
+                    <div id="prompts-toggle-section" class="space-y-2 mt-4">
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="prompts-toggle" checked
+                                class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Show Gratitude
+                                Prompts</span>
+                        </label>
+                        <p class="text-xs text-gray-600 dark:text-gray-400 mb-3">Daily prompts to inspire your
+                            writing.</p>
+                        <p id="prompts-toggle-disabled-reason"
+                            class="text-xs text-amber-600 dark:text-amber-400 font-medium hidden">⚠️ Disabled when
+                            Simple View is enabled</p>
+                    </div>
+                    <!-- Entry Templates -->
+                    <div id="templates-toggle-section" class="space-y-2 mt-4">
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="templates-toggle" checked
+                                class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Show Entry
+                                Templates</span>
+                        </label>
+                        <p class="text-xs text-gray-600 dark:text-gray-400 mb-3">Pre-made layouts to guide your
+                            writing. Select one and insert before writing your entry.</p>
+                        <p id="templates-toggle-disabled-reason"
+                            class="text-xs text-amber-600 dark:text-amber-400 font-medium hidden">⚠️ Disabled when
+                            Simple View is enabled</p>
+                    </div>
+                </div>
+                <!-- Privacy Tab -->
+                <div class="settings-tab-content hidden" data-tab-name="privacy">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Privacy & Account</h3>
+                    <!-- Change Password -->
+                    <button id="change-password-btn"
+                        class="w-full text-left px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition border border-gray-300 dark:border-gray-700">
+                        <span class="font-medium text-gray-800 dark:text-white">Change Password</span>
+                        <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">Update your account password</p>
+                    </button>
+                    <!-- Clear Cache -->
+                    <button id="clear-cache-btn"
+                        class="w-full text-left px-4 py-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/30 hover:bg-yellow-100 dark:hover:bg-yellow-900/50 transition border border-yellow-300 dark:border-yellow-700 mt-4">
+                        <span class="font-medium text-yellow-800 dark:text-yellow-200">Clear Local Cache</span>
+                        <p class="text-xs text-yellow-700 dark:text-yellow-300 mt-1">Remove offline entries from
+                            this device</p>
+                    </button>
+                    <!-- Delete Account -->
+                    <button id="delete-account-from-settings"
+                        class="w-full text-left px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 transition border border-red-300 dark:border-red-700 mt-4">
+                        <span class="font-medium text-red-700 dark:text-red-300">Delete Account</span>
+                        <p class="text-xs text-red-600 dark:text-red-400 mt-1">Permanently delete your account and
+                            all data</p>
+                    </button>
+                </div>
+                <!-- Tags Tab -->
+                <div class="settings-tab-content hidden" data-tab-name="tags">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Tag Management</h3>
+                    <!-- Enable Tags Toggle -->
+                    <div id="tags-toggle-section" class="space-y-2 mb-6">
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="tags-toggle" checked
+                                class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Enable Tags for
+                                Entries</span>
+                        </label>
+                        <p class="text-xs text-gray-600 dark:text-gray-400">Turn off to hide all tag-related
+                            features</p>
+                        <p id="tags-toggle-disabled-reason"
+                            class="text-xs text-amber-600 dark:text-amber-400 font-medium hidden">⚠️ Disabled when
+                            Simple View is enabled</p>
+                    </div>
+                    <div class="border-t border-gray-200 dark:border-gray-700 my-4"></div>
+                    <!-- Tag Management Section (hidden when tags disabled) -->
+                    <div id="tags-management-section">
+                        <h4 class="text-sm font-semibold text-gray-800 dark:text-white mb-3 mt-4">All Tags</h4>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">View and manage all tags used in
+                            your
+                            entries.</p>
+                        <div id="tags-management-list" class="space-y-2">
+                            <!-- Tags will be dynamically populated here -->
+                            <p class="text-gray-500 dark:text-gray-400 text-sm">No tags yet. Add tags to entries to
+                                manage them here.</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Notifications Tab -->
+                <div class="settings-tab-content hidden" data-tab-name="notifications">
+                    <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Notification Preferences
+                    </h3>
+                    <!-- Daily Reminders -->
+                    <div class="space-y-2">
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="reminder-toggle"
+                                class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Enable Daily
+                                Reminders</span>
+                        </label>
+                    </div>
+                    <!-- Reminder Time -->
+                    <div class="space-y-2 mt-4">
+                        <label for="reminder-time-input"
+                            class="block text-sm font-medium text-gray-700 dark:text-gray-300">Reminder Time</label>
+                        <input id="reminder-time-input" type="time" value="18:00"
+                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary dark:bg-darkcard dark:text-white"
+                            disabled>
+                        <button id="test-reminder-btn" type="button"
+                            class="mt-2 px-3 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                            disabled>Send Test Notification</button>
+                    </div>
+                </div>
+            </div>
+            <!-- Footer -->
             <div
-                class="bg-white dark:bg-darkcard text-gray-800 dark:text-gray-100 px-5 py-4 rounded-xl shadow-lg flex items-center gap-3 text-base font-semibold border border-gray-200 dark:border-gray-700">
-                <div class="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin"
-                    aria-hidden="true"></div>
-                <span>Loading your entries...</span>
+                class="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                <button id="settings-cancel"
+                    class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600">Cancel</button>
+                <button id="settings-save"
+                    class="px-4 py-2 rounded-lg bg-primary text-white hover:bg-blue-600 font-semibold">Save</button>
             </div>
         </div>
-        <button id="show-privacy-btn"
-            class="fixed bottom-3 right-3 px-3 py-2 bg-gray-800 text-white rounded shadow-lg z-40 hover:bg-primary focus:outline-none focus:ring-2 focus:ring-primary/70 transition-transform hover:-translate-y-0.5">Privacy
-            Notice</button>
+    </div>
+    <!-- Change Password Modal -->
+    <div id="change-password-modal"
+        class="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center z-50 hidden p-4 pt-6" role="dialog"
+        aria-modal="true" aria-labelledby="change-password-title">
+        <div
+            class="bg-white dark:bg-darkcard rounded-2xl p-6 shadow-2xl w-full max-w-md border border-gray-200 dark:border-gray-700 mx-2 my-4 max-h-[90vh] overflow-y-auto">
+            <h2 id="change-password-title" class="text-xl font-bold mb-2 text-gray-800 dark:text-white">Change
+                Password</h2>
+            <p class="text-sm text-gray-700 dark:text-gray-200 mb-4">Your existing entries will be re-encrypted with
+                the new password.</p>
+
+            <div class="space-y-3">
+                <!-- Current Password -->
+                <div class="space-y-1">
+                    <label for="current-password-input"
+                        class="block text-sm font-medium text-gray-700 dark:text-gray-300">Current Password</label>
+                    <input id="current-password-input" type="password" autocomplete="current-password"
+                        placeholder="Enter current password"
+                        class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary" />
+                </div>
+
+                <!-- New Password -->
+                <div class="space-y-1">
+                    <label for="new-password-input"
+                        class="block text-sm font-medium text-gray-700 dark:text-gray-300">New Password</label>
+                    <input id="new-password-input" type="password" autocomplete="new-password"
+                        placeholder="Enter new password"
+                        class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary" />
+                </div>
+
+                <!-- Confirm Password -->
+                <div class="space-y-1">
+                    <label for="confirm-password-input"
+                        class="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirm New
+                        Password</label>
+                    <input id="confirm-password-input" type="password" autocomplete="new-password"
+                        placeholder="Confirm new password"
+                        class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary" />
+                </div>
+            </div>
+
+            <!-- Error Message -->
+            <div id="change-password-error"
+                class="hidden mt-3 p-2 rounded border text-sm border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+            </div>
+
+            <!-- Processing Indicator -->
+            <div id="change-password-processing"
+                class="hidden mt-3 text-center text-sm text-gray-600 dark:text-gray-400">
+                <div class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                Processing...
+            </div>
+
+            <div class="flex justify-end gap-3 mt-5">
+                <button id="change-password-cancel"
+                    class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 font-medium">Cancel</button>
+                <button id="change-password-submit"
+                    class="px-4 py-2 rounded-lg bg-primary text-white hover:bg-blue-600 font-semibold transition">Change
+                    Password</button>
+            </div>
+        </div>
+    </div>
+    <!-- Delete Account Modal -->
+    <div id="delete-account-modal"
+        class="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center z-50 hidden p-4 pt-6" role="dialog"
+        aria-modal="true" aria-labelledby="delete-account-title">
+        <div
+            class="bg-white dark:bg-darkcard rounded-2xl p-6 shadow-2xl w-full max-w-md border border-gray-200 dark:border-gray-700 mx-2 my-4 max-h-[90vh] overflow-y-auto">
+            <h2 id="delete-account-title" class="text-xl font-bold mb-2 text-red-600 dark:text-red-400">Delete
+                Account</h2>
+            <p class="text-sm text-gray-700 dark:text-gray-200 mb-2">This will permanently delete your account and
+                all journal entries. This action cannot be undone.</p>
+            <div class="mb-4 text-sm text-gray-700 dark:text-gray-200">
+                <ul class="list-disc ml-5 space-y-1">
+                    <li>Entries to delete: <span id="delete-account-summary-entries" class="font-semibold">0</span>
+                    </li>
+                    <li>Favorites: <span id="delete-account-summary-favorites" class="font-semibold">0</span></li>
+                    <li>Offline entries will be removed</li>
+                </ul>
+            </div>
+
+            <!-- Email/password reauth -->
+            <div id="delete-account-password-group" class="space-y-2 hidden">
+                <label for="delete-account-password"
+                    class="block text-sm font-medium text-gray-700 dark:text-gray-200">Confirm your password</label>
+                <input id="delete-account-password" type="password" autocomplete="current-password"
+                    placeholder="Password"
+                    class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100" />
+            </div>
+
+            <!-- Provider reauth (e.g., Google) -->
+            <div id="delete-account-reauth-group" class="space-y-2 hidden">
+                <p class="text-sm text-gray-700 dark:text-gray-200">You'll need to sign in again to continue.</p>
+                <button id="delete-account-reauth-btn"
+                    class="w-full px-4 py-2 rounded-lg bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 font-semibold">Sign
+                    In</button>
+            </div>
+
+            <div id="delete-account-error"
+                class="hidden mt-3 p-2 rounded border text-sm border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300">
+            </div>
+
+            <div class="flex justify-end gap-3 mt-5">
+                <button id="delete-account-cancel"
+                    class="px-4 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600">Cancel</button>
+                <button id="delete-account-confirm"
+                    class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-semibold">Delete
+                    Account</button>
+            </div>
+        </div>
+    </div>
+    <!-- Account Deleted Modal -->
+    <div id="account-deleted-modal"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] hidden" role="dialog"
+        aria-modal="true" aria-labelledby="account-deleted-title">
+        <div
+            class="bg-white dark:bg-darkcard rounded-2xl p-8 shadow-2xl w-full max-w-md border border-gray-200 dark:border-gray-700 mx-4 text-center">
+            <div class="mb-4 flex justify-center">
+                <div class="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                    <svg class="w-8 h-8 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                            clip-rule="evenodd"></path>
+                    </svg>
+                </div>
+            </div>
+            <h2 id="account-deleted-title" class="text-2xl font-bold mb-2 text-red-600 dark:text-red-400">Account
+                Deleted</h2>
+            <p class="text-gray-700 dark:text-gray-200 mb-6">Your account and all journal entries have been
+                permanently deleted.</p>
+            <button id="account-deleted-close"
+                class="w-full px-4 py-2 rounded-lg bg-primary hover:bg-blue-600 text-white font-semibold transition">
+                OK
+            </button>
+        </div>
+    </div>
+    <!-- Loading overlay for entry fetches -->
+    <div id="loading-overlay" role="status" aria-live="polite"
+        class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div
+            class="bg-white dark:bg-darkcard text-gray-800 dark:text-gray-100 px-5 py-4 rounded-xl shadow-lg flex items-center gap-3 text-base font-semibold border border-gray-200 dark:border-gray-700">
+            <div class="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin"
+                aria-hidden="true"></div>
+            <span>Loading your entries...</span>
+        </div>
+    </div>
+    <button id="show-privacy-btn"
+        class="fixed bottom-3 right-3 px-3 py-2 bg-gray-800 text-white rounded shadow-lg z-40 hover:bg-primary focus:outline-none focus:ring-2 focus:ring-primary/70 transition-transform hover:-translate-y-0.5">Privacy
+        Notice</button>
 </body>
 
 </html>
